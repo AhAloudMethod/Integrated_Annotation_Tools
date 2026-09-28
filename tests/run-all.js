@@ -11,7 +11,7 @@ if (!fs.existsSync(VID)) {
   if (r.status !== 0) process.exit(1);
 }
 
-const TESTS = ['structure', 'modes', 'features', 'layout', 'restore', 'samimg', 'pip-fallback', 'fixes'];
+const TESTS = ['structure', 'modes', 'features', 'layout', 'restore', 'samimg', 'pip-fallback', 'fixes', 'vwin'];
 const only = process.argv.slice(2);
 const BAD = [/\bFAIL\b/, /^\s*ERR /m, /ERRORS: (?!none)/, /errors: (?!none)/, /errs: '(?!none)/, /Error:/];
 

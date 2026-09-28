@@ -8,27 +8,16 @@
 </head>
 <body data-side="normal">
 <header>
-  <h1>あアラウド アノテーション</h1>
-  <label class="inline">参加者ID <input id="pid" type="text" placeholder="例 P01"></label>
-  <label class="inline">入力方式 <select id="mode"></select></label>
+  <h1>あアラウド</h1>
+  <label class="inline"><span class="lbl">ID</span> <input id="pid" type="text" placeholder="P01"></label>
+  <label class="inline"><span class="lbl">方式</span> <select id="mode"></select></label>
   <button id="openBtn">動画を開く</button>
   <input id="file" type="file" accept="video/*" hidden>
-  <button id="backBtn" title="1秒戻る">−1秒</button>
-  <button id="playBtn">再生</button>
-  <button id="fwdBtn" title="1秒進む">＋1秒</button>
-  <label class="inline">動画の大きさ <input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></label>
-  <span class="rgWrap">
-    <button id="pipBtn" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出して、ページ全体をツールに使う">小窓で再生</button>
-    <div id="pipHelp" class="rgPanel" hidden>
-      <p>このブラウザ（Firefox 系）では、小窓はブラウザの機能で開きます。</p>
-      <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
-      <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
-      <button id="pipCollapse" type="button">動画欄をたたむ</button>
-    </div>
-  </span>
-  <label class="inline">再生速度
-    <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select>
-  </label>
+  <span class="sep"></span>
+  <button id="backBtn" title="1秒戻る（←）">−1秒</button>
+  <button id="playBtn" title="再生／停止（Space）">再生</button>
+  <button id="fwdBtn" title="1秒進む（→）">＋1秒</button>
+  <span class="time" id="clock">0:00.00 / 0:00.00</span>
   <span id="armBox" hidden><button id="armBtn">記録オフ（R）</button></span>
   <span class="rgWrap">
     <button id="rgBtn" title="評価する範囲と区間の長さ">評価区間</button>
@@ -42,33 +31,53 @@
       <p class="muted">区間方式（Excel・Affect Grid・SAM・カスタムの区間ごと）の入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
     </div>
   </span>
-  <label class="inline"><input id="graphEdit" type="checkbox" checked> グラフで編集</label>
   <span class="spacer"></span>
-  <span class="hint" id="hint" hidden></span>
   <span class="status" id="status"></span>
-  <button id="exportBtn">データを書き出す</button>
+  <span id="pipNote">動画は別の場所で表示中 <button id="pipBack" type="button">元に戻す</button></span>
+  <button id="vwinBtn" title="動画だけを別ウィンドウに出す。モニターへドラッグし、ダブルクリックで全画面">動画を別窓へ</button>
+  <button id="tlBtn" title="評価グラフの表示／非表示">グラフ</button>
+  <span class="rgWrap">
+    <button id="setBtn" title="表示と再生の設定">設定</button>
+    <div id="setPanel" class="rgPanel right" hidden>
+      <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
+      <label>再生速度 <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
+      <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
+      <div class="sub">
+        <button id="pipBtn" type="button" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出す">小窓で再生</button>
+        <div id="pipHelp" hidden>
+          <p>このブラウザ（Firefox 系）では、小窓はブラウザの機能で開きます。</p>
+          <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
+          <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
+          <button id="pipCollapse" type="button">動画欄をたたむ</button>
+        </div>
+      </div>
+    </div>
+  </span>
+  <span class="rgWrap">
+    <button id="helpBtn" title="操作の説明">？</button>
+    <div id="helpPanel" class="rgPanel right help" hidden>
+      <div id="modeHelp"></div>
+      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し</p>
+      <p>「動画を別窓へ」：動画だけを別のウィンドウに出します。モニターへドラッグし、ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作はそのまま効きます。閉じると動画はこの画面に戻ります。</p>
+      <p>「グラフ」：評価グラフを開閉します。下端の目盛りの帯をクリック・ドラッグで移動。「設定」の「グラフをなぞって値を編集する」がオンなら、快度・覚醒度の欄をなぞると値を直接描き換えられます。</p>
+      <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。動画を開く前でもツールを試せます（練習中の入力は、動画を開いた時点で消えます）。</p>
+    </div>
+  </span>
+  <button id="exportBtn">書き出す</button>
 </header>
+<div class="hint" id="hint" hidden></div>
 
 <main>
   <div class="stage" id="stage">
     <div class="empty" id="empty">入力方式を選んでから「動画を開く」で評価する動画を選んでください。<br>動画はこのPCの中だけで読み込まれます。</div>
     <video id="video" hidden playsinline></video>
     <div id="overlay"></div>
-    <div id="pipNote">動画は小窓で再生中です <button id="pipBack" type="button">元に戻す</button></div>
   </div>
   <div id="under"></div>
   <div class="side">
     <div id="panel"></div>
-    <div class="time" id="clock">0:00.00 / 0:00.00</div>
   </div>
   <div class="tl"><canvas id="tl" tabindex="0" aria-label="タイムライン。クリックでその時刻に移動"></canvas></div>
-  <div class="help">
-    <div id="modeHelp"></div>
-    <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し</p>
-    <p>下のグラフ：下端の目盛りの帯をクリック・ドラッグで移動。「グラフで編集」がオンのときは、快度・覚醒度の欄をなぞると値を直接描き換えられます（オフにするとグラフ全体が移動用）。</p>
-    <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。</p>
-    <p>動画を開く前でもツールを試せます（練習中の入力は、動画を開いた時点で消えます）。「動画の大きさ」で動画とツールの幅の配分を変えられ、「小窓で再生」で動画をブラウザの小窓（ピクチャーインピクチャー）に出すと、ページ全体をツールに使えます。小窓は好きな位置・大きさに動かせます。</p>
-  </div>
 </main>
 
 <!-- 共通部分（core/）：読み込み順に依存する。最初が state.js、最後が init.js（公開 API AH.* を作る） -->
@@ -88,6 +97,7 @@
 <script src="core/export.js"></script>
 <script src="core/storage.js"></script>
 <script src="core/layout.js"></script>
+<script src="core/vwin.js"></script>
 <script src="core/init.js"></script>
 <!-- 入力方式（modes/）：_shared.js のあと、登録順＝入力方式の選択肢の並び順 -->
 <script src="modes/_shared.js"></script>

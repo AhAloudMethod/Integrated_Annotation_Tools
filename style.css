@@ -14,54 +14,71 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
   font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-size:15px;line-height:1.5}
-header{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
-header h1{font-size:15px;font-weight:600;margin:0 8px 0 0}
+/* 画面全体を1画面に収める：ヘッダー（1段）＋ main（残りの高さ）。ページはスクロールしない */
+html,body{height:100%}
+body{display:flex;flex-direction:column;overflow:hidden}
+header{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--panel);font-size:14px;position:relative;z-index:15}
+header h1{font-size:14px;font-weight:700;margin:0 4px 0 0;white-space:nowrap}
+header button{padding:4px 10px}
+header .sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+header .time{min-width:8.6em}
 label.inline{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
 input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);width:110px}
+#pid{width:72px}
+#mode{max-width:230px}
+header{flex-wrap:nowrap}
+header>*{flex:0 0 auto}
+header .status{flex:0 1 auto}
+@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:200px} header{gap:6px}}
+@media (max-width:1180px){header{flex-wrap:wrap}}
 select,textarea{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
 button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);cursor:pointer}
 button:hover{border-color:var(--muted)}
+button.on{background:var(--ink);border-color:var(--ink);color:var(--panel)}
 button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible,textarea:focus-visible{outline:2px solid var(--val);outline-offset:2px}
 .spacer{flex:1}
-.status{font-size:13px;color:var(--muted)}
-.hint{font-size:13px;color:var(--pen)}
+.status{font-size:13px;color:var(--muted);min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 案内は画面上部に重ねて出す（レイアウトを動かさない） */
+.hint{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:30;font-size:13px;color:var(--pen);background:var(--panel);border:1px solid var(--pen);border-radius:4px;padding:4px 14px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
 #armBtn.on{background:var(--pen);border-color:var(--pen);color:#fff}
 kbd{font-family:inherit;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 5px;background:var(--panel);color:var(--ink)}
 [hidden]{display:none !important}
 
-/* 動画の列の幅はヘッダーのスライダー（--vp ％）で変える。残りがツールの列 */
-main{display:grid;grid-template-columns:minmax(0,calc(var(--vp,55) * 1%)) minmax(var(--side,280px),1fr);grid-template-areas:"stage side" "under under" "tl tl" "help help";
-  gap:14px 16px;padding:16px 20px;max-width:1600px;margin:0 auto;align-items:start}
+/* main：動画｜ツール の2列＋下に区間方式の欄・評価グラフ。動画の列の幅は「設定」の動画の大きさ（--vp ％） */
+main{flex:1 1 auto;min-height:0;width:100%;max-width:1800px;margin:0 auto;display:grid;
+  grid-template-columns:minmax(0,calc(var(--vp,55) * 1%)) minmax(var(--side,280px),1fr);grid-template-rows:minmax(0,1fr) auto auto;
+  grid-template-areas:"stage side" "under under" "tl tl";gap:10px 14px;padding:10px 14px}
 body[data-side=narrow]{--side:240px} body[data-side=wide]{--side:340px}
-@media (max-width:900px){main{grid-template-columns:1fr;grid-template-areas:"stage" "side" "under" "tl" "help"}}
-/* 小窓（ピクチャーインピクチャー）中：動画欄は細い帯にして、ツールに画面を使う */
-body.pip main{grid-template-areas:"stage stage" "side side" "under under" "tl tl" "help help"}
-body.pip .stage{aspect-ratio:auto;height:44px;background:var(--panel);border:1px solid var(--line)}
-body.pip .stage video{position:absolute;opacity:0;pointer-events:none}
-body.pip #panel{flex-direction:row;flex-wrap:wrap;align-items:flex-start}
-body.pip #panel>*{flex:1 1 320px;max-width:560px}
-#pipNote{display:none;font-size:13px;color:var(--muted);gap:10px;align-items:center}
-body.pip #pipNote{display:flex}
-body.pip #overlay:not(:empty){position:fixed;left:auto;top:auto;right:16px;bottom:16px;width:320px;height:180px;background:rgba(0,0,0,.55);border-radius:6px;z-index:20}
-.stage{grid-area:stage;position:relative;background:#000;border-radius:4px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;transition:box-shadow .08s}
-.stage video{width:100%;height:100%;display:block;border-radius:4px}
+@media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"stage" "side" "under" "tl"} .stage{aspect-ratio:16/9;height:auto}}
+.stage{grid-area:stage;min-height:0;height:100%;position:relative;background:#000;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:box-shadow .08s}
+.stage video{width:100%;height:100%;display:block;object-fit:contain;border-radius:4px}
 .empty{color:#9AA6B2;text-align:center;padding:24px}
 #overlay{position:absolute;inset:0;pointer-events:none}
 #overlay>*{pointer-events:auto}
-.side{grid-area:side;display:flex;flex-direction:column;gap:12px;min-width:0}
-#panel{display:flex;flex-direction:column;gap:12px}
-#under{grid-area:under;min-width:0}
+.side{grid-area:side;min-height:0;min-width:0;overflow:auto}
+#panel{display:flex;flex-direction:column;gap:10px}
+#under{grid-area:under;min-width:0;max-height:46vh;overflow:auto}
 #under:empty{display:none}
-.tl{grid-area:tl;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px}
-#tl{width:100%;height:190px;display:block;cursor:pointer}
-.help{grid-area:help;color:var(--muted);font-size:13px}
-.help p{margin:2px 0}
+.tl{grid-area:tl;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px}
+#tl{width:100%;height:150px;display:block;cursor:pointer}
+body.noTl .tl{display:none}
 .time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+
+/* 動画を別の場所（別ウィンドウ・小窓）で表示中：動画欄を外し、ツールに画面を使う */
+body.pip main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"side" "under" "tl"}
+body.pip .stage{position:fixed;right:16px;bottom:16px;width:0;height:0;background:none;z-index:20}
+body.pip .stage video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+body.pip .stage .empty{display:none}
+body.pip #panel{flex-direction:row;flex-wrap:wrap;align-items:flex-start;justify-content:center}
+body.pip #panel>*{flex:1 1 320px;max-width:640px}
+#pipNote{display:none;font-size:13px;color:var(--muted);gap:6px;align-items:center;white-space:nowrap}
+body.pip #pipNote{display:inline-flex}
+body.pip #overlay:not(:empty){position:fixed;left:auto;top:auto;right:16px;bottom:16px;width:320px;height:180px;background:rgba(0,0,0,.55);border-radius:6px;z-index:20}
 
 /* 共通パーツ */
 .planeBox,.axis{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px}
-canvas.plane{width:100%;max-width:520px;margin:0 auto;aspect-ratio:1/1;height:auto;display:block;cursor:crosshair;touch-action:none}
-canvas.bars{width:100%;max-width:520px;margin:0 auto;height:320px;display:block;touch-action:none}
+canvas.plane{width:100%;margin:0 auto;aspect-ratio:1/1;height:auto;display:block;cursor:crosshair;touch-action:none}
+canvas.bars{width:100%;max-width:520px;margin:0 auto;height:300px;display:block;touch-action:none}
 canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 .nowRow{display:flex;gap:16px;font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);margin-top:6px}
 .nowRow b{font-size:20px;font-weight:600}
@@ -77,6 +94,13 @@ canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 .rgPanel label{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted)}
 .rgPanel input,.rgPanel select{width:130px;font:inherit;padding:2px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
 .rgPanel p{margin:2px 0 0;font-size:12px}
+.rgPanel.right{left:auto;right:0}
+.rgPanel label.chk{justify-content:flex-start}
+.rgPanel label.chk input{width:auto}
+.rgPanel .sub{border-top:1px dashed var(--line);padding-top:8px;display:grid;gap:6px}
+#vidSize{width:110px !important;padding:0 !important;border:0 !important;vertical-align:middle}
+#helpPanel{width:min(620px,92vw);color:var(--muted);line-height:1.6}
+#helpPanel p,#helpPanel #modeHelp p{margin:0 0 6px;font-size:13px}
 
 /* ==================== 方式別 ==================== */
 
@@ -124,11 +148,11 @@ table.ref th{color:var(--muted);font-weight:500}
 .samRow{margin-bottom:8px}
 .samHead{font-size:13px;font-weight:600;margin-bottom:2px}
 .samBtns{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;align-items:stretch}
-#under .samBtns{grid-template-columns:2fr 1fr 2fr 1fr 2fr 1fr 2fr 1fr 2fr;gap:4px}
-#under .samBtns button{min-height:0;padding:4px}
-#under .samBtns img{max-width:110px}
-#under .samBtns svg{max-width:70px}
-#under .sam{margin-bottom:8px}
+#panel .sam .samBtns{grid-template-columns:2fr 1fr 2fr 1fr 2fr 1fr 2fr 1fr 2fr;gap:4px}
+#panel .sam .samBtns button{min-height:0;padding:3px}
+#panel .sam .samBtns img,#panel .sam .samBtns svg{max-width:100%;width:auto;height:var(--samH,76px);object-fit:contain}
+#panel .sam .samRow{margin-bottom:4px}
+#panel .sam .samHead{margin-bottom:0}
 .samBtns button{padding:2px;display:flex;align-items:center;justify-content:center;min-height:60px}
 .samBtns svg{width:100%;max-width:40px;fill:var(--ink);stroke:var(--ink)}
 .samBtns svg .body{fill:none;stroke-width:1.8}
@@ -155,3 +179,5 @@ table.ref th{color:var(--muted);font-weight:500}
   background:color-mix(in srgb,#3B6FD9 18%,var(--panel));border-color:#3B6FD9}
 .arBtn.hit{background:var(--hit);border-color:var(--hit);color:#fff}
 .arList{font-size:13px;font-variant-numeric:tabular-nums;margin-top:8px;min-height:5em}
+.arPlane{margin:0 auto}
+body.vwin #pipNote{display:none !important}

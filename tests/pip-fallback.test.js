@@ -9,7 +9,7 @@ const { URL, VID, BROWSER, out } = require('./_env');
     await p.goto(URL); await p.selectOption('#mode', 'emujoy');
     await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0);
     const label0 = await p.$eval('#pipBtn', e => e.textContent);
-    await p.click('#pipBtn'); const helpShown = !(await p.$eval('#pipHelp', e => e.hidden));
+    await p.click('#setBtn'); await p.click('#pipBtn'); const helpShown = !(await p.$eval('#pipHelp', e => e.hidden));
     if (noApi) { await p.screenshot({ path: out('shot6_fxhelp.png'), clip: { x: 0, y: 0, width: 1400, height: 400 } }); await p.click('#pipCollapse'); }
     const collapsed = await p.evaluate(() => document.body.classList.contains('pip')), label1 = await p.$eval('#pipBtn', e => e.textContent);
     if (noApi) { await p.click('#pipBack'); }

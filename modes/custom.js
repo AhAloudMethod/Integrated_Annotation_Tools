@@ -233,7 +233,7 @@
       const box = h('div', { class: 'planeBox' });
       rows = null; c = null; g = null;
       if (o().rep === 'sam' || o().rep === 'buttons') {
-        if (o().rep === 'sam') { const sb = h('div', { class: 'planeBox sam' }); rows = samRows(sb, (ax, i) => pointAction({ [ax]: i }), act()); under.appendChild(sb); }
+        if (o().rep === 'sam') { const sb = h('div', { class: 'planeBox sam' }); rows = samRows(sb, (ax, i) => pointAction({ [ax]: i }), act()); panel.appendChild(sb); }
         else {
           rows = {};
           for (const [ax, name] of [['v', '快度'], ['a', '覚醒度']]) {

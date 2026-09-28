@@ -39,9 +39,9 @@
   function syncRangeUI() {
     const r = RG();
     $('rgStart').value = r.start; $('rgCount').value = r.count; $('rgBin').value = r.bin; $('rgLabel').value = r.label;
-    $('rgBtn').textContent = `評価区間 ${fmt(r.start).slice(0, -3)}〜 ${r.count}×${r.bin}秒`;
+    $('rgBtn').textContent = `区間 ${fmt(r.start).slice(0, -3)}〜 ${r.count}×${r.bin}秒`;
   }
-  $('rgBtn').addEventListener('click', e => { $('rgPanel').hidden = !$('rgPanel').hidden; e.target.blur(); });
+  $('rgBtn').addEventListener('click', e => { const open = $('rgPanel').hidden; if (_.closePops) _.closePops(); $('rgPanel').hidden = !open; e.target.blur(); });
   for (const id of ['rgStart', 'rgCount', 'rgBin', 'rgLabel']) $(id).addEventListener('change', () => {
     const start = Math.max(0, +$('rgStart').value || 0), bin = Math.max(0.1, +$('rgBin').value || 1);
     setRange({ start, bin, count: Math.max(1, Math.round(+$('rgCount').value || 1)), label: $('rgLabel').value });

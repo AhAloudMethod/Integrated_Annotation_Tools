@@ -8,16 +8,15 @@
     options: { autoNext: false },
     help: '<p>今の区間（下の帯で強調）について、快度と覚醒度の絵をそれぞれ1つ選びます。絵と絵の間の小円は中間の値です。「入力後に次の区間へ」をオンにすると、両方選んだ時点で次の区間へ進みます。</p>',
     mount({ panel, under }) {
-      // 絵が読めるよう、SAM の行は動画の下の広い欄に置く
+      // SAM の行はツールの列に置き、絵の大きさは空いている高さに合わせる（layout.js）
       const box = h('div', { class: 'planeBox sam' });
       rows = samRows(box, (ax, i) => {
         const s = AH.inputSec(); if (s == null) return;
         AH.setCell(ax, s, i, 'sam');
         if (S.data.cells.v[s] != null && S.data.cells.a[s] != null) autoNext(s);
       });
-      under.appendChild(box); strip = secStrip(under);
-      const side = h('div', { class: 'planeBox' }), o = h('div', { class: 'opts' });
-      toggle(o, 'autoNext', '入力後に次の区間へ'); side.appendChild(o); panel.appendChild(side);
+      const o = h('div', { class: 'opts' }); toggle(o, 'autoNext', '入力後に次の区間へ'); box.appendChild(o);
+      panel.appendChild(box); strip = secStrip(under);
     },
     update() {
       const s = AH.curSec();

@@ -11,7 +11,8 @@ const { URL, VID, BROWSER, out } = require('./_env');
     page.on('console', m => { if (m.type() === 'error') errs.push(mode + ' console ' + m.text()); });
     page.on('dialog', d => (page._accept ? d.accept() : d.dismiss()));
     page._accept = accept;
-    await page.goto(URL); await page.fill('#pid', 'T1'); await page.selectOption('#mode', mode);
+    await page.goto(URL); await page.evaluate(() => AH._.setTimeline(true));   // 評価グラフは既定で閉じているので開く
+    await page.fill('#pid', 'T1'); await page.selectOption('#mode', mode);
     await page.setInputFiles('#file', VID); await page.waitForFunction(() => AH.S.meta.duration > 0); await page.waitForTimeout(300);
     return page;
   };
