@@ -39,6 +39,10 @@
       g.fillStyle = css('--muted');
       for (let t = 0; t <= D; t += 5) g.fillText(t + 's', xOf(t) + 2, h - 5);
     }
+    // 快度と覚醒度の欄の区切り線
+    const yDiv = Math.round((G.lanes[0].y1 + G.lanes[1].y0) / 2) + 0.5;
+    g.strokeStyle = css('--muted'); g.lineWidth = 1; g.globalAlpha = 0.7;
+    g.beginPath(); g.moveTo(0, yDiv); g.lineTo(w, yDiv); g.stroke(); g.globalAlpha = 1;
     for (const L of G.lanes) {
       g.fillStyle = css('--muted'); g.fillText(L.name, 2, L.y0 + 10);
       if (!(_.M && _.M.unbounded)) {

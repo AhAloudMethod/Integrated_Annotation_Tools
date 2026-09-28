@@ -125,6 +125,19 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 6. グラフに快度と覚醒度の区切り線 ----
+  {
+    const p = await open('emujoy'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+    const r = await p.evaluate(() => {
+      const c = document.getElementById('tl'), d = devicePixelRatio || 1, h = c.clientHeight, y = Math.round(((h - 18) / 2) * d);
+      const g = c.getContext('2d'), px = x => [...g.getImageData(Math.round(x * d), y, 1, 1).data];
+      const above = [...g.getImageData(Math.round(20 * d), y - Math.round(4 * d), 1, 1).data];
+      return { at: px(20), mid: px(c.clientWidth / 3 + 3), above };
+    });
+    check('グラフに区切り線がある', r.at[3] > 0 && r.mid[3] > 0 && r.above[3] === 0, JSON.stringify(r));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();
