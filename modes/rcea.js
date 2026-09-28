@@ -1,0 +1,39 @@
+// ---- RCEA（動画右下の円形仮想ジョイスティック・象限色・画面枠の色） ----
+(() => {
+  const { pen } = AH;
+  const { opts, h, stored, nowRow, toggle, circleVal, bindHold } = AH.ui;
+  let pad, g, now; const PAD = 6;
+  const spring = () => !!opts().spring;
+  AH.register({
+    id: 'rcea', group: '時間連続・2次元', label: 'RCEA（動画上の円形ジョイスティック）', model: 'series', init: { v: 5, a: 5 }, side: 'normal',
+    options: { spring: false },
+    writeMode: () => (spring() ? 'armed' : 'hold'), writeAxes: () => ['v', 'a'],
+    sample: () => (spring() && !pen.down ? { v: 5, a: 5 } : pen),
+    help: '<p>動画右下の円を押して動かします。画面の枠の色が今の象限（黄＝高覚醒・快、赤＝高覚醒・不快、青＝低覚醒・不快、緑＝低覚醒・快）を示し、濃さが強度です。「離すと中心へ」をオンにすると、記録オン（R）の間は押していなければ中性が記録されます。</p>',
+    mount({ panel, overlay }) {
+      const box = h('div', { class: 'rceaPad' }); pad = h('canvas', { 'aria-label': 'RCEA 仮想ジョイスティック' }); box.appendChild(pad); overlay.appendChild(box);
+      const info = h('div', { class: 'planeBox' }); panel.appendChild(info); now = nowRow(info);
+      const o = h('div', { class: 'opts' }); toggle(o, 'spring', '離すと中心へ'); info.appendChild(o);
+      bindHold(pad, e => circleVal(pad, e, PAD));
+    },
+    resize() { g = AH.fitCanvas(pad); },
+    update(t) {
+      if (!g) return;
+      const w = pad.clientWidth, R = (w - PAD * 2) / 2, cx = PAD + R, cy = PAD + R;
+      const cur = pen.down ? { v: pen.v, a: pen.a } : (spring() ? { v: 5, a: 5 } : stored(t));
+      g.clearRect(0, 0, w, w);
+      const qs = [['hh', -Math.PI / 2, 0], ['hl', Math.PI, 1.5 * Math.PI], ['ll', Math.PI / 2, Math.PI], ['lh', 0, Math.PI / 2]];
+      for (const [k, a0, a1] of qs) {
+        const col = AH.quadColor(k[1] === 'h' ? 9 : 1, k[0] === 'h' ? 9 : 1);
+        g.fillStyle = AH.rgba(col, 0.35); g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, R, a0, a1); g.closePath(); g.fill();
+      }
+      g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
+      const x = cx + (cur.v - 5) / 4 * R, y = cy - (cur.a - 5) / 4 * R;
+      g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(x, y, 12, 0, 7); g.fill();
+      g.strokeStyle = AH.isWriting() ? AH.css('--pen') : 'rgba(0,0,0,.5)'; g.lineWidth = 2; g.stroke();
+      const it = AH.intensity(cur.v, cur.a);
+      document.getElementById('stage').style.boxShadow = it > 0.02 ? `0 0 0 8px ${AH.rgba(AH.quadColor(cur.v, cur.a), 0.25 + 0.75 * it)}` : '0 0 0 8px transparent';
+      now(cur);
+    },
+  });
+})();
