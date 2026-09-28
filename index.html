@@ -71,7 +71,24 @@
   </div>
 </main>
 
-<script src="core.js"></script>
+<!-- 共通部分（core/）：読み込み順に依存する。最初が state.js、最後が init.js（公開 API AH.* を作る） -->
+<script src="core/state.js"></script>
+<script src="core/draw.js"></script>
+<script src="core/range.js"></script>
+<script src="core/series.js"></script>
+<script src="core/stroke.js"></script>
+<script src="core/table.js"></script>
+<script src="core/events.js"></script>
+<script src="core/gamepad.js"></script>
+<script src="core/timeline.js"></script>
+<script src="core/modes-registry.js"></script>
+<script src="core/video.js"></script>
+<script src="core/loop.js"></script>
+<script src="core/keys.js"></script>
+<script src="core/export.js"></script>
+<script src="core/storage.js"></script>
+<script src="core/layout.js"></script>
+<script src="core/init.js"></script>
 <script src="modes.js"></script>
 <script>AH.init();</script>
 </body>
