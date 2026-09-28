@@ -2,10 +2,97 @@
 
 修論実験2の候補ツールを、同じ土台の上で再現したプロトタイプ。`index.html` をブラウザ（Chrome / Edge）で開いて使う。ネットワーク接続は不要。
 
-- `core.js`：全方式に共通の部分（動画再生、再生制御、巻き戻したときの上書き、操作ログ、取り消し、自動保存、書き出し）
-- `modes.js`：各方式の入力UI
+- `core/`：全方式に共通の部分（動画再生、再生制御、巻き戻したときの上書き、操作ログ、取り消し、自動保存、書き出し）
+- `modes/`：各方式の入力UI（1方式1ファイル）
+- `style.css`：見た目（共通と方式別）
 - `sam/`：SAM の原典画像を置くフォルダ（置き方は `sam/README.txt`）
+- `tests/`：自動テスト（`npm test`）
 - 前の版の `../ah_annotator.html`（v0.2）は残してある
+
+ビルドは不要。ES Modules（import/export）は使わず、`index.html` が `<script src>` で順に読み込み、グローバルの `AH` でつなぐ（`file://` で直接開けるようにするため）。
+
+## ファイル構成
+
+```
+index.html            画面の骨組み。style.css と core/*.js・modes/*.js を順に読み込み、最後に AH.init() を呼ぶ
+style.css             スタイル（前半が共通、後半が方式別）
+core/                 共通部分（読み込み順に依存する。index.html の順を変えないこと）
+  state.js            AH を作る。状態 S・定数（FPS=60）・操作ログ addLog・取り消し
+  draw.js             表示の小道具（css 変数の取得、時刻の書式、キャンバスの解像度合わせ、象限の色）
+  range.js            評価区間（区間の番号・開始時刻・列の表記）とヘッダーの設定欄
+  series.js           時間系列（変化点）モデル
+  stroke.js           ストローク（書き込み区間の上書き）、ペン（押している間の入力）、記録オン／オフ
+  table.js            区間表モデル（区間ごとのセル）
+  events.js           相対イベントモデル（AffectRank）
+  gamepad.js          ゲームパッド
+  timeline.js         下のグラフ（シーク・グラフでの直接編集）と画面の再描画 refresh
+  modes-registry.js   方式の登録・切り替え・セッション開始
+  video.js            動画の読み込み・再生制御・ヘッダーのボタン
+  loop.js             毎フレームの処理（ストロークの開始・終了・サンプリング）
+  keys.js             キー操作
+  export.js           書き出し（CSV・JSON）
+  storage.js          自動保存と復元（localStorage）
+  layout.js           動画の大きさ・小窓（ピクチャーインピクチャー）・リサイズ
+  init.js             起動処理 AH.init() と公開 API（AH.*）
+modes/                入力方式（読み込み順＝「入力方式」の選択肢の並び順）
+  _shared.js          方式に共通のヘルパ（AH.ui）
+  key.js emujoy.js feeltrace.js rcea.js darma.js throttle.js halolight.js
+  carma.js ranktrace.js excel.js affectgrid.js sam.js affectrank.js custom.js
+sam/                  SAM の原典画像
+tests/                自動テスト（Playwright で Edge を動かす）
+```
+
+### 名前空間
+
+- `AH.*`：公開 API。方式ファイル（`modes/`）とテストはこれだけを使う（`AH.S`、`AH.register`、`AH.valueAt`、`AH.penDown`、`AH.setCell`、`AH.addEvent`、`AH.mode` など。一覧は `core/init.js`）。
+- `AH.ui.*`：方式ファイルどうしで共有するヘルパ（`h`、`nowRow`、`planeCanvas`、`bindHold`、`secStrip`、`samRows`、`heldRate` など。一覧は `modes/_shared.js` の末尾）。
+- `AH._.*`：core の内部用。core のファイル間で共有する値・関数を置く。方式ファイルからは使わない。
+  - 各 core ファイルは最後に `Object.assign(_, {...})` で他のファイルが使う定義を載せる。
+  - 先に読み込まれたファイルの定義は、冒頭の `const { ... } = _;` で受け取る。
+  - 後で読み込まれるファイルの定義（前方参照。例：`_.refresh()`、`_.autosave()`）と、再代入される状態（`_.M`＝選択中の方式、`_.stroke`＝書き込み中の区間）は `_.名前` で参照する。
+
+## 新しい方式の足し方
+
+1. `modes/<id>.js` を作り、即時関数の中で `AH.register({...})` を呼ぶ。必要なヘルパは `const { h, nowRow, ... } = AH.ui;`、状態は `const { S, pen, video } = AH;` で受け取る。
+2. `index.html` の `modes/custom.js` より前（選択肢に出したい位置）に `<script src="modes/<id>.js"></script>` を足す。選択肢は読み込み順に並び、`group` が同じものは同じ見出し（optgroup）にまとまる。
+3. 必要なら `style.css` の「方式別」に見た目を足す。
+4. `tests/modes.test.js` の方式一覧に `<id>` を足し、その方式の操作を1つ書く。`tests/structure.test.js` の並び順の期待値も直す。
+
+`AH.register()` に渡すオブジェクトの主な項目：
+
+| 項目 | 必須 | 内容 |
+|---|---|---|
+| `id` / `group` / `label` | ○ | 識別子（ファイル名・書き出しのファイル名・自動保存のキーに使う）／選択肢の見出し／表示名 |
+| `model` | ○ | `'series'`（変化点）・`'table'`（区間ごとのセル）・`'events'`（相対の変化）。getter でもよい（カスタム） |
+| `init` | ○ | 初期値 `{ v, a }`（t=0 の変化点） |
+| `mount({ panel, overlay, under })` | ○ | 入力UIを作る。panel＝右の欄、overlay＝動画の上、under＝動画の下の広い欄 |
+| `update(t)` | | 毎回の再描画（時刻 t の表示） |
+| `resize()` | | キャンバスの解像度合わせ（`g = AH.fitCanvas(c)`） |
+| `side` | | 右の欄の幅：`'narrow'`・`'normal'`・`'wide'` |
+| `help` | | 画面下の説明（HTML） |
+| `options` | | 方式の設定の既定値（`S.meta.options` に入り、書き出しにも残る） |
+| `integer` / `isInteger()` / `unbounded` | | 整数値の方式か／上下限なしか（グラフ・`_bins.csv` の集計が変わる） |
+| `writeMode()` | 連続方式 | `'hold'`（押している間だけ書き込む）・`'armed'`（記録オン（R）の間）・`null` |
+| `writeAxes()` / `sample()` | 連続方式 | 書き込む軸（`['v','a']` など）／今の入力値 `{ v, a }` |
+| `tick(dt)` / `animate` | | 毎フレームの処理／毎フレーム再描画するか |
+| `onKey(e)` / `onKeyUp(e)` / `onBlur()` / `onArm(on)` | | キー（処理したら true を返す）・フォーカスが外れたとき・記録オン／オフのとき |
+
+値の書き込みは、変化点なら `AH.placePoint` ＋ `AH.pushUndo` ＋ `AH.addLog`、押している間の入力なら `AH.penDown/penMove/penUp`、区間なら `AH.setCell` / `AH.setCells`、相対なら `AH.addEvent` を使う（既存の方式を参照）。
+
+## テスト
+
+```
+npm install        # 初回のみ（playwright-core）
+npm test           # 全テストを順に実行（tests/run-all.js）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg pip-fallback）
+npm run check      # 全 JS に node --check
+```
+
+- ブラウザは既定で `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`。環境変数 `AH_BROWSER` で変えられる。
+- スクリーンショットと各テストの出力（`*.log`）は `tests/out/` に保存される（`AH_OUT` で変えられる）。
+- テスト動画は `tests/fixtures/test.mp4`（12秒）。消えた場合は `npm run fixture` で ffmpeg から作り直す（`npm test` も無ければ自動で作る）。
+- `samimg` は `sam/` に原典画像があることが前提。
+- 再生しながらの操作は、フレームの間隔で変化点の時刻やサンプル数が少し揺れる（正常）。
 
 ## 全方式に共通する仕様
 
@@ -38,6 +125,32 @@
 | `_ranks.csv` | AffectRank | 変化の入力（時刻、方向） |
 | `_events.csv` | 全方式 | 全操作のログ（再生、停止、シーク、入力、記録オン／オフ、取り消しなど）と経過時間 |
 | `_session.json` | 全方式 | 上記すべてとメタ情報 |
+
+### 書き出し形式（CSV列）の仕様
+
+- ファイル名は `<参加者ID>_<動画名（拡張子なし）>_<方式id><接尾辞>`。参加者IDが空なら `noid`。
+- 文字コードは UTF-8（BOM つき）、改行は LF。`"`・`,`・改行を含む値は `"` で囲む（中の `"` は `""`）。
+- 軸の値は 1〜9（上下限なしの方式は任意の実数）。未入力は空欄。
+- 「区間」は評価区間（ヘッダーの「評価区間」）の区間。どのファイルも `bin`（0始まりの番号）・`label`（列の表記：カウントダウンか経過）・`t_start`・`t_end`（動画の秒、小数3桁）で始まる。
+
+| ファイル | 列 | 内容 |
+|---|---|---|
+| `_60hz.csv` | `frame, t, valence, arousal` | frame＝0〜floor(動画の長さ×60)、t＝frame/60（小数4桁）。値は直前の変化点の値（階段状） |
+| `_bins.csv`（整数値の連続方式：変化点キー、カスタムの9段階×連続） | `bin, label, t_start, t_end, valence, arousal` | 区間内の60Hzの値で最も長く続いた値（同数なら先に現れた値） |
+| `_bins.csv`（連続値・上下限あり） | `…, valence_mean, arousal_mean, valence_r9, arousal_r9` | 区間内の60Hzの値の平均（小数3桁）と、それを四捨五入した9段階 |
+| `_bins.csv`（連続値・上下限なし：RankTrace、カスタムの相対尺度） | `…, valence_mean, arousal_mean` | 区間内の平均 |
+| `_bins.csv`（区間方式：Excel・Affect Grid・SAM・カスタムの区間ごと） | `…, valence, arousal` | 入力値（未入力は空欄） |
+| `_bins.csv`（AffectRank） | `…, n_changes, sum_d_valence, sum_d_arousal` | 区間内の変化の回数と、方向（−1/0/+1）の合計 |
+| `_changepoints.csv` | `axis, t, value, initial` | axis＝valence／arousal。initial＝1 は t=0 の初期値の点 |
+| `_strokes.csv`（書き込みが1回以上あるとき） | `stroke, source, axes, t, valence, arousal` | stroke＝書き込みの番号、source＝input（入力）／graph（グラフで編集）、axes＝v・a・va。書き込んでいない軸は空欄 |
+| `_ranks.csv` | `t, label, d_valence, d_arousal` | 変化の入力の時刻・方向の名前・方向（−1/0/+1） |
+| `_events.csv` | `wall_ms, video_t, type, axis, value, detail` | wall_ms＝セッション開始からの経過ミリ秒（復元したときは続きから）、video_t＝そのときの動画の秒 |
+
+`_events.csv` の `type`：`session_start`・`restore`・`mode_switch`・`play`・`pause`・`seek`（detail＝移動前の時刻）・`ended`・`rate`・`range`・`option`・`graph_edit`・`pip`・`export`・`undo`・`arm`／`disarm`・`input`／`input_same`（変化点キーなど）・`click`（一時停止中のクリック）・`delete`・`stroke`（detail＝区間・サンプル数・終わった理由）・`graph_draw`／`graph_cells`・`cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（区間の値）・`cell_focus`・`memo`・`rank`（AffectRank）。
+
+`_session.json` は `{ meta, data, log }`。`meta` は参加者ID・動画名・長さ・開始時刻・ツールの版（`ah-annotator-v0.4`）・方式・方式の設定・評価区間、`data` は変化点（`points`）・書き込み（`strokes`）・区間の値（`cells`）・相対の変化（`events`）・メモ、`log` は `_events.csv` と同じ内容。
+
+自動保存は localStorage のキー `ahann4:<方式id>:<参加者ID>:<動画名>` に `{ meta, data, log, undo（直近10回分） }` を入れる。「動画の大きさ」の設定は `ahann_vidsize`。
 
 ## 原典の仕様と改変点の対応表（付録の下書き）
 
