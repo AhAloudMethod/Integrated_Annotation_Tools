@@ -29,7 +29,10 @@
   video.addEventListener('seeked', () => { addLog('seek', { detail: 'from ' + S.lastTime.toFixed(4) }); S.lastTime = video.currentTime; refresh(); });
   video.addEventListener('ended', () => { endStroke('ended'); addLog('ended'); });
   $('rate').addEventListener('change', e => { video.playbackRate = +e.target.value; addLog('rate', { value: e.target.value }); e.target.blur(); });
-  $('pid').addEventListener('change', e => { S.meta.participant = e.target.value.trim(); });
+  $('pid').addEventListener('change', e => {
+    const id = e.target.value.trim();
+    if (!_.renameParticipant(S.meta.participant, id)) e.target.value = S.meta.participant;
+  });
   $('mode').addEventListener('change', e => { switchMode(e.target.value); e.target.blur(); });
   $('playBtn').addEventListener('click', e => { togglePlay(); e.target.blur(); });
   $('backBtn').addEventListener('click', e => { seekTo(video.currentTime - 1); e.target.blur(); });

@@ -12,6 +12,19 @@
   const binAt = t => Math.floor((t - RG().start) / RG().bin + 1e-6);
   const curSec = () => clamp(binAt(video.currentTime || 0), 0, nSec() - 1);
   const inRange = t => t >= RG().start - 1e-6 && t < rangeEnd() - 1e-6;
+  // 入力先の区間。評価区間の外なら null を返して案内を出す（表示用の curSec は端に丸めたまま）
+  // 動画の末尾で止まっている場合は、そこで終わる最後の区間に入れる
+  function inputSec() {
+    const t = video.currentTime || 0, n = nSec();
+    let s = binAt(t);
+    if (s === n && t >= (S.meta.duration || 0) - 0.05) s = n - 1;
+    if (s >= 0 && s < n) return s;
+    const el = $('hint');
+    el.textContent = '評価区間の外です。評価区間の中に移動してから入力してください'; el.hidden = false;
+    clearTimeout(inputSec.tm); inputSec.tm = setTimeout(() => { el.hidden = true; }, 2500);
+    addLog('input_out_of_range', { detail: 't=' + t.toFixed(3) });
+    return null;
+  }
   const fmtS = x => { const m = Math.floor(x / 60), s = x - m * 60; return m + ':' + (Number.isInteger(RG().bin) ? String(Math.round(s)).padStart(2, '0') : s.toFixed(1).padStart(4, '0')); };
   // 列の表記：countdown＝動画内カウントダウンの残り（区間の数から逆算）、elapsed＝評価開始からの経過
   const secLabel = s => (RG().label === 'elapsed' ? fmtS(s * RG().bin) : fmtS((nSec() - 1 - s) * RG().bin));
@@ -36,5 +49,5 @@
   $('rgNow').addEventListener('click', e => { setRange({ start: +video.currentTime.toFixed(2) }); e.target.blur(); });
   $('rgFit').addEventListener('click', e => { const r = RG(); setRange({ count: Math.max(1, Math.floor((S.meta.duration - r.start) / r.bin + 1e-6)) }); e.target.blur(); });
 
-  Object.assign(_, { defaultRange, RG, nSec, binStart, rangeEnd, binAt, curSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { defaultRange, RG, nSec, binStart, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();

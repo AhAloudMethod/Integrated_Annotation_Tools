@@ -15,7 +15,8 @@
         const r = c.getBoundingClientRect(), s9 = (c.clientWidth - PAD * 2) / 9;
         const i = Math.floor((e.clientX - r.left - PAD) / s9), j = Math.floor((e.clientY - r.top - PAD) / s9);
         if (i < 0 || i > 8 || j < 0 || j > 8) return;
-        const s = AH.curSec(); setBoth(s, i + 1, 9 - j, 'grid'); autoNext(s);
+        const s = AH.inputSec(); if (s == null) return;
+        setBoth(s, i + 1, 9 - j, 'grid'); autoNext(s);
       });
     },
     resize() { g = AH.fitCanvas(c); },

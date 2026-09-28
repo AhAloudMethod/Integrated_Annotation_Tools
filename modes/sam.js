@@ -11,7 +11,8 @@
       // 絵が読めるよう、SAM の行は動画の下の広い欄に置く
       const box = h('div', { class: 'planeBox sam' });
       rows = samRows(box, (ax, i) => {
-        const s = AH.curSec(); AH.setCell(ax, s, i, 'sam');
+        const s = AH.inputSec(); if (s == null) return;
+        AH.setCell(ax, s, i, 'sam');
         if (S.data.cells.v[s] != null && S.data.cells.a[s] != null) autoNext(s);
       });
       under.appendChild(box); strip = secStrip(under);

@@ -44,7 +44,8 @@
     if (!Object.keys(vv).length) return;
     lastAxis = Object.keys(vv)[0];
     if (o().time === 'disc') {
-      const s = AH.curSec(); AH.setCells(s, vv, 'custom');
+      const s = AH.inputSec(); if (s == null) return;
+      AH.setCells(s, vv, 'custom');
       if (act().every(ax => S.data.cells[ax][s] != null)) autoNext(s);
     } else {
       const before = AH.snapshot(); let ch = false;
@@ -272,7 +273,7 @@
       const m = e.code.match(/^(Digit|Numpad)([1-9])$/);
       if (m && pointType()) { const ax = act().length === 1 ? act()[0] : (m[1] === 'Numpad' || e.shiftKey ? 'a' : 'v'); pointAction({ [ax]: +m[2] }); return true; }
       if (e.code === 'Backspace' && pointType()) {
-        if (o().time === 'disc') { const vv = {}; for (const ax of act()) vv[ax] = null; AH.setCells(AH.curSec(), vv, 'clear'); }
+        if (o().time === 'disc') { const vv = {}; for (const ax of act()) vv[ax] = null; const s = AH.inputSec(); if (s != null) AH.setCells(s, vv, 'clear'); }
         else { const p = AH.deletePointBefore(lastAxis, AH.vt()); if (p) { AH.addLog('delete', { axis: lastAxis, value: p.val, detail: 'at ' + p.t }); AH.refresh(); } }
         return true;
       }

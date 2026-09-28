@@ -17,12 +17,12 @@
   // 公開 API（方式ファイルとテストが使う）
   const { S, pen, video, register, refresh, remount, addLog, pushUndo, snapshot, css, fitCanvas, fmt, clamp, r2,
     vt, valueAt, placePoint, deletePointBefore, penDown, penMove, penUp, setArmed, endStroke,
-    nSec, curSec, binStart, secLabel, rangeSig, inRange, setCell, setCells, addEvent, deleteEventBefore, seekTo, togglePlay, setOption,
+    nSec, curSec, inputSec, binStart, secLabel, rangeSig, inRange, setCell, setCells, addEvent, deleteEventBefore, seekTo, togglePlay, setOption,
     gamepad, quadColor, gradColor, intensity, rgba } = _;
   Object.assign(AH, {
     S, pen, video, init, register, refresh, remount, addLog, pushUndo, snapshot, css, fitCanvas, fmt, clamp, r2,
     vt, valueAt, placePoint, deletePointBefore, penDown, penMove, penUp, setArmed, endStroke, isWriting: () => !!_.stroke,
-    nSec, curSec, binStart, secLabel, rangeSig, inRange, setCell, setCells, addEvent, deleteEventBefore, seekTo, togglePlay, setOption,
+    nSec, curSec, inputSec, binStart, secLabel, rangeSig, inRange, setCell, setCells, addEvent, deleteEventBefore, seekTo, togglePlay, setOption,
     gamepad, quadColor, gradColor, intensity, rgba, hasVideo: () => !!video.src,
   });
   Object.defineProperty(AH, 'mode', { get() { return _.M; }, enumerable: true });

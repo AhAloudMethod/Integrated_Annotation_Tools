@@ -20,6 +20,7 @@ const { URL, VID, BROWSER, out } = require('./_env');
   await page.keyboard.press('KeyR'); await page.keyboard.press('Space');
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(400); await page.keyboard.up('ArrowUp');
   await page.waitForTimeout(200); await page.keyboard.press('Space');
+  await page.waitForFunction(() => AH.video.paused && AH.S.log.some(l => l.type === 'pause'));
   const a = await page.evaluate(() => ({ log: AH.S.log.map(l=>l.type).join(','), paused: AH.video.paused, opt: AH.S.meta.options, pa: AH.S.data.points.a.length, undo: AH.S.undo.length }));
   await page.close();
   ({ page, errs } = await open(true));

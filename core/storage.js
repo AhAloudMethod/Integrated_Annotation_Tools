@@ -26,5 +26,24 @@
   window.addEventListener('pagehide', flush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
 
-  Object.assign(_, { autosave, tryRestore });
+  // 参加者IDの変更：この動画について全方式の保存データを新しいIDのキーへ移す。
+  // 移し先に別のデータがある場合は確認し、キャンセルなら false（IDを元に戻す）
+  function renameParticipant(oldId, newId) {
+    if (oldId === newId) return true;
+    if (!S.meta.video_file) { S.meta.participant = newId; return true; }
+    endStroke('participant_change'); autosave();
+    const k = (m, id) => `ahann4:${m}:${id}:${S.meta.video_file}`;
+    try {
+      const ms = Object.keys(modes).filter(m => localStorage.getItem(k(m, oldId)) != null);
+      const clash = ms.filter(m => localStorage.getItem(k(m, newId)) != null);
+      if (clash.length && !confirm(`参加者ID「${newId}」には、この動画の保存データが既にあります（${clash.map(m => modes[m].label).join('、')}）。
+今の評価で上書きしますか？（キャンセルするとIDを元に戻します）`)) return false;
+      for (const m of ms) { localStorage.setItem(k(m, newId), localStorage.getItem(k(m, oldId))); localStorage.removeItem(k(m, oldId)); }
+    } catch (_) {}
+    S.meta.participant = newId;
+    addLog('participant_change', { detail: `${oldId} -> ${newId}` });   // 新しいキーへ保存される
+    return true;
+  }
+
+  Object.assign(_, { autosave, tryRestore, renameParticipant });
 })();
