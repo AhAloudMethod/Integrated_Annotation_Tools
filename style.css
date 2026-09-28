@@ -1,0 +1,156 @@
+/* あアラウド アノテーション スタイル
+ * 前半：全方式に共通（配色・レイアウト・ヘッダー・共通パーツ・評価区間）
+ * 後半：方式別（変化点キー・RCEA/HaloLight・区間の帯・Excel・SAM・カスタム・AffectRank） */
+
+/* ==================== 共通 ==================== */
+:root{
+  --bg:#EEF1F3; --panel:#FFFFFF; --ink:#1D2630; --muted:#66727F; --line:#D5DBE0;
+  --val:#1F7A8C; --aro:#A86B12; --head:#1D2630; --grid:#E3E7EA; --pen:#C0392B; --hit:#2E9E5B;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
+    --val:#4FB3C6; --aro:#E0A64A; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-size:15px;line-height:1.5}
+header{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;font-weight:600;margin:0 8px 0 0}
+label.inline{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);width:110px}
+select,textarea{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible,textarea:focus-visible{outline:2px solid var(--val);outline-offset:2px}
+.spacer{flex:1}
+.status{font-size:13px;color:var(--muted)}
+.hint{font-size:13px;color:var(--pen)}
+#armBtn.on{background:var(--pen);border-color:var(--pen);color:#fff}
+kbd{font-family:inherit;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 5px;background:var(--panel);color:var(--ink)}
+[hidden]{display:none !important}
+
+/* 動画の列の幅はヘッダーのスライダー（--vp ％）で変える。残りがツールの列 */
+main{display:grid;grid-template-columns:minmax(0,calc(var(--vp,55) * 1%)) minmax(var(--side,280px),1fr);grid-template-areas:"stage side" "under under" "tl tl" "help help";
+  gap:14px 16px;padding:16px 20px;max-width:1600px;margin:0 auto;align-items:start}
+body[data-side=narrow]{--side:240px} body[data-side=wide]{--side:340px}
+@media (max-width:900px){main{grid-template-columns:1fr;grid-template-areas:"stage" "side" "under" "tl" "help"}}
+/* 小窓（ピクチャーインピクチャー）中：動画欄は細い帯にして、ツールに画面を使う */
+body.pip main{grid-template-areas:"stage stage" "side side" "under under" "tl tl" "help help"}
+body.pip .stage{aspect-ratio:auto;height:44px;background:var(--panel);border:1px solid var(--line)}
+body.pip .stage video{position:absolute;opacity:0;pointer-events:none}
+body.pip #panel{flex-direction:row;flex-wrap:wrap;align-items:flex-start}
+body.pip #panel>*{flex:1 1 320px;max-width:560px}
+#pipNote{display:none;font-size:13px;color:var(--muted);gap:10px;align-items:center}
+body.pip #pipNote{display:flex}
+body.pip #overlay:not(:empty){position:fixed;left:auto;top:auto;right:16px;bottom:16px;width:320px;height:180px;background:rgba(0,0,0,.55);border-radius:6px;z-index:20}
+.stage{grid-area:stage;position:relative;background:#000;border-radius:4px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;transition:box-shadow .08s}
+.stage video{width:100%;height:100%;display:block;border-radius:4px}
+.empty{color:#9AA6B2;text-align:center;padding:24px}
+#overlay{position:absolute;inset:0;pointer-events:none}
+#overlay>*{pointer-events:auto}
+.side{grid-area:side;display:flex;flex-direction:column;gap:12px;min-width:0}
+#panel{display:flex;flex-direction:column;gap:12px}
+#under{grid-area:under;min-width:0}
+#under:empty{display:none}
+.tl{grid-area:tl;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px}
+#tl{width:100%;height:190px;display:block;cursor:pointer}
+.help{grid-area:help;color:var(--muted);font-size:13px}
+.help p{margin:2px 0}
+.time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+
+/* 共通パーツ */
+.planeBox,.axis{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px}
+canvas.plane{width:100%;max-width:520px;margin:0 auto;aspect-ratio:1/1;height:auto;display:block;cursor:crosshair;touch-action:none}
+canvas.bars{width:100%;max-width:520px;margin:0 auto;height:320px;display:block;touch-action:none}
+canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
+.nowRow{display:flex;gap:16px;font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);margin-top:6px}
+.nowRow b{font-size:20px;font-weight:600}
+.nowRow .v b{color:var(--val)} .nowRow .a b{color:var(--aro)}
+.opts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--muted);margin-top:6px}
+.opts.pass{margin:0 0 6px}
+.muted{color:var(--muted)}
+
+/* 評価区間 */
+.rgWrap{position:relative}
+.rgPanel{position:absolute;top:calc(100% + 6px);left:0;z-index:10;width:300px;display:grid;grid-template-columns:1fr;gap:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.rgPanel label{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted)}
+.rgPanel input,.rgPanel select{width:130px;font:inherit;padding:2px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.rgPanel p{margin:2px 0 0;font-size:12px}
+
+/* ==================== 方式別 ==================== */
+
+/* 変化点キー */
+.axis.target{border-color:var(--muted)}
+.axis h2{font-size:13px;font-weight:600;margin:0 0 6px;display:flex;justify-content:space-between;align-items:baseline}
+.axis .now{font-size:34px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.axis.v .now{color:var(--val)} .axis.a .now{color:var(--aro)}
+.keys{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;margin-top:8px}
+.keys button{padding:4px 0;font-size:13px;font-variant-numeric:tabular-nums}
+.axis.v .keys button.on{background:var(--val);color:#fff;border-color:var(--val)}
+.axis.a .keys button.on{background:var(--aro);color:#fff;border-color:var(--aro)}
+.ends{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:3px}
+
+/* RCEA・HaloLight（動画上） */
+.rceaPad{position:absolute;right:14px;bottom:14px;width:150px;height:150px;opacity:.85}
+.rceaPad canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.halo{position:absolute;left:50%;bottom:16px;width:64px;height:64px;margin-left:-32px;border-radius:50%;border:10px solid transparent;pointer-events:none !important}
+
+/* 1秒ごとの帯 */
+.strip{display:flex;gap:3px;overflow-x:auto;padding:2px 0 6px}
+.strip .sc{flex:0 0 auto;min-width:42px;padding:2px 4px;display:flex;flex-direction:column;align-items:center;font-variant-numeric:tabular-nums;line-height:1.25}
+.strip .sc .lab{font-size:10px;color:var(--muted)}
+.strip .sc .v{color:var(--val);font-weight:600;font-size:13px} .strip .sc .a{color:var(--aro);font-weight:600;font-size:13px}
+.strip .sc.done{background:var(--bg)}
+.strip .sc.cur{border-color:var(--ink);border-width:2px}
+
+/* Excel */
+.xlWrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+table.xl{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+table.xl th,table.xl td{border:1px solid var(--line);padding:0;text-align:center}
+table.xl th{padding:3px 6px;font-weight:500;color:var(--muted);white-space:nowrap;background:var(--bg)}
+table.xl tr th:first-child{position:sticky;left:0;z-index:1;text-align:left}
+table.xl td input{width:34px;height:28px;border:0;text-align:center;font:inherit;font-size:14px;background:transparent;color:var(--ink)}
+table.xl td input:focus{outline:2px solid var(--val);outline-offset:-2px}
+table.xl .cur{background:color-mix(in srgb,var(--val) 16%,transparent)}
+table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
+.refTitle{font-size:13px;font-weight:600;margin-bottom:4px}
+table.ref{border-collapse:collapse;font-size:13px;width:100%;margin-bottom:8px}
+table.ref th,table.ref td{border:1px solid var(--line);padding:2px 6px;text-align:center}
+table.ref th{color:var(--muted);font-weight:500}
+.planeBox textarea{width:100%}
+
+/* SAM */
+.samRow{margin-bottom:8px}
+.samHead{font-size:13px;font-weight:600;margin-bottom:2px}
+.samBtns{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;align-items:center}
+#under .samBtns{grid-template-columns:2fr 1fr 2fr 1fr 2fr 1fr 2fr 1fr 2fr;gap:4px}
+#under .samBtns button{min-height:0;padding:4px}
+#under .samBtns img{max-width:110px}
+#under .samBtns svg{max-width:70px}
+#under .sam{margin-bottom:8px}
+.samBtns button{padding:2px;display:flex;align-items:center;justify-content:center;min-height:60px}
+.samBtns svg{width:100%;max-width:40px;fill:var(--ink);stroke:var(--ink)}
+.samBtns svg .body{fill:none;stroke-width:1.8}
+.samBtns svg .burst{fill:var(--muted);stroke:none}
+.samBtns .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.samRow.v button.on{background:color-mix(in srgb,var(--val) 25%,transparent);border-color:var(--val)}
+.samRow.a button.on{background:color-mix(in srgb,var(--aro) 25%,transparent);border-color:var(--aro)}
+
+.samBtns img{width:100%;max-width:44px;display:block}
+
+/* カスタム */
+.cfg summary{font-size:13px;font-weight:600;cursor:pointer;margin-bottom:6px}
+.cfg>select{width:100%;margin-bottom:6px}
+.cfgGrid{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;font-size:13px;color:var(--muted)}
+.cfgGrid select{width:100%}
+.cfgNote{font-size:12px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+
+/* AffectRank */
+.arPlane{position:relative;width:100%;aspect-ratio:1/1}
+.arAxis{position:absolute;background:var(--line)}
+.arAxis.h{left:8%;right:8%;top:50%;height:1px} .arAxis.v{top:8%;bottom:8%;left:50%;width:1px}
+.arBtn{position:absolute;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;padding:0 4px;font-size:11px;line-height:1.2;word-break:keep-all;
+  background:color-mix(in srgb,#3B6FD9 18%,var(--panel));border-color:#3B6FD9}
+.arBtn.hit{background:var(--hit);border-color:var(--hit);color:#fff}
+.arList{font-size:13px;font-variant-numeric:tabular-nums;margin-top:8px;min-height:5em}
