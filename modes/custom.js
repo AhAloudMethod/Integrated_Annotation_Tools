@@ -1,8 +1,9 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
   const { S, pen, video } = AH;
-  const { opts, live, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, trail, secStrip, autoNext, samRows, drawFace, heldRate, dead } = AH.ui;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, trail, secStrip, autoNext, samRows, drawFace, heldRate, dead } = AH.ui;
   const o = () => opts();
+  const follow = follower();
   const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', sliders: 'スライダー2本' };
   const nine = r => ['grid', 'sam', 'buttons'].includes(r);
   const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', face: false, trail: true, color: false, border: false, autoNext: false };
@@ -60,7 +61,7 @@
       if (sliderDrag) r[sliderDrag.ax] = sliderDrag.val;
       return r;
     }
-    if (writeMode() === 'armed' && live()) return { ...ctrl };
+    if (writeMode() === 'armed') return { ...ctrl };
     if (pen.down) return { v: pen.v, a: pen.a };
     return stored(t);
   }
@@ -125,7 +126,7 @@
     c.addEventListener('pointerdown', e => {
       if (o().rep === 'sliders') {
         const { ax, val } = sliderVal(e);
-        if (rel()) { armHint(S.armed ? 'ホイールで上下させます' : undefined); return; }
+        if (rel()) { armHint('ホイールで上下させます'); return; }
         if (o().time === 'disc') { c.setPointerCapture(e.pointerId); sliderDrag = { ax, val }; AH.refresh(); return; }
         if (o().input !== 'mouse') { armHint('この組み合わせはキーボード／ゲームパッドで操作します'); return; }
         c.setPointerCapture(e.pointerId); dragAxis = ax; AH.penDown({ ...stored(video.currentTime), [ax]: val }); return;
@@ -147,7 +148,6 @@
     c.addEventListener('wheel', e => {
       if (o().rep !== 'sliders' || !rel()) return;
       e.preventDefault();
-      if (!live()) { armHint(); return; }
       const r = c.getBoundingClientRect(), ax = act().length === 1 ? act()[0] : (e.clientX - r.left < r.width / 2 ? 'v' : 'a');
       ctrl[ax] = AH.r2(ctrl[ax] - Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 100) * 0.5);
     }, { passive: false });
@@ -226,7 +226,6 @@
     writeMode,
     writeAxes() { const a = act(); return o().rep === 'sliders' && writeMode() === 'hold' ? a.filter(x => x === dragAxis) : a; },
     sample: () => (writeMode() === 'hold' ? pen : ctrl),
-    onArm(on) { if (on) ctrl = stored(video.currentTime); },
     mount({ panel, overlay, under }) {
       Object.assign(S.meta.options, normalize(S.meta.options));
       config(panel);
@@ -256,7 +255,7 @@
     resize() { if (c) g = AH.fitCanvas(c); },
     tick(dt) {
       if (writeMode() !== 'armed') return;
-      if (!live()) { ctrl = stored(video.currentTime); return; }
+      if (follow()) ctrl = stored(video.currentTime);
       const inp = o().input, circ = o().rep === 'circle', sl = o().rep === 'sliders';
       const clampV = x => (rel() ? x : AH.clamp(x, 1, 9));
       if (inp === 'keyboard') {
@@ -279,7 +278,6 @@
       }
       if (writeMode() === 'armed' && o().input === 'keyboard') {
         const hit = kW.key(e, true) || kUD.key(e, true) || kAD.key(e, true);
-        if (hit && !live()) armHint();
         return hit;
       }
       return false;

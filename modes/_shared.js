@@ -5,6 +5,12 @@
   const opts = () => S.meta.options;
   // 操作が値に反映される状態か：記録オン、または動画を開く前の練習中
   const live = () => S.armed || !AH.hasVideo();
+  // 記録オフの操作面（スライダー・レバー・RankTrace）：記録オフでも自由に動かせる。
+  // 再生やシークで動画の時刻が動いたときだけ、記録済みの値に追従させる。戻り値 true＝追従すべき
+  function follower() {
+    let last = NaN;
+    return () => { const t = video.currentTime || 0, moved = t !== last; last = t; return !S.armed && AH.hasVideo() && moved; };
+  }
 
   // ---------- 小道具 ----------
   function h(tag, attrs = {}, html = '') {
@@ -185,7 +191,7 @@
   }
 
   AH.ui = {
-    opts, live, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, trail,
+    opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, trail,
     secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, passSelector,
   };
 })();

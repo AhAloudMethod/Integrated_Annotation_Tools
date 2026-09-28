@@ -57,6 +57,48 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await q.evaluate(() => localStorage.clear()); await q.close();
   }
 
+  // ---- 3. 記録オフでもスライダー・レバー・RankTrace を動かせる。記録オンは動かした位置から ----
+  {
+    // スロットル：記録オフで W を押すとレバーが動き、記録はされない
+    const p = await open('throttle'); await blur(p);
+    await p.keyboard.down('KeyW'); await p.waitForTimeout(400); await p.keyboard.up('KeyW');
+    const lever = await p.evaluate(() => AH.S.data.points.v.length);
+    const hint = await p.$eval('#hint', e => !e.hidden);
+    // 記録オン → 再生：最初の書き込みは動かした位置（5 より上）から
+    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForTimeout(300); await p.keyboard.press('Space'); await p.keyboard.press('KeyR');
+    const first = await p.evaluate(() => AH.S.data.strokes[0]?.samples[0]?.[1]);
+    // 記録オフでシークすると記録済みの値に追従（何も書いていない 11 秒は 5）
+    await p.evaluate(() => AH.seekTo(11)); await p.waitForTimeout(300);
+    const followed = await p.evaluate(() => AH.valueAt('v', AH.video.currentTime));
+    const shownLever = await p.evaluate(() => AH.S.armed);
+    check('スロットル：記録オフで動かせて記録はされない', lever === 1 && !hint, `points=${lever} hint=${hint}`);
+    check('スロットル：記録オンは動かした位置から始まる', first > 5.8, 'first=' + first);
+    check('スロットル：記録オフでシークすると記録済みの値に追従', followed === 5 && !shownLever, 'value=' + followed);
+    await p.close();
+  }
+  {
+    const p = await open('carma'); await blur(p);
+    const b = await p.locator('canvas.bars').boundingBox();
+    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await p.mouse.down(); await p.mouse.move(b.x + b.width / 2, b.y + 40, { steps: 4 }); await p.mouse.up();
+    const pts = await p.evaluate(() => AH.S.data.points.v.length), hint = await p.$eval('#hint', e => !e.hidden);
+    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForTimeout(300); await p.keyboard.press('Space'); await p.keyboard.press('KeyR');
+    const first = await p.evaluate(() => AH.S.data.strokes[0]?.samples[0]?.[1]);
+    check('CARMA：記録オフでスライダーを動かせる', pts === 1 && !hint, `points=${pts} hint=${hint}`);
+    check('CARMA：記録オンは動かした位置から始まる', first > 7.5, 'first=' + first);
+    await p.close();
+  }
+  {
+    const p = await open('ranktrace'); await blur(p);
+    const b = await p.locator('canvas.trace').boundingBox(); await p.mouse.move(b.x + 60, b.y + 60);
+    for (let i = 0; i < 3; i++) { await p.mouse.wheel(0, -100); await p.waitForTimeout(80); }
+    const pts = await p.evaluate(() => AH.S.data.points.v.length), hint = await p.$eval('#hint', e => !e.hidden);
+    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForTimeout(300); await p.keyboard.press('Space'); await p.keyboard.press('KeyR');
+    const first = await p.evaluate(() => AH.S.data.strokes[0]?.samples[0]?.[1]);
+    check('RankTrace：記録オフでホイールを動かせる', pts === 1 && !hint, `points=${pts} hint=${hint}`);
+    check('RankTrace：記録オンは動かした位置から始まる', first === 1.5, 'first=' + first);
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();
