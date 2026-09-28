@@ -99,6 +99,21 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 4. RCEA のジョイスティックは動画の外 ----
+  {
+    const p = await open('rcea');
+    const r = await p.evaluate(() => { const pad = document.querySelector('canvas.rceaPad'); return { inStage: !!pad.closest('#stage'), inPanel: !!pad.closest('#panel'), w: Math.round(pad.getBoundingClientRect().width) }; });
+    const b = await p.locator('canvas.rceaPad').boundingBox();
+    await p.keyboard.press('Space');
+    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await p.mouse.down(); await p.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.1, { steps: 5 }); await p.waitForTimeout(200);
+    const border = await p.evaluate(() => document.getElementById('stage').style.boxShadow);
+    await p.mouse.up(); await p.keyboard.press('Space');
+    const st = await p.evaluate(b => ({ strokes: AH.S.data.strokes.length, border: b }), border);
+    check('RCEA のジョイスティックが動画の外にある', !r.inStage && r.inPanel && r.w > 200, JSON.stringify(r));
+    check('RCEA：操作で記録され、動画の枠に色が付く', st.strokes === 1 && /rgb/.test(st.border), JSON.stringify(st));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

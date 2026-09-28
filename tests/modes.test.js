@@ -23,7 +23,7 @@ const only = process.argv[2];
     try {
       if (m === 'key') { await page.keyboard.press('ArrowRight'); await page.keyboard.press('Digit7'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Shift+Digit2'); await page.keyboard.press('Numpad8'); }
       if (['emujoy', 'feeltrace', 'halolight', 'rcea'].includes(m)) {
-        const sel = m === 'rcea' ? '.rceaPad canvas' : 'canvas.plane';
+        const sel = m === 'rcea' ? 'canvas.rceaPad' : 'canvas.plane';
         const b = await box(sel);
         await page.keyboard.press('Space');
         await page.mouse.move(b.x + b.width * 0.5, b.y + b.height * 0.5); await page.mouse.down();
