@@ -80,7 +80,20 @@
   }
   $('panel').addEventListener('toggle', () => resize(), true);   // カスタムの設計軸（details）の開閉
 
-  function resize() { fitTools(); fitCanvas(tl); if (_.M && _.M.resize) _.M.resize(); refresh(); }
+  // 動画欄の枠を動画の縦横比に合わせ、空いている範囲に収まる最大の大きさにする（黒帯を出さない）
+  function fitStage() {
+    const st = $('stage'), main = document.querySelector('main');
+    st.style.width = ''; st.style.height = '';
+    if (document.body.classList.contains('pip') || window.innerWidth <= 900) return;
+    const ar = (video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : 16 / 9;
+    const cs = getComputedStyle(main);
+    const cw = parseFloat(cs.gridTemplateColumns), ch = parseFloat(cs.gridTemplateRows);
+    if (!(cw > 0 && ch > 0)) return;
+    const w = Math.min(cw, ch * ar);
+    st.style.width = Math.floor(w) + 'px'; st.style.height = Math.floor(w / ar) + 'px';
+  }
+
+  function resize() { fitStage(); fitTools(); fitCanvas(tl); if (_.M && _.M.resize) _.M.resize(); refresh(); }
   window.addEventListener('resize', resize);
 
   let tlOn = false; try { tlOn = localStorage.getItem('ahann_tl') === '1'; } catch (_) {}

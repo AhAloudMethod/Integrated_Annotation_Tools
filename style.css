@@ -50,7 +50,7 @@ main{flex:1 1 auto;min-height:0;width:100%;max-width:1800px;margin:0 auto;displa
   grid-template-areas:"stage side" "under under" "tl tl";gap:10px 14px;padding:10px 14px}
 body[data-side=narrow]{--side:240px} body[data-side=wide]{--side:340px}
 @media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"stage" "side" "under" "tl"} .stage{aspect-ratio:16/9;height:auto}}
-.stage{grid-area:stage;min-height:0;height:100%;position:relative;background:#000;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:box-shadow .08s}
+.stage{grid-area:stage;justify-self:center;align-self:start;min-height:0;height:100%;position:relative;background:#000;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:box-shadow .08s}
 .stage video{width:100%;height:100%;display:block;object-fit:contain;border-radius:4px}
 .empty{color:#9AA6B2;text-align:center;padding:24px}
 #overlay{position:absolute;inset:0;pointer-events:none}
