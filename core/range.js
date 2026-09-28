@@ -29,8 +29,15 @@
   // 列の表記：countdown＝動画内カウントダウンの残り（区間の数から逆算）、elapsed＝評価開始からの経過
   const secLabel = s => (RG().label === 'elapsed' ? fmtS(s * RG().bin) : fmtS((nSec() - 1 - s) * RG().bin));
   const rangeSig = () => JSON.stringify(RG());
+  // 評価区間は動画ごとに覚える（動画のファイル名で。参加者ID・入力方式が違っても共通）
+  const rangeKey = file => 'ahann_range:' + file;
+  function loadRange(file) {
+    try { const r = JSON.parse(localStorage.getItem(rangeKey(file)) || 'null'); return r && r.count > 0 && r.bin > 0 ? r : null; } catch (_) { return null; }
+  }
+  function saveRange() { if (!S.meta.video_file) return; try { localStorage.setItem(rangeKey(S.meta.video_file), JSON.stringify(RG())); } catch (_) {} }
   function setRange(r) {
     S.meta.range = { ...RG(), ...r };
+    saveRange();
     addLog('range', { detail: JSON.stringify(S.meta.range) });
     syncRangeUI(); _.refresh();
   }
@@ -59,5 +66,5 @@
   $('rgEndNow').addEventListener('click', e => { setEnd(+video.currentTime.toFixed(2)); e.target.blur(); });
   $('rgFit').addEventListener('click', e => { setEnd(S.meta.duration); e.target.blur(); });
 
-  Object.assign(_, { setRange, setEnd, defaultRange, RG, nSec, binStart, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();

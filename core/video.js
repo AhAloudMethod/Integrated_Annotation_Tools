@@ -18,6 +18,8 @@
       S.meta.duration = video.duration;
       S.meta.range = null;
       if (!_.tryRestore()) newSession(`${f.name} dur=${video.duration.toFixed(3)} mode=${S.meta.mode}`);
+      const saved = _.loadRange(f.name);   // この動画に覚えてある評価区間を使う
+      if (saved && JSON.stringify(saved) !== JSON.stringify(S.meta.range)) { S.meta.range = saved; addLog('range_restore', { detail: JSON.stringify(saved) }); }
       video.playbackRate = +$('rate').value;
       selectMode(S.meta.mode, true); syncRangeUI(); refresh();
     }, { once: true });

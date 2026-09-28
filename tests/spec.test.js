@@ -41,6 +41,22 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 2. 評価区間は動画ごとに覚える ----
+  {
+    const p = await open('excel');
+    await p.click('#rgBtn'); await setField(p, 'rgBin', 1); await setField(p, 'rgStart', 2); await setField(p, 'rgEnd', 8);
+    const a = await range(p); await p.close();
+    const q = await open('sam');                                    // 別の方式・新しいページでも同じ動画なら同じ区間
+    const b = await range(q), shown = [await q.inputValue('#rgStart'), await q.inputValue('#rgEnd')];
+    await q.fill('#pid', 'OTHER'); await q.dispatchEvent('#pid', 'change');
+    await q.setInputFiles('#file', VID); await q.waitForTimeout(400);   // 参加者IDを変えて開き直しても同じ
+    const c = await range(q);
+    const log = await q.evaluate(() => AH.S.log.some(l => l.type === 'range_restore'));
+    check('評価区間を動画に紐づけて覚える', a.start === 2 && a.count === 6 && JSON.stringify(b) === JSON.stringify(a) && shown.join() === '2,8', JSON.stringify({ a, b, shown }));
+    check('参加者IDが違っても同じ動画なら同じ区間', JSON.stringify(c) === JSON.stringify(a) && log, JSON.stringify(c));
+    await q.evaluate(() => localStorage.clear()); await q.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();
