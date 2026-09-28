@@ -167,7 +167,15 @@ table.ref th{color:var(--muted);font-weight:500}
   <button id="playBtn">再生</button>
   <button id="fwdBtn" title="1秒進む">＋1秒</button>
   <label class="inline">動画の大きさ <input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></label>
-  <button id="pipBtn" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出して、ページ全体をツールに使う">小窓で再生</button>
+  <span class="rgWrap">
+    <button id="pipBtn" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出して、ページ全体をツールに使う">小窓で再生</button>
+    <div id="pipHelp" class="rgPanel" hidden>
+      <p>このブラウザ（Firefox 系）では、小窓はブラウザの機能で開きます。</p>
+      <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
+      <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
+      <button id="pipCollapse" type="button">動画欄をたたむ</button>
+    </div>
+  </span>
   <label class="inline">再生速度
     <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select>
   </label>
