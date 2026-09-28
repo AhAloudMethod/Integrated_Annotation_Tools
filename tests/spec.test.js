@@ -155,6 +155,39 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => localStorage.removeItem('ahann_after')); await p.close();
   }
 
+  // ---- 8. 色の設定（4象限＋4軸方向） ----
+  {
+    const p = await open('halolight');
+    const def = await p.evaluate(() => ({ q: AH.quadColor(9, 9), g: AH.gradColor(9, 5) }));   // 既定：高覚醒・快＝黄、快の軸＝黄と緑の中間
+    await p.click('#setBtn');
+    const setColor = (k, v) => p.$eval(`#colorGrid input[data-key="${k}"]`, (e, v) => { e.value = v; e.dispatchEvent(new Event('input')); }, v);
+    await setColor('hh', '#ff00ff');                                   // 象限の色
+    const q = await p.evaluate(() => ({ q: AH.quadColor(8, 8), axisAuto: AH.gradColor(9, 5) }));
+    await setColor('vp', '#000000');                                   // 軸方向の色（快）
+    const ax = await p.evaluate(() => ({ axis: AH.gradColor(9, 5), half: AH.gradColor(9, 7) }));
+    await p.click('#colorGrid .auto[data-key="vp"]');                  // 自動に戻す
+    const autoBack = await p.evaluate(() => AH.gradColor(9, 5));
+    // HaloLight の円に反映される
+    await p.click('#setBtn');
+    const b = await p.locator('canvas.plane').boundingBox();
+    await p.mouse.move(b.x + b.width * 0.95, b.y + b.height * 0.05); await p.mouse.down(); await p.waitForTimeout(150);
+    const bg = await p.evaluate(() => getComputedStyle(document.querySelector('.halo')).backgroundColor);
+    await p.mouse.up();
+    // 保存され、次のページでも使われる。書き出しのメタ情報にも残る
+    const q2page = await open('rcea');
+    const kept = await q2page.evaluate(() => AH.quadColor(9, 9));
+    const logged = await p.evaluate(() => AH.S.log.filter(l => l.type === 'colors').length);
+    await q2page.evaluate(() => AH._.resetColors()); const reset = await q2page.evaluate(() => AH.quadColor(9, 9));
+    check('既定の色（黄、軸は中間）', def.q.join() === '242,194,48' && def.g.join() === '151,182,70', JSON.stringify(def));
+    check('象限の色を変えられる', q.q.join() === '255,0,255' && q.axisAuto.join() === '157,85,174', JSON.stringify(q));
+    check('軸方向の色を変えられる（補間も変わる）', ax.axis.join() === '0,0,0' && ax.half.join() !== q.q.join(), JSON.stringify(ax));
+    check('軸方向を自動に戻せる', autoBack.join() === q.axisAuto.join(), autoBack.join());
+    check('HaloLight の円に設定した色が使われる', /255, 0, 255/.test(bg), bg);
+    check('色の設定が保存され、操作ログに残る', kept.join() === '255,0,255' && logged >= 3, JSON.stringify({ kept, logged }));
+    check('既定に戻せる', reset.join() === '242,194,48', reset.join());
+    await q2page.evaluate(() => localStorage.clear()); await q2page.close(); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

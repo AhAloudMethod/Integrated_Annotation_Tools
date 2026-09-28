@@ -14,6 +14,7 @@
   $('exportBtn').addEventListener('click', () => {
     if (!video.src) return;
     endStroke('export'); addLog('export');
+    if (_.colorSnapshot) S.meta.colors = _.colorSnapshot();   // 書き出し時点の色の設定を記録する
     const base = `${S.meta.participant || 'noid'}_${S.meta.video_file.replace(/\.[^.]+$/, '')}_${_.M.id}`;
     const D = S.meta.duration, N = Math.floor(D * FPS), n = nSec();
     const files = [];
