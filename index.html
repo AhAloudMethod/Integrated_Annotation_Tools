@@ -24,11 +24,12 @@
     <div id="rgPanel" class="rgPanel" hidden>
       <label>開始（動画の秒） <input id="rgStart" type="number" min="0" step="0.01"></label>
       <button id="rgNow" type="button">今の時刻を開始にする</button>
+      <label>終了（動画の秒） <input id="rgEnd" type="number" min="0" step="0.01"></label>
+      <span class="rgBtns"><button id="rgEndNow" type="button">今の時刻を終了にする</button><button id="rgFit" type="button">動画の終わりまで</button></span>
       <label>区間の数 <input id="rgCount" type="number" min="1" step="1"></label>
-      <button id="rgFit" type="button">動画の終わりまで</button>
       <label>1区間の長さ（秒） <input id="rgBin" type="number" min="0.1" step="0.1"></label>
       <label>列の表記 <select id="rgLabel"><option value="countdown">カウントダウン（残り）</option><option value="elapsed">経過</option></select></label>
-      <p class="muted">区間方式（Excel・Affect Grid・SAM・カスタムの区間ごと）の入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
+      <p class="muted">開始・終了・1区間の長さを変えると区間の数を、区間の数を変えると終了を合わせ直します（終了は区間の区切りに揃えます）。区間方式（Excel・Affect Grid・SAM・カスタムの区間ごと）の入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
     </div>
   </span>
   <span class="spacer"></span>
