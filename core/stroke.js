@@ -4,7 +4,8 @@
   const { video, S, wall, vt, r2, addLog, snapshot, pushUndo, idxAt, valueIn, placePoint } = _;
   // ---------- ストローク（書き込み区間の上書き） ----------
   // 押している間（hold）または記録オン（armed）の間、再生中に値を書き込み、その区間の旧記録を上書きする。
-  // 区間の直後には上書き前の値へ戻す変化点を置く。書き込みの生データは strokes に全て残す。
+  // 書き込みを終えた後は「その値を保つ」（既定。元の記録が次に変わる点まで続く）か「元の値に戻す」（区間の直後に上書き前の値へ戻す点を置く）。
+  // 設定は「設定」パネルで選び、ブラウザに保存する。書き込みの生データは strokes に全て残す。
   _.stroke = null;
   const pen = { down: false, clickEdit: false, v: 5, a: 5 };
 
@@ -41,13 +42,21 @@
     if (valueIn(ps, restoreT) !== old && !ps.some(p => Math.abs(p.t - restoreT) < 1e-9))
       ps.splice(idxAt(ps, restoreT) + 1, 0, { t: restoreT, val: old });
   }
+  let afterWrite = 'hold';
+  try { afterWrite = localStorage.getItem('ahann_after') === 'restore' ? 'restore' : 'hold'; } catch (_) {}
+  const sel = document.getElementById('afterWrite');
+  sel.value = afterWrite;
+  sel.addEventListener('change', e => {
+    afterWrite = e.target.value; try { localStorage.setItem('ahann_after', afterWrite); } catch (_) {}
+    addLog('after_write', { value: afterWrite }); e.target.blur();
+  });
   function endStroke(reason) {
     if (!_.stroke) return;
     const s = _.stroke; _.stroke = null;
     const tEnd = s.lastT, restoreT = +(tEnd + 1e-3).toFixed(4);
-    if (restoreT < S.meta.duration) for (const ax of s.axes) restoreAfter(ax, s.before.points[ax], tEnd, restoreT);
+    if (afterWrite === 'restore' && restoreT < S.meta.duration) for (const ax of s.axes) restoreAfter(ax, s.before.points[ax], tEnd, restoreT);
     if (s.raw.length) {
-      S.data.strokes.push({ id: S.data.strokes.length, source: 'input', axes: s.axes.join(''), t_start: s.t0, t_end: tEnd, end_reason: reason, wall_ms_end: wall(), samples: s.raw });
+      S.data.strokes.push({ id: S.data.strokes.length, source: 'input', axes: s.axes.join(''), t_start: s.t0, t_end: tEnd, end_reason: reason, after: afterWrite, wall_ms_end: wall(), samples: s.raw });
       pushUndo(s.before);
       addLog('stroke', { axis: s.axes.join(''), detail: `${s.t0.toFixed(4)}-${tEnd.toFixed(4)} n=${s.raw.length} end=${reason}` });
     }
@@ -88,5 +97,5 @@
     addLog(on ? 'arm' : 'disarm'); _.refresh();
   }
 
-  Object.assign(_, { pen, strokeSample, startStroke, endStroke, writeMode, penDown, penMove, penUp, setArmed });
+  Object.assign(_, { getAfterWrite: () => afterWrite, pen, strokeSample, startStroke, endStroke, writeMode, penDown, penMove, penUp, setArmed });
 })();

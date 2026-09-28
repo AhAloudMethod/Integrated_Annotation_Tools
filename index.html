@@ -42,6 +42,8 @@
     <div id="setPanel" class="rgPanel right" hidden>
       <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
       <label>再生速度 <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
+      <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
+      <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
       <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
       <div class="sub">
         <button id="pipBtn" type="button" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出す">小窓で再生</button>

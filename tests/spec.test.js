@@ -68,12 +68,14 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForTimeout(300); await p.keyboard.press('Space'); await p.keyboard.press('KeyR');
     const first = await p.evaluate(() => AH.S.data.strokes[0]?.samples[0]?.[1]);
     // 記録オフでシークすると記録済みの値に追従（何も書いていない 11 秒は 5）
-    await p.evaluate(() => AH.seekTo(11)); await p.waitForTimeout(300);
-    const followed = await p.evaluate(() => AH.valueAt('v', AH.video.currentTime));
-    const shownLever = await p.evaluate(() => AH.S.armed);
+    // 記録オフのまま 9 秒へシークしてから記録オン：最初の書き込みはその時刻の記録済みの値（＝レバーが追従している）
+    await p.evaluate(() => AH.seekTo(9)); await p.waitForTimeout(300);
+    const expect = await p.evaluate(() => AH.valueAt('v', AH.video.currentTime));
+    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForTimeout(200); await p.keyboard.press('Space'); await p.keyboard.press('KeyR');
+    const second = await p.evaluate(() => AH.S.data.strokes[1]?.samples[0]?.[1]);
     check('スロットル：記録オフで動かせて記録はされない', lever === 1 && !hint, `points=${lever} hint=${hint}`);
     check('スロットル：記録オンは動かした位置から始まる', first > 5.8, 'first=' + first);
-    check('スロットル：記録オフでシークすると記録済みの値に追従', followed === 5 && !shownLever, 'value=' + followed);
+    check('スロットル：記録オフでシークすると記録済みの値に追従', second === expect, `second=${second} expect=${expect}`);
     await p.close();
   }
   {
@@ -136,6 +138,21 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     });
     check('グラフに区切り線がある', r.at[3] > 0 && r.mid[3] > 0 && r.above[3] === 0, JSON.stringify(r));
     await p.close();
+  }
+
+  // ---- 7. 書き込みを終えた後：既定は値を保つ（EMuJoy で離すと元の点に引き戻される問題）。設定で元の値に戻すも選べる ----
+  for (const mode of ['hold', 'restore']) {
+    const p = await open('emujoy'); await blur(p);
+    if (mode === 'restore') { await p.click('#setBtn'); await p.selectOption('#afterWrite', 'restore'); await p.click('#setBtn'); }
+    const b = await p.locator('canvas.plane').boundingBox();
+    await p.keyboard.press('Space');
+    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await p.mouse.down();
+    await p.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.1, { steps: 6 }); await p.waitForTimeout(300); await p.mouse.up();
+    await p.waitForTimeout(300); await p.keyboard.press('Space');
+    const r = await p.evaluate(() => { const s = AH.S.data.strokes[0]; return { end: s.t_end, after: s.after, v: AH.valueAt('v', s.t_end + 0.2), vLast: AH.valueAt('v', AH.S.meta.duration - 0.01), shown: document.querySelector('.nowRow b').textContent }; });
+    if (mode === 'hold') check('書き込みを終えた後、その値を保つ（既定）', r.after === 'hold' && r.v > 8 && r.vLast > 8 && +r.shown > 8, JSON.stringify(r));
+    else check('設定で「元の値に戻す」を選べる', r.after === 'restore' && r.v === 5 && r.vLast === 5, JSON.stringify(r));
+    await p.evaluate(() => localStorage.removeItem('ahann_after')); await p.close();
   }
 
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
