@@ -114,6 +114,17 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 5. HaloLight は円全体の色が変わる ----
+  {
+    const p = await open('halolight');
+    const b = await p.locator('canvas.plane').boundingBox();
+    await p.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.1); await p.mouse.down(); await p.waitForTimeout(150);
+    const st = await p.evaluate(() => { const cs = getComputedStyle(document.querySelector('.halo')); return { bg: cs.backgroundColor, border: cs.borderTopWidth }; });
+    await p.mouse.up();
+    check('HaloLight：円全体が色で塗られる', /rgba?\(2[0-9]{2}, 1[0-9]{2}, /.test(st.bg) && st.border === '1px', JSON.stringify(st));   // 高覚醒・快＝黄
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

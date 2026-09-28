@@ -20,7 +20,8 @@
       const q = drawSquareFrame(g, c, PAD, false), cur = shown(t);
       g.fillStyle = AH.isWriting() ? AH.css('--pen') : AH.css('--muted'); g.beginPath(); g.arc(q.X(cur.v), q.Y(cur.a), 4, 0, 7); g.fill();
       const col = opts().gradient ? AH.gradColor(cur.v, cur.a) : AH.quadColor(cur.v, cur.a), it = AH.intensity(cur.v, cur.a);
-      halo.style.borderColor = AH.rgba(col, it); halo.style.boxShadow = `0 0 18px 4px ${AH.rgba(col, it * 0.8)}`;
+      // 円全体をその色で塗る。濃さ（不透明度）が強度
+      halo.style.background = AH.rgba(col, it); halo.style.boxShadow = `0 0 18px 4px ${AH.rgba(col, it * 0.6)}`;
       now(cur);
     },
   });
