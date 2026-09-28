@@ -123,7 +123,7 @@ table.ref th{color:var(--muted);font-weight:500}
 /* SAM */
 .samRow{margin-bottom:8px}
 .samHead{font-size:13px;font-weight:600;margin-bottom:2px}
-.samBtns{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;align-items:center}
+.samBtns{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;align-items:stretch}
 #under .samBtns{grid-template-columns:2fr 1fr 2fr 1fr 2fr 1fr 2fr 1fr 2fr;gap:4px}
 #under .samBtns button{min-height:0;padding:4px}
 #under .samBtns img{max-width:110px}
@@ -133,7 +133,8 @@ table.ref th{color:var(--muted);font-weight:500}
 .samBtns svg{width:100%;max-width:40px;fill:var(--ink);stroke:var(--ink)}
 .samBtns svg .body{fill:none;stroke-width:1.8}
 .samBtns svg .burst{fill:var(--muted);stroke:none}
-.samBtns .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.samBtns .dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+.samBtns button:hover .dot{background:var(--ink)}
 .samRow.v button.on{background:color-mix(in srgb,var(--val) 25%,transparent);border-color:var(--val)}
 .samRow.a button.on{background:color-mix(in srgb,var(--aro) 25%,transparent);border-color:var(--aro)}
 
