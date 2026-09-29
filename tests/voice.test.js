@@ -13,7 +13,7 @@ const FAKE = () => {
   window.__say = (text, final = true) => {
     const r = window.__rec; if (!r || !r.started) return false;
     const idx = r.cur ?? r.results.length;
-    const item = Object.assign([{ transcript: text }], { isFinal: final });
+    const item = Object.assign([].concat(text).map(t => ({ transcript: t })), { isFinal: final });   // text は文字列か候補の配列
     r.results[idx] = item; r.cur = final ? undefined : idx;
     r.onresult({ resultIndex: idx, results: Object.assign([...r.results], { length: r.results.length }) });
     return true;
@@ -152,6 +152,31 @@ const FAKE = () => {
     await say(p, '10秒 8 2', true);                                 // カウントダウン残り10秒 → 区間1
     const r = await p.evaluate(() => [AH.S.data.cells.v[1], AH.S.data.cells.a[1], AH.S.data.cells.v.filter(x => x != null).length]);
     check('区間の方式：言った時刻の区間に入る', r.join() === '8,2,1', r.join());
+    await p.close();
+  }
+
+  // 8. 聞き間違いの補正：同音の語の読み替え・候補の選択・履歴
+  {
+    const p = await open('key');
+    const c = await p.evaluate(() => {
+      const P = AH._.parseVoice;
+      return { a: P('街道7 学生3'), b: P('開度急'), c: P('拡声 録'), d: P('会度は球'), e: P('3秒 海道 語'), f: P('位置 に') };
+    });
+    const eq = (o, e) => JSON.stringify(o) === JSON.stringify(e);
+    check('「街道7 学生3」→ 快度7 覚醒度3', eq(c.a, { v: 7, a: 3 }), JSON.stringify(c.a));
+    check('同音の数字「開度急」「拡声 録」「会度は球」', eq(c.b, { v: 9 }) && eq(c.c, { a: 6 }) && eq(c.d, { v: 9 }), JSON.stringify([c.b, c.c, c.d]));
+    check('時刻つき「3秒 海道 語」', eq(c.e, { time: 3, v: 5 }), JSON.stringify(c.e));
+    check('軸の語がなければ同音の数字は読まない「位置 に」', eq(c.f, {}), JSON.stringify(c.f));
+    // 候補が複数あるとき、値として読めた候補を使う
+    await p.click('#voiceBtn'); await p.evaluate(() => AH.seekTo(2)); await p.waitForTimeout(150);
+    await say(p, ['こんにちは', '快度8'], true);
+    const r = await p.evaluate(() => ({ v: AH.S.data.points.v.map(x => [x.t, x.val]), heard: AH.S.log.filter(l => l.type === 'voice_heard').at(-1) }));
+    const alts = JSON.parse(r.heard.detail).alts;
+    check('候補のうち読めたものを使う', JSON.stringify(r.v) === '[[0,5],[2,8]]' && r.heard.value === '快度8' && alts.length === 2, JSON.stringify(r));
+    // 設定パネルの履歴
+    await say(p, 'よくわからない', true);
+    const hist = await p.$$eval('#voiceHist li', li => li.map(x => x.textContent));
+    check('聞き取りの履歴を表示する（新しい順）', hist.length === 2 && /よくわからない.*読めず/.test(hist[0]) && /快度8.*快度8/.test(hist[1]), JSON.stringify(hist));
     await p.close();
   }
 

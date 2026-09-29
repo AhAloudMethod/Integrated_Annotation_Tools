@@ -47,6 +47,10 @@
       <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
       <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
       <div class="sub">
+        <div class="refTitle">声の聞き取り（最新10件）</div>
+        <ul id="voiceHist" class="voiceHist"></ul>
+      </div>
+      <div class="sub">
         <div class="refTitle">色（RCEA・HaloLight・FEELTRACE・カスタムの色表示）</div>
         <div id="colorGrid" class="colorGrid"></div>
         <p class="muted">四隅が象限、上下左右が軸方向の色です。軸方向は「自動」（両隣の象限の中間）にもできます。グラデーションはこの8色の間を補間します。</p>

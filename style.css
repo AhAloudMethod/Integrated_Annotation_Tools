@@ -97,6 +97,8 @@ canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 .rgPanel p{margin:2px 0 0;font-size:12px}
 .rgPanel.right{left:auto;right:0}
 .rgBtns{display:flex;gap:6px}
+.voiceHist{margin:0;padding:0 0 0 1em;font-size:12px;max-height:9em;overflow:auto;color:var(--ink)}
+.voiceHist .time{color:var(--muted);font-variant-numeric:tabular-nums}
 .colorGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:11px;color:var(--muted);text-align:center}
 .colorGrid .cell{display:flex;flex-direction:column;align-items:center;gap:2px}
 .colorGrid input[type=color]{width:44px !important;height:26px;padding:0 !important;border:1px solid var(--line);border-radius:4px;background:none;cursor:pointer}

@@ -10,7 +10,20 @@
 
   // ---------- 聞き取った文の解釈（テストから直接呼べるよう純粋関数） ----------
   const KANJI = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
-  const READ = { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9 };
+  // 数字の読み。軸の語の直後に来たときだけ数字として読む（聞き間違えやすい同音の漢字も含める）
+  const READ = { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9,
+    位置: 1, 市: 1, 壱: 1, 荷: 2, 参: 3, 酸: 3, 算: 3, 産: 3, 語: 5, 後: 5, 碁: 5, 誤: 5, 録: 6, 碌: 6,
+    菜々: 7, 奈々: 7, 鉢: 8, 蜂: 8, 急: 9, 球: 9, 旧: 9, 級: 9, 救: 9 };
+  // 聞き間違い辞書：Chrome の認識が化けやすい語を軸の語に読み替える（長いものから当てる）
+  const ALIAS = [
+    ['快度', ['街道', '海道', '開度', '会度', '回度', '解度', '改度', '界度', '階度', '海度', '甲斐度', '買い度', '貝度', '快ど', 'かいど', 'カイド', 'カイドー', '快適度']],
+    ['覚醒度', ['学生', '拡声', '確性', '隔世', '核生', '革製', '格性', '各性', '角性', '覚せい', 'かくせい', 'カクセイ', '覚醒度']],
+  ];
+  const ALIAS_LIST = ALIAS.flatMap(([to, froms]) => froms.map(f => [f, to])).sort((x, y) => y[0].length - x[0].length);
+  function unalias(s) {   // 長い語から順に読み替える（読み替え先がほかの語を含まないので順番に置き換えてよい）
+    for (const [from, to] of ALIAS_LIST) s = s.split(from).join(to);
+    return s;
+  }
   const AXIS_V = /(快度|かいど|カイド|快|かい|valence|バレンス)/i;
   const AXIS_A = /(覚醒度|かくせいど|カクセイド|覚醒|かくせい|arousal|アローザル)/i;
   // 漢数字の並び（「十二」「二十三」「百五」など）を数にする
@@ -24,7 +37,7 @@
     return total + cur;
   }
   function normalize(text) {
-    return String(text)
+    return unalias(String(text))
       .replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)))
       .replace(/[〇零一二三四五六七八九十百]+/g, kanjiNum)
       .replace(/(?<![0-9])\.|\.(?![0-9])/g, ' ')   // 小数点以外の「.」は区切り
@@ -85,12 +98,20 @@
     const s = nSec() - 1 - Math.round(sec / r.bin);   // カウントダウン：残り sec 秒の区間
     return _.binStart(s);
   }
-  function applyVoice(p, t, text) {
+  // 聞き取りの履歴（「設定」パネルに最新10件を表示。聞き間違いの傾向を見るため）
+  const hist = [];
+  function showHist() {
+    const el = $('voiceHist'); if (!el) return;
+    el.innerHTML = hist.length ? hist.map(h => `<li><span class="time">${_.fmt(h.t)}</span> 「${h.text.replace(/</g, '&lt;')}」 → ${h.res}</li>`).join('') : '<li class="muted">まだありません</li>';
+  }
+  function applyVoice(p, t, text, alts = [text]) {
+    const res = [p.time != null ? p.time + '秒' : '', p.v != null ? '快度' + p.v : '', p.a != null ? '覚醒度' + p.a : '', p.cmd || ''].filter(Boolean).join(' ') || '読めず';
+    hist.unshift({ t, text, res }); hist.length = Math.min(hist.length, 10); showHist();
     if (p.time != null) t = videoTimeOf(p.time);
     const vals = {}; for (const ax of ['v', 'a']) if (p[ax] != null) vals[ax] = p[ax];
     const one = oneAxis(); if (one) for (const ax of Object.keys(vals)) if (ax !== one) delete vals[ax];
     const label = Object.entries(vals).map(([ax, v]) => (ax === 'v' ? '快度' : '覚醒度') + v).join(' ');
-    addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +t.toFixed(4) }) });
+    addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +t.toFixed(4), alts }) });
     if (p.time != null && (t < _.RG().start - 1e-6 || t >= _.rangeEnd() - 1e-6)) {
       toast(`「${p.time}秒」は評価区間の外です（声の入力）`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
     }
@@ -118,13 +139,21 @@
   const heardAt = new Map();   // 結果の番号 → 話し始めの動画時刻
   function start() {
     if (!Rec) { toast('このブラウザは音声認識に対応していません（Chrome・Edge で使えます）', 'warn'); return; }
-    rec = new Rec(); rec.lang = 'ja-JP'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+    rec = new Rec(); rec.lang = 'ja-JP'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
+    // 認識の優先語（対応している Chrome のみ。対応していなければ何もしない）
+    try { if (window.SpeechRecognitionPhrase && 'phrases' in rec) rec.phrases = ['快度', '覚醒度', '秒', '再生', '停止'].map(w => new window.SpeechRecognitionPhrase(w, 5)); } catch (_) {}
     heardAt.clear();
     rec.onresult = e => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
         if (!heardAt.has(i)) heardAt.set(i, clamp(video.currentTime || 0, 0, S.meta.duration || 0));
-        if (r.isFinal) { const text = r[0].transcript; applyVoice(parseVoice(text, { oneAxis: oneAxis() }), heardAt.get(i), text); }
+        if (!r.isFinal) continue;
+        // 候補のうち、値（またはコマンド）として読めた最初のものを使う
+        const alts = Array.from({ length: r.length }, (_x, k) => r[k].transcript);
+        const parsed = alts.map(a => parseVoice(a, { oneAxis: oneAxis() }));
+        let k = parsed.findIndex(p => p.v != null || p.a != null);
+        if (k < 0) k = parsed.findIndex(p => p.cmd); if (k < 0) k = 0;
+        applyVoice(parsed[k], heardAt.get(i), alts[k], alts);
       }
     };
     rec.onerror = e => {
@@ -146,5 +175,6 @@
   $('voiceBtn').addEventListener('click', e => { e.currentTarget.blur(); setOn(!on); });
   if (!Rec) { $('voiceBtn').disabled = true; $('voiceBtn').title = 'このブラウザは音声認識に対応していません（Chrome・Edge で使えます）'; }
 
+  showHist();
   Object.assign(_, { parseVoice, applyVoice, setVoice: setOn });
 })();
