@@ -7,7 +7,7 @@
   const kv = heldRate(['KeyW'], ['KeyS']), ka = heldRate(['ArrowUp'], ['ArrowDown']);
   AH.register({
     id: 'throttle', group: '時間連続・2次元', label: 'スロットル操作（両手・1軸ずつ）', model: 'series', init: { v: 5, a: 5 }, side: 'normal', animate: true,
-    writeMode: () => 'armed', writeAxes: () => ['v', 'a'], sample: () => ctrl,
+    writeMode: () => 'armed', writeAxes: () => ['v', 'a'], sample: () => ctrl, peek: () => ({ ...ctrl }),
     // 記録オンにした瞬間は、記録オフで動かした位置から始める
     help: '<p>左手 <kbd>W</kbd>/<kbd>S</kbd> で快度、右手 <kbd>↑</kbd>/<kbd>↓</kbd> で覚醒度のレバーを上下します（押している間動き、離すとその位置に留まります）。ゲームパッドは左スティック上下＝快度、右スティック上下＝覚醒度。記録オン（<kbd>R</kbd>）の間、再生中の値を記録・上書きします。</p>',
     mount({ panel }) { const box = h('div', { class: 'planeBox' }); c = h('canvas', { class: 'bars', 'aria-label': 'スロットル' }); box.appendChild(c); panel.appendChild(box); },
@@ -16,6 +16,7 @@
       if (follow()) Object.assign(ctrl, stored(video.currentTime));
       const gp = AH.gamepad();
       const dv = kv.dir() || -dead(gp?.axes[1] || 0), da = ka.dir() || -dead(gp?.axes[3] || 0);
+      if (dv || da) follow.touch();
       ctrl.v = AH.r2(AH.clamp(ctrl.v + dv * RATE * dt, 1, 9)); ctrl.a = AH.r2(AH.clamp(ctrl.a + da * RATE * dt, 1, 9));
     },
     onKey(e) { return kv.key(e, true) || ka.key(e, true); },

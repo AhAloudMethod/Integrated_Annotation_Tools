@@ -6,10 +6,19 @@
   // 操作が値に反映される状態か：記録オン、または動画を開く前の練習中
   const live = () => S.armed || !AH.hasVideo();
   // 記録オフの操作面（スライダー・レバー・RankTrace）：記録オフでも自由に動かせる。
-  // 再生やシークで動画の時刻が動いたときだけ、記録済みの値に追従させる。戻り値 true＝追従すべき
+  // 触っていない間は、動画の時刻が動くと記録済みの値に追従する（follow() が true＝追従すべき）。
+  // 記録オフで一度操作したら（follow.touch()）その位置に留まり、シークするか記録オフに戻したときに追従を再開する
   function follower() {
-    let last = NaN;
-    return () => { const t = video.currentTime || 0, moved = t !== last; last = t; return !S.armed && AH.hasVideo() && moved; };
+    let last = NaN, touched = false, wasArmed = false;
+    video.addEventListener('seeking', () => { touched = false; last = NaN; });   // 次のフレームで必ず追従させる
+    const f = () => {
+      if (wasArmed && !S.armed) touched = false;
+      wasArmed = S.armed;
+      const t = video.currentTime || 0, moved = t !== last; last = t;
+      return !S.armed && AH.hasVideo() && moved && !touched;
+    };
+    f.touch = () => { if (!S.armed) touched = true; };
+    return f;
   }
 
   // ---------- 小道具 ----------

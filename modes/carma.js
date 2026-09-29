@@ -10,19 +10,19 @@
   AH.register({
     id: 'carma', group: '時間連続・1次元', label: 'CARMA（1次元スライダー・2回）', model: 'series', init: { v: 5, a: 5 }, side: 'normal', animate: true,
     options: { axis: 'v' },
-    writeMode: () => 'armed', writeAxes: () => [ax()], sample: () => ({ [ax()]: ctrl }),
+    writeMode: () => 'armed', writeAxes: () => [ax()], sample: () => ({ [ax()]: ctrl }), peek: () => ({ [ax()]: ctrl }),
     help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します（右の「評価する軸」で切り替え）。スライダーをマウスでドラッグするか <kbd>↑</kbd>/<kbd>↓</kbd> で動かします。記録オン（<kbd>R</kbd>）の間、再生中の値を記録・上書きします。</p>',
     mount({ panel }) {
       const box = h('div', { class: 'planeBox' }); passSelector(box);
       c = h('canvas', { class: 'bars', 'aria-label': 'CARMA スライダー' }); box.appendChild(c); panel.appendChild(box);
-      c.addEventListener('pointerdown', e => { drag = true; c.setPointerCapture(e.pointerId); setFromY(e); });
+      c.addEventListener('pointerdown', e => { drag = true; follow.touch(); c.setPointerCapture(e.pointerId); setFromY(e); });
       c.addEventListener('pointermove', e => { if (drag) setFromY(e); });
       c.addEventListener('pointerup', () => { drag = false; });
     },
     resize() { g = AH.fitCanvas(c); },
     tick(dt) {
       if (follow() && !drag) ctrl = AH.valueAt(ax(), video.currentTime);
-      if (k.any()) ctrl = AH.r2(AH.clamp(ctrl + k.dir() * RATE * dt, 1, 9));
+      if (k.any()) { follow.touch(); ctrl = AH.r2(AH.clamp(ctrl + k.dir() * RATE * dt, 1, 9)); }
     },
     onKey(e) { return k.key(e, true); },
     onKeyUp(e) { k.key(e, false); }, onBlur() { k.clear(); },

@@ -149,6 +149,7 @@
       if (o().rep !== 'sliders' || !rel()) return;
       e.preventDefault();
       const r = c.getBoundingClientRect(), ax = act().length === 1 ? act()[0] : (e.clientX - r.left < r.width / 2 ? 'v' : 'a');
+      follow.touch();
       ctrl[ax] = AH.r2(ctrl[ax] - Math.sign(e.deltaY) * Math.min(3, Math.abs(e.deltaY) / 100) * 0.5);
     }, { passive: false });
   }
@@ -225,7 +226,7 @@
     },
     writeMode,
     writeAxes() { const a = act(); return o().rep === 'sliders' && writeMode() === 'hold' ? a.filter(x => x === dragAxis) : a; },
-    sample: () => (writeMode() === 'hold' ? pen : ctrl),
+    sample: () => (writeMode() === 'hold' ? pen : ctrl), peek: () => ({ ...ctrl }),
     mount({ panel, overlay, under }) {
       Object.assign(S.meta.options, normalize(S.meta.options));
       config(panel);
@@ -256,7 +257,7 @@
     tick(dt) {
       if (writeMode() !== 'armed') return;
       if (follow()) ctrl = stored(video.currentTime);
-      const inp = o().input, circ = o().rep === 'circle', sl = o().rep === 'sliders';
+      const inp = o().input, circ = o().rep === 'circle', sl = o().rep === 'sliders', before = { ...ctrl };
       const clampV = x => (rel() ? x : AH.clamp(x, 1, 9));
       if (inp === 'keyboard') {
         const dv = sl ? kW.dir() : kAD.dir(), da = sl ? kUD.dir() : kW.dir();
@@ -266,6 +267,7 @@
         if (sl) { ctrl.v = AH.r2(clampV(ctrl.v - dead(gp.axes[1] || 0) * RATE * dt)); ctrl.a = AH.r2(clampV(ctrl.a - dead(gp.axes[3] || 0) * RATE * dt)); }
         else { ctrl.v = AH.r2(5 + dead(gp.axes[0] || 0) * 4); ctrl.a = AH.r2(5 - dead(gp.axes[1] || 0) * 4); }
       }
+      if (ctrl.v !== before.v || ctrl.a !== before.a) follow.touch();
       if (circ) { const dx = (ctrl.v - 5) / 4, dy = (ctrl.a - 5) / 4, d = Math.hypot(dx, dy); if (d > 1) { ctrl.v = AH.r2(5 + dx / d * 4); ctrl.a = AH.r2(5 + dy / d * 4); } }
     },
     onKey(e) {
