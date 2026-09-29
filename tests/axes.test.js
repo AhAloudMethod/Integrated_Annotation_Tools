@@ -37,9 +37,9 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const r = await labels(p);
     const col = await p.$$eval('#colorGrid .cell span', s => s.map(x => x.textContent));
     const saved = await p.evaluate(() => [localStorage.getItem('ahann_axes'), AH.S.log.filter(l => l.type === 'axes').map(l => l.value).join()]);
-    check('PANA：軸の名前と両端', r.keys.join() === '正の感情,負の感情' && /低PA.*高PA/.test(r.ends[0]) && /低NA.*高NA/.test(r.ends[1]), JSON.stringify(r));
-    check('PANA：説明文の「快度」「覚醒度」も置き換わる', /正の感情/.test(r.help) && !/快度|覚醒度/.test(r.help), r.help.slice(0, 80));
-    check('PANA：色の欄のラベル', col.includes('高NA・高PA') && col.includes('低NA・低PA'), JSON.stringify(col));
+    check('PANA：軸の名前と両端', r.keys.join() === 'ポジティブ,ネガティブ' && /ポジティブ低.*ポジティブ高/.test(r.ends[0]) && /ネガティブ低.*ネガティブ高/.test(r.ends[1]), JSON.stringify(r));
+    check('PANA：説明文の「快度」「覚醒度」も置き換わる', /ポジティブ/.test(r.help) && !/快度|覚醒度/.test(r.help), r.help.slice(0, 80));
+    check('PANA：色の欄のラベル', col.includes('ネガティブ高・ポジティブ高') && col.includes('ネガティブ低・ポジティブ低'), JSON.stringify(col));
     check('PANA：設定が保存され、操作ログに残る', saved[0] === 'pana' && saved[1] === 'pana', JSON.stringify(saved));
     await p.close();
   }
@@ -55,7 +55,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const q = await open('excel', 'pana');
     const th = await q.$$eval('table.xl tr th:first-child', x => x.map(e => e.textContent));
     const ref = await q.$eval('table.ref', t => t.hidden);
-    check('PANA：Excel の行の見出し', th[1] === '正の感情(1:低PAー9:高PA)' && th[2] === '負の感情(1:低NAー9:高NA)', JSON.stringify(th));
+    check('PANA：Excel の行の見出し', th[1] === 'ポジティブ(1:ポジティブ低ー9:ポジティブ高)' && th[2] === 'ネガティブ(1:ネガティブ低ー9:ネガティブ高)', JSON.stringify(th));
     check('PANA：Excel の感情ラベルの表は隠す', ref === true);
     await q.close();
   }
@@ -63,7 +63,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   for (const mode of ['sam', 'affectgrid', 'feeltrace', 'affectrank']) {
     const p = await open(mode, 'pana');
     const r = await p.evaluate(() => ({ cur: AH._.axesCurrent(), set: AH._.axesId(), help: document.getElementById('modeHelp').textContent }));
-    check(`${mode} は PANA でも VA のまま`, r.cur === 'va' && r.set === 'pana' && !/正の感情/.test(r.help), JSON.stringify({ cur: r.cur, set: r.set }));
+    check(`${mode} は PANA でも VA のまま`, r.cur === 'va' && r.set === 'pana' && !/ポジティブ/.test(r.help), JSON.stringify({ cur: r.cur, set: r.set }));
     await p.close();
   }
   // 5. 書き出し：列名が変わり、VA に直した列が付く（値の持ち方は同じ）

@@ -1,7 +1,7 @@
 // 評価の軸の組（Yik, Russell & Barrett, 1999 の Figure 1）
 // 値の持ち方（横軸 v・縦軸 a、1〜9、5 が中立）は変えず、画面の軸の名前・両端のラベル・書き出しの列名・声の入力の語だけを差し替える。
 //   VA（Russell）          横＝快度（不快→快）         縦＝覚醒度（眠気→覚醒）
-//   PANA（Watson & Tellegen）横＝正の感情 PA（低→高）   縦＝負の感情 NA（低→高）
+//   PANA（Watson & Tellegen）横＝ポジティブ（低→高）   縦＝ネガティブ（低→高）
 //   Thayer                 横＝エネルギー（疲労→活気）   縦＝緊張（平静→緊張）
 // PANA・Thayer は VA の円環を 45° 回した軸なので、書き出しには VA に直した値（va_valence・va_arousal）も付ける。
 // 絵や感情語が VA を前提にしている方式（vaOnly：SAM・Affect Grid・FEELTRACE・AffectRank）は、軸の組にかかわらず VA のまま。
@@ -15,9 +15,9 @@
       a: { name: '覚醒度', short: '覚醒度', lo: '眠気', hi: '覚醒', col: 'arousal', words: ['覚醒度', 'かくせいど', 'カクセイド', '覚醒', 'かくせい', 'arousal', 'アローザル'] },
     },
     pana: {
-      label: 'PANA（Watson & Tellegen：正の感情・負の感情）', rotated: true,
-      v: { name: '正の感情', short: 'PA', lo: '低PA', hi: '高PA', col: 'pa', words: ['正の感情', 'ポジティブ', 'ピーエー', 'PA', 'プラス'] },
-      a: { name: '負の感情', short: 'NA', lo: '低NA', hi: '高NA', col: 'na', words: ['負の感情', 'ネガティブ', 'エヌエー', 'NA', 'マイナス'] },
+      label: 'PANA（Watson & Tellegen：ポジティブ・ネガティブ）', rotated: true,
+      v: { name: 'ポジティブ', short: 'ポジティブ', lo: 'ポジティブ低', hi: 'ポジティブ高', col: 'pa', words: ['ポジティブ', '正の感情', 'ピーエー', 'PA', 'プラス'] },
+      a: { name: 'ネガティブ', short: 'ネガティブ', lo: 'ネガティブ低', hi: 'ネガティブ高', col: 'na', words: ['ネガティブ', '負の感情', 'エヌエー', 'NA', 'マイナス'] },
     },
     thayer: {
       label: 'Thayer（エネルギー・緊張）', rotated: true,
