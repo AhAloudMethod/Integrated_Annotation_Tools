@@ -23,6 +23,22 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check(`${W}x${H} で全方式が1画面に収まる`, !bad.length, bad.join(' / '));
     await ctx.close();
   }
+  // ヘッダーのパネル（設定・説明・評価区間）が画面に収まる（Vosk の欄を開いた状態も）
+  for (const [W, H] of [[1280, 720], [1366, 768], [1536, 864]]) {
+    const c = await browser.newContext({ viewport: { width: W, height: H } });
+    await c.addInitScript(() => localStorage.setItem('ahann_voice_engine', 'vosk'));
+    const p = await c.newPage(); p.on('pageerror', e => errs.push(e.message)); await p.goto(URL);
+    const bad = [];
+    for (const [btn, panel] of [['#setBtn', '#setPanel'], ['#helpBtn', '#helpPanel'], ['#rgBtn', '#rgPanel']]) {
+      await p.click(btn); await p.waitForTimeout(100);
+      const r = await p.$eval(panel, e => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, sh: e.scrollHeight, ch: e.clientHeight }; });
+      if (r.l < 0 || r.r > W + 0.5 || r.b > H + 0.5) bad.push(`${panel} ${JSON.stringify(r)}`);
+      if (panel === '#setPanel' && r.sh > r.ch + 2) bad.push(`${panel} がスクロールしないと見えない ${JSON.stringify(r)}`);
+      await p.click(btn);
+    }
+    check(`${W}x${H} でヘッダーのパネルが画面に収まる`, !bad.length, bad.join(' / '));
+    await c.close();
+  }
   // 動画の別窓
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.dismiss());

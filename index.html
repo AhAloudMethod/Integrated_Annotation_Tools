@@ -40,40 +40,49 @@
   <button id="tlBtn" title="評価グラフの表示／非表示">グラフ</button>
   <span class="rgWrap">
     <button id="setBtn" title="表示と再生の設定">設定</button>
-    <div id="setPanel" class="rgPanel right" hidden>
-      <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
-      <label>再生速度 <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
-      <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
-      <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
-      <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
-      <div class="sub">
-        <label>声の認識 <select id="voiceEngine"><option value="webspeech">Chrome の音声認識</option><option value="vosk">Vosk（PC の中で認識）</option></select></label>
-        <div id="voskBox" class="voskBox" hidden>
-          <label class="chk"><input id="voiceRestrict" type="checkbox" checked> 聞き取る語を限定する（快度・覚醒度・数字・秒・再生・停止）</label>
-          <div class="rgBtns"><button id="voskModelBtn" type="button">モデルを選ぶ</button><button id="voskModelDel" type="button">保存したモデルを消す</button></div>
-          <input id="voskModelFile" type="file" accept=".tar.gz,.tgz,application/gzip" hidden>
-          <p class="muted" id="voskModelStatus"></p>
-          <p class="muted">Chrome・Firefox で使えます。音声は PC の外に出ません。モデル（.tar.gz）は初回に選ぶとブラウザに保存されます。作り方は README の「声による入力」。</p>
+    <div id="setPanel" class="rgPanel right setPanel" hidden>
+      <section class="setCol">
+        <div class="refTitle">表示・再生</div>
+        <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
+        <label>再生速度 <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
+        <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
+        <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
+        <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
+        <div class="sub">
+          <button id="pipBtn" type="button" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出す">小窓で再生</button>
+          <div id="pipHelp" hidden>
+            <p>このブラウザ（Firefox 系）では、小窓はブラウザの機能で開きます。</p>
+            <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
+            <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
+            <button id="pipCollapse" type="button">動画欄をたたむ</button>
+          </div>
         </div>
-      </div>
-      <div class="sub">
-        <div class="refTitle">声の聞き取り（最新10件）</div>
-        <ul id="voiceHist" class="voiceHist"></ul>
-      </div>
-      <div class="sub">
-        <div class="refTitle">色（RCEA・HaloLight・FEELTRACE・カスタムの色表示）</div>
-        <div id="colorGrid" class="colorGrid"></div>
-        <p class="muted">四隅が象限、上下左右が軸方向の色です。軸方向は「自動」（両隣の象限の中間）にもできます。グラデーションはこの8色の間を補間します。</p>
-      </div>
-      <div class="sub">
-        <button id="pipBtn" type="button" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出す">小窓で再生</button>
-        <div id="pipHelp" hidden>
-          <p>このブラウザ（Firefox 系）では、小窓はブラウザの機能で開きます。</p>
-          <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
-          <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
-          <button id="pipCollapse" type="button">動画欄をたたむ</button>
+      </section>
+      <section class="setCol">
+        <div class="refTitle">声の入力</div>
+        <div class="sub">
+          <label>声の認識 <select id="voiceEngine"><option value="webspeech">Chrome の認識</option><option value="vosk">Vosk（PC 内）</option></select></label>
+          <div id="voskBox" class="voskBox" hidden>
+            <label class="chk"><input id="voiceRestrict" type="checkbox" checked> 聞き取る語を限定する（快度・覚醒度・数字・秒・再生・停止）</label>
+            <div class="rgBtns"><button id="voskModelBtn" type="button">モデルを選ぶ</button><button id="voskModelDel" type="button">保存したモデルを消す</button></div>
+            <input id="voskModelFile" type="file" accept=".tar.gz,.tgz,application/gzip" hidden>
+            <p class="muted" id="voskModelStatus"></p>
+            <p class="muted">Chrome・Firefox で使えます。音声は PC の外に出ません。モデル（.tar.gz）は初回に選ぶとブラウザに保存されます。作り方は README の「声による入力」。</p>
+          </div>
         </div>
-      </div>
+        <div class="sub">
+          <div class="refTitle">声の聞き取り（最新10件）</div>
+          <ul id="voiceHist" class="voiceHist"></ul>
+        </div>
+      </section>
+      <section class="setCol">
+        <div class="refTitle">色</div>
+        <div class="sub">
+          <p class="muted">RCEA・HaloLight・FEELTRACE・カスタムの色表示で使います。</p>
+          <div id="colorGrid" class="colorGrid"></div>
+          <p class="muted">四隅が象限、上下左右が軸方向の色です。軸方向は「自動」（両隣の象限の中間）にもできます。グラデーションはこの8色の間を補間します。</p>
+        </div>
+      </section>
     </div>
   </span>
   <span class="rgWrap">
