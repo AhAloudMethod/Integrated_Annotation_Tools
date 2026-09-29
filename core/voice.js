@@ -17,7 +17,9 @@
   // 聞き間違い辞書：Chrome の認識が化けやすい語を軸の語に読み替える（長いものから当てる）
   const ALIAS = [
     ['快度', ['街道', '海道', '開度', '会度', '回度', '解度', '改度', '界度', '階度', '海度', '甲斐度', '買い度', '貝度', '快ど', 'かいど', 'カイド', 'カイドー', '快適度']],
-    ['覚醒度', ['学生', '拡声', '確性', '隔世', '核生', '革製', '格性', '各性', '角性', '覚せい', 'かくせい', 'カクセイ', '覚醒度']],
+    ['覚醒度', ['学生', '拡声', '確性', '隔世', '核生', '革製', '格性', '各性', '角性', '覚せい', 'かくせい', 'カクセイ', '覚醒度',
+      // 「かく・せいど」が2語に分かれた聞き間違い（実際のログ「25秒角 精度 7」から）
+      '角精度', '確精度', '核精度', '各精度', '格精度', '画精度', '拡精度', '隔精度', '学精度', '覚精度', '覚醒 度', '精度']],
   ];
   const ALIAS_LIST = ALIAS.flatMap(([to, froms]) => froms.map(f => [f, to])).sort((x, y) => y[0].length - x[0].length);
   function unalias(s) {   // 長い語から順に読み替える（読み替え先がほかの語を含まないので順番に置き換えてよい）
@@ -37,7 +39,8 @@
     return total + cur;
   }
   function normalize(text) {
-    return unalias(String(text))
+    // 数字以外どうしの間の空白を詰めてから読み替える（「角 精度」→「角精度」。「7 3」の空白は残す）
+    return unalias(String(text).replace(/([^\s0-9０-９])[\s　]+(?=[^\s0-9０-９])/g, '$1'))
       .replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)))
       .replace(/[〇零一二三四五六七八九十百]+/g, kanjiNum)
       .replace(/(?<![0-9])\.|\.(?![0-9])/g, ' ')   // 小数点以外の「.」は区切り
@@ -107,11 +110,13 @@
   function applyVoice(p, t, text, alts = [text]) {
     const res = [p.time != null ? p.time + '秒' : '', p.v != null ? '快度' + p.v : '', p.a != null ? '覚醒度' + p.a : '', p.cmd || ''].filter(Boolean).join(' ') || '読めず';
     hist.unshift({ t, text, res }); hist.length = Math.min(hist.length, 10); showHist();
+    const tHeard = t;
     if (p.time != null) t = videoTimeOf(p.time);
     const vals = {}; for (const ax of ['v', 'a']) if (p[ax] != null) vals[ax] = p[ax];
     const one = oneAxis(); if (one) for (const ax of Object.keys(vals)) if (ax !== one) delete vals[ax];
     const label = Object.entries(vals).map(([ax, v]) => (ax === 'v' ? '快度' : '覚醒度') + v).join(' ');
-    addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +t.toFixed(4), alts }) });
+    // t_heard＝話し始めた動画時刻、t_target＝値を入れる動画時刻（時刻を言ったときはその時刻）
+    addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +tHeard.toFixed(4), t_target: +t.toFixed(4), alts }) });
     if (p.time != null && (t < _.RG().start - 1e-6 || t >= _.rangeEnd() - 1e-6)) {
       toast(`「${p.time}秒」は評価区間の外です（声の入力）`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
     }

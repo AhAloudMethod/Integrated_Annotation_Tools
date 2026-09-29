@@ -160,9 +160,11 @@ const FAKE = () => {
     const p = await open('key');
     const c = await p.evaluate(() => {
       const P = AH._.parseVoice;
-      return { a: P('街道7 学生3'), b: P('開度急'), c: P('拡声 録'), d: P('会度は球'), e: P('3秒 海道 語'), f: P('位置 に') };
+      return { real: P('25秒角 精度 7'), real2: P('角 精度 7'), sei: P('精度 4'), keep: P('7 3'), a: P('街道7 学生3'), b: P('開度急'), c: P('拡声 録'), d: P('会度は球'), e: P('3秒 海道 語'), f: P('位置 に') };
     });
     const eq = (o, e) => JSON.stringify(o) === JSON.stringify(e);
+    check('実際のログ「25秒角 精度 7」→ 25秒 覚醒度7', eq(c.real, { time: 25, a: 7 }) && eq(c.real2, { a: 7 }) && eq(c.sei, { a: 4 }), JSON.stringify([c.real, c.real2, c.sei]));
+    check('数字の間の空白は詰めない「7 3」', eq(c.keep, { v: 7, a: 3 }), JSON.stringify(c.keep));
     check('「街道7 学生3」→ 快度7 覚醒度3', eq(c.a, { v: 7, a: 3 }), JSON.stringify(c.a));
     check('同音の数字「開度急」「拡声 録」「会度は球」', eq(c.b, { v: 9 }) && eq(c.c, { a: 6 }) && eq(c.d, { v: 9 }), JSON.stringify([c.b, c.c, c.d]));
     check('時刻つき「3秒 海道 語」', eq(c.e, { time: 3, v: 5 }), JSON.stringify(c.e));
