@@ -87,6 +87,13 @@
           <div id="colorGrid" class="colorGrid"></div>
           <p class="muted">四隅が象限、上下左右が軸方向の色です。軸方向は「自動」（両隣の象限の中間）にもできます。グラデーションはこの8色の間を補間します。</p>
         </div>
+        <div class="sub padBox">
+          <div class="refTitle">コントローラー（ゲームパッド）</div>
+          <label class="chk"><input id="padJoyUse" type="checkbox" checked> ジョイスティックを使う <select id="padJoyDev" aria-label="ジョイスティックに使う機器"><option value="">自動</option></select></label>
+          <label class="chk"><input id="padSliderUse" type="checkbox" checked> スライダーを使う <select id="padSliderDev" aria-label="スライダーに使う機器"><option value="">自動</option></select></label>
+          <div id="padList" class="padList"><p class="muted">接続されていません（機器のボタンを押すと認識されます）</p></div>
+          <p class="muted">軸0・1＝スティック横・縦、軸2・3＝スライダー1・2（上＝＋）、ボタン0＝記録オン／オフ（？ と README）</p>
+        </div>
       </section>
     </div>
   </span>

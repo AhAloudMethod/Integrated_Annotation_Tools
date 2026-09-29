@@ -23,6 +23,7 @@
     const t = vt();
     if (t < _.stroke.lastT) return;
     const vals = _.M.sample();
+    if (vals.pad) for (const r of vals.pad.split('+')) _.stroke.pad[r] = _.padRoleId(r);   // 機器（joy・slider）で入れた値
     const from = _.stroke.raw.length ? _.stroke.lastT : _.stroke.t0 - 1e-6;
     for (const ax of _.stroke.axes) overwriteTo(ax, from, t, r2(vals[ax]));
     const row = [t, _.stroke.axes.includes('v') ? r2(vals.v) : '', _.stroke.axes.includes('a') ? r2(vals.a) : ''];
@@ -32,7 +33,7 @@
   }
   function startStroke() {
     const axes = _.M.writeAxes(); if (!axes.length) return;
-    _.stroke = { before: snapshot(), axes, t0: vt(), lastT: vt(), raw: [] };
+    _.stroke = { before: snapshot(), axes, t0: vt(), lastT: vt(), raw: [], pad: {} };
     strokeSample();
   }
   // 区間 (tEnd, restoreT) の古い点を掃除し、restoreT に上書き前の値へ戻す点を置く
@@ -56,7 +57,9 @@
     const tEnd = s.lastT, restoreT = +(tEnd + 1e-3).toFixed(4);
     if (afterWrite === 'restore' && restoreT < S.meta.duration) for (const ax of s.axes) restoreAfter(ax, s.before.points[ax], tEnd, restoreT);
     if (s.raw.length) {
-      S.data.strokes.push({ id: S.data.strokes.length, source: 'input', axes: s.axes.join(''), t_start: s.t0, t_end: tEnd, end_reason: reason, after: afterWrite, wall_ms_end: wall(), samples: s.raw });
+      // source：input（マウス・キー）／gamepad（ジョイスティック・スライダーの値を1つでも含む）。gamepad のときは pad に役割ごとの機器名 { joy, slider }
+      const pad = Object.keys(s.pad).length ? { pad: s.pad } : {};
+      S.data.strokes.push({ id: S.data.strokes.length, source: pad.pad ? 'gamepad' : 'input', ...pad, axes: s.axes.join(''), t_start: s.t0, t_end: tEnd, end_reason: reason, after: afterWrite, wall_ms_end: wall(), samples: s.raw });
       pushUndo(s.before);
       addLog('stroke', { axis: s.axes.join(''), detail: `${s.t0.toFixed(4)}-${tEnd.toFixed(4)} n=${s.raw.length} end=${reason}` });
     }

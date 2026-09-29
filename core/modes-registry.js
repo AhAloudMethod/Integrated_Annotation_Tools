@@ -34,6 +34,7 @@
     S.t0 = performance.now(); S.meta.session_start_iso = new Date().toISOString();
     S.meta.range = range || defaultRange(S.meta.duration);
     addLog('session_start', { detail });
+    if (_.padLogAll) _.padLogAll();   // つながっているゲームパッドを残す
   }
   function setOption(k, v) { S.meta.options[k] = v; addLog('option', { detail: `${k}=${v}` }); refresh(); }
 

@@ -23,6 +23,7 @@
     const vaCols = (x, y) => { if (x === '' || y === '' || x == null || y == null) return ['', '']; const r = _.toVA(+x, +y); return [r.v.toFixed(3), r.a.toFixed(3)]; };
     const out = (suffix, header, rows) => { download(base + suffix, toCSV(header.map(colName), rows), 'text/csv'); files.push(suffix); };
     S.meta.axes = _.axesCurrent();
+    S.meta.gamepads = _.padMeta();   // ゲームパッドの設定・使った機器（core/gamepad.js）
     const binCols = s => [s, secLabel(s), binStart(s).toFixed(3), binStart(s + 1).toFixed(3)];
     const binHead = ['bin', 'label', 't_start', 't_end'];
 
