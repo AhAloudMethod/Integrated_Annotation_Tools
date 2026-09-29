@@ -44,7 +44,7 @@
     cb.addEventListener('change', () => { AH.setOption(key, cb.checked); cb.blur(); });
     parent.appendChild(l); return cb;
   }
-  function armHint(msg = '記録オフです。R キー（またはゲームパッドのAボタン）で記録を始めます') {
+  function armHint(msg = '記録オフです。R キー（またはゲームパッドのボタン0）で記録を始めます') {
     const el = document.getElementById('hint'); el.classList.remove('ok'); el.textContent = msg; el.hidden = false;
     clearTimeout(armHint.tm); armHint.tm = setTimeout(() => { el.hidden = true; }, 2500);
   }
@@ -188,6 +188,47 @@
   }
   const dead = x => (Math.abs(x) < 0.08 ? 0 : x);
 
+  // ---------- ゲームパッド（機器との約束は core/gamepad.js と README） ----------
+  // ジョイスティック：位置がそのまま値（v = 5 + x*4、a = 5 + y*4。circle なら円の外は円周に吸着）。
+  // 遊びの外ではスティックが優先、遊びの中ならマウス（押している間の pen）、どちらもなければ中立 5・5。
+  // ジョイスティックが使える間（on()）は、押している間（hold）の方式も記録オン（armed）の間の記録にする
+  function stick(circle = false) {
+    const k = {
+      on: () => !!AH.padJoy(),
+      active: () => !!(AH.padJoy() && AH.padJoy().active),
+      // 今の値。スティックで入れた値には pad: 'joy' を付ける（書き込みの source が gamepad になる）
+      val() {
+        const j = AH.padJoy();
+        if (j && j.active) {
+          let { x, y } = j;
+          if (circle) { const d = Math.hypot(x, y); if (d > 1) { x /= d; y /= d; } }
+          return { v: AH.r2(5 + x * 4), a: AH.r2(5 + y * 4), pad: 'joy' };
+        }
+        if (pen.down) return { v: pen.v, a: pen.a };
+        return j ? { v: 5, a: 5, pad: 'joy' } : { v: 5, a: 5 };
+      },
+      // 画面に出す値：記録オン・スティックを倒している・マウスで押している・練習中は今の値、それ以外は記録済みの値
+      shown: t => (S.armed || k.active() || pen.down || !AH.hasVideo() ? k.val() : stored(t)),
+    };
+    return k;
+  }
+  // スライダー：位置がそのまま値（1〜9）。動かしたらその軸はスライダーのもの（own）になり、以後スライダーの位置を値にする。
+  // キー・マウスで動かしたとき、記録済みの値への追従に戻ったとき（release）に手放す。get(i) は i 本目（0・1）の値か null
+  function sliders() {
+    const own = [false, false];
+    return {
+      on: () => !!AH.padSliders(),
+      get(i) {
+        const s = AH.padSliders();
+        if (!s || s.val[i] == null) { own[i] = false; return null; }
+        if (s.moved[i]) own[i] = true;
+        return own[i] ? s.val[i] : null;
+      },
+      owned: i => (i == null ? own[0] || own[1] : own[i]),
+      release(i) { if (i == null) own.fill(false); else own[i] = false; },
+    };
+  }
+
   // 1軸ずつ2回に分けて評価する方式（CARMA・RankTrace）の「評価する軸」の切り替え
   function passSelector(parent) {
     const box = h('div', { class: 'opts pass' }, '評価する軸：');
@@ -202,6 +243,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, trail,
-    secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, passSelector,
+    secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector,
   };
 })();

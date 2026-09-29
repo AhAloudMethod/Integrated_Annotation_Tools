@@ -1,28 +1,31 @@
 // ---- CARMA（1次元スライダー） ----
 (() => {
   const { video } = AH;
-  const { opts, follower, h, heldRate, passSelector } = AH.ui;
+  const { opts, follower, h, heldRate, sliders, passSelector } = AH.ui;
   const follow = follower();
   let c, g; let ctrl = 5, drag = false; const RATE = 4;
   const k = heldRate(['ArrowUp'], ['ArrowDown']);
+  const sl = sliders();   // 評価している軸の回に1本目を使う（位置がそのまま値）
   const ax = () => opts().axis || 'v';
   const setFromY = e => { const r = c.getBoundingClientRect(), y0 = 30, y1 = r.height - 30; ctrl = AH.r2(AH.clamp(1 + (1 - (e.clientY - r.top - y0) / (y1 - y0)) * 8, 1, 9)); };
   AH.register({
     id: 'carma', group: '時間連続・1次元', label: 'CARMA（1次元スライダー・2回）', model: 'series', init: { v: 5, a: 5 }, side: 'normal', animate: true,
     options: { axis: 'v' },
-    writeMode: () => 'armed', writeAxes: () => [ax()], sample: () => ({ [ax()]: ctrl }), peek: () => ({ [ax()]: ctrl }),
-    help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します（右の「評価する軸」で切り替え）。スライダーをマウスでドラッグするか <kbd>↑</kbd>/<kbd>↓</kbd> で動かします。記録オン（<kbd>R</kbd>）の間、再生中の値を記録・上書きします。</p>',
+    writeMode: () => 'armed', writeAxes: () => [ax()], sample: () => ({ [ax()]: ctrl, ...(sl.owned(0) ? { pad: 'slider' } : {}) }), peek: () => ({ [ax()]: ctrl }),
+    help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します（右の「評価する軸」で切り替え）。スライダーをマウスでドラッグするか <kbd>↑</kbd>/<kbd>↓</kbd> で動かします。スライダーの機器（ゲームパッドの軸2）をつなぐと、1本目の位置がそのまま値になります（最後に動かしたものが優先）。記録オン（<kbd>R</kbd> またはボタン0）の間、再生中の値を記録・上書きします。</p>',
     mount({ panel }) {
       const box = h('div', { class: 'planeBox' }); passSelector(box);
       c = h('canvas', { class: 'bars', 'aria-label': 'CARMA スライダー' }); box.appendChild(c); panel.appendChild(box);
-      c.addEventListener('pointerdown', e => { drag = true; follow.touch(); c.setPointerCapture(e.pointerId); setFromY(e); });
+      c.addEventListener('pointerdown', e => { drag = true; follow.touch(); sl.release(); c.setPointerCapture(e.pointerId); setFromY(e); });
       c.addEventListener('pointermove', e => { if (drag) setFromY(e); });
       c.addEventListener('pointerup', () => { drag = false; });
     },
     resize() { g = AH.fitCanvas(c); },
     tick(dt) {
-      if (follow() && !drag) ctrl = AH.valueAt(ax(), video.currentTime);
-      if (k.any()) { follow.touch(); ctrl = AH.r2(AH.clamp(ctrl + k.dir() * RATE * dt, 1, 9)); }
+      if (follow() && !drag) { ctrl = AH.valueAt(ax(), video.currentTime); sl.release(); }   // 追従に戻ったらスライダーを手放す
+      if (k.any()) { follow.touch(); sl.release(); ctrl = AH.r2(AH.clamp(ctrl + k.dir() * RATE * dt, 1, 9)); }   // キーが優先
+      const s = drag ? null : sl.get(0);
+      if (s != null) { ctrl = s; follow.touch(); }
     },
     onKey(e) { return k.key(e, true); },
     onKeyUp(e) { k.key(e, false); }, onBlur() { k.clear(); },

@@ -1,7 +1,7 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
   const { S, pen, video } = AH;
-  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, trail, secStrip, autoNext, samRows, drawFace, heldRate, dead } = AH.ui;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, trail, secStrip, autoNext, samRows, drawFace, heldRate, stick, sliders } = AH.ui;
   const o = () => opts();
   const follow = follower();
   const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', sliders: 'スライダー2本' };
@@ -32,12 +32,18 @@
   const rel = () => o().scale === 'rel';
   const RATE = 4;
   const kW = heldRate(['KeyW'], ['KeyS']), kUD = heldRate(['ArrowUp'], ['ArrowDown']), kAD = heldRate(['KeyD'], ['KeyA']);
-  let ctrl = { v: 5, a: 5 }, dragAxis = null, sliderDrag = null, lastAxis = 'v';
+  let ctrl = { v: 5, a: 5 }, dragAxis = null, sliderDrag = null, armDrag = null, lastAxis = 'v';
+  // ゲームパッド：平面・円はジョイスティック（位置＝値）、スライダー（絶対・連続）はスライダーの機器（1本目＝横軸、2本目＝縦軸。1軸のときは1本目）
+  const stkSq = stick(), stkC = stick(true), stk = () => (o().rep === 'circle' ? stkC : stkSq), sl = sliders();
+  const joyMode = () => !pointType() && (o().rep === 'plane' || o().rep === 'circle') && (o().input === 'gamepad' || (o().input === 'mouse' && stk().on()));
+  const slDev = () => o().rep === 'sliders' && o().time === 'cont' && !rel() && sl.on();
+  const slIdx = ax => (act().length === 1 ? 0 : ax === 'v' ? 0 : 1);
   let c = null, g = null, rows = null, strip = null, note = null; const PAD = 26;
 
   function writeMode() {
     if (pointType()) return null;
-    return o().input === 'mouse' && !rel() ? 'hold' : 'armed';
+    if (o().input !== 'mouse' || rel()) return 'armed';
+    return (o().rep === 'sliders' ? slDev() : stk().on()) ? 'armed' : 'hold';   // マウスでも、機器が使える間は記録オン（R）の間の記録
   }
   function pointAction(vals) {
     const vv = {};
@@ -61,6 +67,7 @@
       if (sliderDrag) r[sliderDrag.ax] = sliderDrag.val;
       return r;
     }
+    if (joyMode()) return stk().shown(t);
     if (writeMode() === 'armed') return { ...ctrl };
     if (pen.down) return { v: pen.v, a: pen.a };
     return stored(t);
@@ -128,6 +135,9 @@
         const { ax, val } = sliderVal(e);
         if (rel()) { armHint('ホイールで上下させます'); return; }
         if (o().time === 'disc') { c.setPointerCapture(e.pointerId); sliderDrag = { ax, val }; AH.refresh(); return; }
+        if (o().input === 'mouse' && writeMode() === 'armed') {   // スライダーの機器が使える間のマウス：ドラッグで動かす（CARMA と同じ）
+          c.setPointerCapture(e.pointerId); armDrag = ax; follow.touch(); sl.release(slIdx(ax)); ctrl[ax] = val; AH.refresh(); return;
+        }
         if (o().input !== 'mouse') { armHint('この組み合わせはキーボード／ゲームパッドで操作します'); return; }
         c.setPointerCapture(e.pointerId); dragAxis = ax; AH.penDown({ ...stored(video.currentTime), [ax]: val }); return;
       }
@@ -137,10 +147,12 @@
     });
     c.addEventListener('pointermove', e => {
       if (sliderDrag) { sliderDrag.val = sliderVal(e).val; AH.refresh(); return; }
+      if (armDrag) { ctrl[armDrag] = sliderVal(e).val; AH.refresh(); return; }
       if (!pen.down) return;
       if (o().rep === 'sliders') AH.penMove({ [dragAxis]: sliderVal(e).val }); else AH.penMove(valFrom(e));
     });
     const up = () => {
+      if (armDrag) { armDrag = null; return; }
       if (sliderDrag) { const d = sliderDrag; sliderDrag = null; pointAction({ [d.ax]: d.val }); return; }
       AH.penUp(); dragAxis = null;
     };
@@ -222,14 +234,16 @@
       else if (writeMode() === 'hold') how = '再生中に押している間だけ記録・上書きします。一時停止中のクリックはその時刻に変化点を1つ置きます。';
       else {
         const keys = o().input === 'keyboard' ? (o().rep === 'sliders' ? '<kbd>W</kbd>/<kbd>S</kbd>＝快度、<kbd>↑</kbd>/<kbd>↓</kbd>＝覚醒度。' : '<kbd>A</kbd>/<kbd>D</kbd>＝快度、<kbd>W</kbd>/<kbd>S</kbd>＝覚醒度。')
-          : o().input === 'gamepad' ? (o().rep === 'sliders' ? '左スティック上下＝快度、右スティック上下＝覚醒度。' : 'スティックの位置＝値（離すと中性）。') : 'ホイールで上下させます（上下限なし）。';
-        how = `記録オン（<kbd>R</kbd>）の間、再生中の値を記録・上書きします。${keys}`;
+          : o().input === 'gamepad' ? (o().rep === 'sliders' ? 'スライダーの機器（軸2・3）の位置＝値（1本目＝快度、2本目＝覚醒度。1軸のときは1本目）。' : 'ジョイスティック（軸0・1）の位置＝値（離すと中性）。')
+          : rel() ? 'ホイールで上下させます（上下限なし）。' : o().rep === 'sliders' ? 'スライダーの機器（軸2・3）の位置＝値。マウスでもドラッグできます。' : 'ジョイスティック（軸0・1）の位置＝値（離すと中性）。マウスで押しても動かせます（スティックを倒している間はスティックが優先）。';
+        how = `記録オン（<kbd>R</kbd> またはボタン0）の間、再生中の値を記録・上書きします。${keys}`;
       }
       return `<p>${t}${how}</p>`;
     },
     writeMode,
     writeAxes() { const a = act(); return o().rep === 'sliders' && writeMode() === 'hold' ? a.filter(x => x === dragAxis) : a; },
-    sample: () => (writeMode() === 'hold' ? pen : ctrl), peek: () => ({ ...ctrl }),
+    sample: () => (joyMode() ? stk().val() : writeMode() === 'hold' ? pen : { ...ctrl, ...(slDev() && act().some(ax => sl.owned(slIdx(ax))) ? { pad: 'slider' } : {}) }),
+    peek: () => (joyMode() ? stk().val() : { ...ctrl }),
     mount({ panel, overlay, under }) {
       Object.assign(S.meta.options, normalize(S.meta.options));
       config(panel);
@@ -259,19 +273,17 @@
     },
     resize() { if (c) g = AH.fitCanvas(c); },
     tick(dt) {
-      if (writeMode() !== 'armed') return;
-      if (follow()) ctrl = stored(video.currentTime);
-      const inp = o().input, circ = o().rep === 'circle', sl = o().rep === 'sliders', before = { ...ctrl };
+      if (writeMode() !== 'armed' || joyMode()) return;
+      if (follow()) { ctrl = stored(video.currentTime); sl.release(); }   // 追従に戻ったらスライダーを手放す
+      const inp = o().input, circ = o().rep === 'circle', sls = o().rep === 'sliders', before = { ...ctrl };
       const clampV = x => (rel() ? x : AH.clamp(x, 1, 9));
       if (inp === 'keyboard') {
-        const dv = sl ? kW.dir() : kAD.dir(), da = sl ? kUD.dir() : kW.dir();
+        const dv = sls ? kW.dir() : kAD.dir(), da = sls ? kUD.dir() : kW.dir();
+        if (dv) sl.release(slIdx('v')); if (da) sl.release(slIdx('a'));   // キーを押したらキーが優先
         ctrl.v = AH.r2(clampV(ctrl.v + dv * RATE * dt)); ctrl.a = AH.r2(clampV(ctrl.a + da * RATE * dt));
-      } else if (inp === 'gamepad') {
-        const gp = AH.gamepad(); if (!gp) return;
-        if (sl) { ctrl.v = AH.r2(clampV(ctrl.v - dead(gp.axes[1] || 0) * RATE * dt)); ctrl.a = AH.r2(clampV(ctrl.a - dead(gp.axes[3] || 0) * RATE * dt)); }
-        else { ctrl.v = AH.r2(5 + dead(gp.axes[0] || 0) * 4); ctrl.a = AH.r2(5 - dead(gp.axes[1] || 0) * 4); }
       }
-      if (ctrl.v !== before.v || ctrl.a !== before.a) follow.touch();
+      if (slDev()) for (const ax of act()) { const x = armDrag === ax ? null : sl.get(slIdx(ax)); if (x != null) ctrl[ax] = x; }   // スライダーを動かしたら、その位置がそのまま値
+      if (ctrl.v !== before.v || ctrl.a !== before.a || (slDev() && sl.owned())) follow.touch();
       if (circ) { const dx = (ctrl.v - 5) / 4, dy = (ctrl.a - 5) / 4, d = Math.hypot(dx, dy); if (d > 1) { ctrl.v = AH.r2(5 + dx / d * 4); ctrl.a = AH.r2(5 + dy / d * 4); } }
     },
     onKey(e) {
