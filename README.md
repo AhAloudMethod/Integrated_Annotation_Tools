@@ -35,13 +35,16 @@ core/                 共通部分（読み込み順に依存する。index.html
   layout.js           画面の配置（入力面の大きさ合わせ・設定と説明のパネル・グラフの開閉）・動画の大きさ・小窓
   vwin.js             動画を別ウィンドウに出す（キー操作の転送・閉じたら戻す）
   colors.js           色の設定欄（4象限＋4軸方向）
-  voice.js            声による入力（聞き取った文の解釈・各方式への反映）
+  voice.js            声による入力（聞き取った文の解釈・各方式への反映・認識エンジン：Chrome の音声認識／Vosk）
   init.js             起動処理 AH.init() と公開 API（AH.*）
 modes/                入力方式（読み込み順＝「入力方式」の選択肢の並び順）
   _shared.js          方式に共通のヘルパ（AH.ui）
   key.js emujoy.js feeltrace.js rcea.js darma.js throttle.js halolight.js
   carma.js ranktrace.js excel.js affectgrid.js sam.js affectrank.js custom.js
 sam/                  SAM の原典画像
+vendor/               外部ライブラリの同梱（vosk.js。vendor/README.txt）
+tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する）
+models/               Vosk のモデル（npm run vosk-model で作る。git には入れない）
 tests/                自動テスト（Playwright で Edge を動かす）
 ```
 
@@ -87,12 +90,13 @@ tests/                自動テスト（Playwright で Edge を動かす）
 ```
 npm install        # 初回のみ（playwright-core）
 npm test           # 全テストを順に実行（tests/run-all.js）
-npm test -- modes  # 一部だけ（structure modes features layout restore samimg pip-fallback）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg pip-fallback fixes vwin spec controls voice vosk）
 npm run check      # 全 JS に node --check
 ```
 
 - ブラウザは既定で `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`。環境変数 `AH_BROWSER` で変えられる。
 - スクリーンショットと各テストの出力（`*.log`）は `tests/out/` に保存される（`AH_OUT` で変えられる）。
+- Vosk のテスト（vosk）は、本物のモデル（`models/*.tar.gz`、`npm run vosk-model`）と合成音声（`tests/fixtures/voice.wav`、`npm run voice-fixture`。Windows の音声合成 Haruka を使う）を偽のマイク入力として使う。どちらかがなければ飛ばす。
 - テスト動画は `tests/fixtures/test.mp4`（12秒）。消えた場合は `npm run fixture` で ffmpeg から作り直す（`npm test` も無ければ自動で作る）。
 - `samimg` は `sam/` に原典画像があることが前提。
 - 再生しながらの操作は、フレームの間隔で変化点の時刻やサンプル数が少し揺れる（正常）。
@@ -102,7 +106,12 @@ npm run check      # 全 JS に node --check
 - **再生制御**：全方式で一時停止、巻き戻し、シークができる。1回の視聴で評価し切ることは想定しない。
 - **連続方式の書き込み**：再生中に「押している間」または「記録オン（R）の間」だけ書き込み、その区間の前の記録を上書きする。書き込みを終えた後の値は「設定」の「書き込みを終えた後」で選ぶ。既定の「その値を保つ」は、離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」は、書き込み区間の直後から上書き前の値に戻す（途中だけを書き直すとき向け）。どちらで書いたかは `_strokes` の `after` に残る。上書きで消えた軌跡も含め、すべての書き込みを `_strokes.csv` と `_session.json` に残す。
 - **記録オフでの操作**：スライダー・レバー・RankTrace（CARMA・スロットル・RankTrace・カスタムのキーボード／ゲームパッド）は、記録オフでも動かせる。記録オンにすると、動かした位置から記録が始まる。記録オフのまま再生やシークで時刻が動いたときは、記録済みの値に追従する。
-- **声による入力**（ヘッダーの「音声」）：Web Speech API で声から値を入れる。Chrome・Edge のみ（ネット接続とマイクの許可が必要）。Firefox 系（Zen など）では非対応のためボタンが無効になる。
+- **声による入力**（ヘッダーの「音声」）：声で値を入れる（マイクの許可が必要）。認識のしかたは「設定」の「声の認識」で選ぶ。聞き取った文の解釈（下の言い方・補正）はどちらでも同じ。
+  - **Chrome の音声認識**：Web Speech API。Chrome・Edge のみ。音声は Google などのサーバーに送られて認識される（ネット接続が必要）。
+  - **Vosk**：PC の中で認識する（vosk-browser、`vendor/vosk.js`）。Chrome・Firefox（Zen など）で使える。音声は PC の外に出ず、ネット接続も要らない。「聞き取る語を限定する」をオンにすると、快度・覚醒度・数字・秒・再生・停止だけを聞き取る（聞き間違いが減る見込み。オフと比べられる）。
+    - モデルの用意：`npm run vosk-model` で公式の日本語モデル（vosk-model-small-ja-0.22、約50MB）をダウンロードし、`models/vosk-model-small-ja-0.22.tar.gz` に作り直す（ダウンロード済みの zip があれば `npm run vosk-model -- <zip>`）。
+    - 初回：「設定」→ 声の認識「Vosk」→「モデルを選ぶ」で `.tar.gz` を選ぶ。ブラウザ（IndexedDB）に保存されるので、次からは選ばなくてよい（「保存したモデルを消す」で消せる）。読み込みには数十秒かかることがある。
+    - Chrome の音声認識がないブラウザ（Firefox 系）では、自動で Vosk になる。
   - 言い方：「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。漢数字・読み（なな・しち など）・全角数字も可。10 などの2桁や範囲外は値にしない。1軸ずつ評価する方式（CARMA・RankTrace の回、カスタムの1軸）では数字1つでも入る。「再生」「停止」でも操作できる。
   - 時刻を言うこともできる：「12秒 快度7」「1分5秒 7 3」「十二秒、覚醒度三」。言った時刻は評価区間の「列の表記」と同じ読み方をする（カウントダウン＝残り秒。12秒の動画で「3秒」なら動画の8秒。経過＝評価区間の開始からの秒）。言った時刻が評価区間の外なら入らない。時刻を言わなければ下のとおり。
   - 値は話し始めた時刻（最初の途中結果が届いた時点の動画時刻）に入る。連続の方式は変化点、区間の方式はその区間の値（評価区間の外は入らない）。相対の方式（AffectRank・RankTrace）では値を入れない。
