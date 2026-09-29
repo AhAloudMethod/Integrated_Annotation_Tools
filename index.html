@@ -18,7 +18,8 @@
   <button id="playBtn" title="再生／停止（Space）">再生</button>
   <button id="fwdBtn" title="1秒進む（→）">＋1秒</button>
   <span class="time" id="clock">0:00.00 / 0:00.00</span>
-  <span id="armBox" hidden><button id="armBtn">記録オフ（R）</button></span>
+  <span id="armBox" hidden><button id="armBtn" title="記録のオン／オフ（R キー）">記録 R</button></span>
+  <button id="voiceBtn" title="声で値を入力する（「快度7」「覚醒度3」「7 3」など。Chrome・Edge）">音声</button>
   <span class="rgWrap">
     <button id="rgBtn" title="評価する範囲と区間の長さ">評価区間</button>
     <div id="rgPanel" class="rgPanel" hidden>
@@ -67,6 +68,7 @@
       <div id="modeHelp"></div>
       <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し</p>
       <p>「動画を別窓へ」：動画だけを別のウィンドウに出します。モニターへドラッグし、ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作はそのまま効きます。閉じると動画はこの画面に戻ります。</p>
+      <p>「音声」：声で値を入力します（Chrome・Edge。ネット接続とマイクの許可が必要）。「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも入ります。「再生」「停止」でも操作できます。値は話し始めた時刻に入ります（連続の方式は変化点、区間の方式はその区間の値）。</p>
       <p>「グラフ」：評価グラフを開閉します。下端の目盛りの帯をクリック・ドラッグで移動。「設定」の「グラフをなぞって値を編集する」がオンなら、快度・覚醒度の欄をなぞると値を直接描き換えられます。</p>
       <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。動画を開く前でもツールを試せます（練習中の入力は、動画を開いた時点で消えます）。</p>
     </div>
@@ -107,6 +109,7 @@
 <script src="core/layout.js"></script>
 <script src="core/vwin.js"></script>
 <script src="core/colors.js"></script>
+<script src="core/voice.js"></script>
 <script src="core/init.js"></script>
 <!-- 入力方式（modes/）：_shared.js のあと、登録順＝入力方式の選択肢の並び順 -->
 <script src="modes/_shared.js"></script>

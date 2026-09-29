@@ -1,0 +1,117 @@
+// 声で値を入力する（Web Speech API。Chrome・Edge。Firefox 系は非対応）
+// 「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸の方式では数字1つでも入る。
+// 「再生」「停止」でも操作できる。値は話し始めた時刻（最初の途中結果が届いた時点の動画時刻）に入れる。
+(() => {
+  const _ = AH._;
+  const { $, video, S, addLog, pushUndo, snapshot, placePoint, binAt, nSec, clamp } = _;
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // ---------- 聞き取った文の解釈（テストから直接呼べるよう純粋関数） ----------
+  const KANJI = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+  const READ = { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9 };
+  const AXIS_V = /(快度|かいど|カイド|快|かい|valence|バレンス)/i;
+  const AXIS_A = /(覚醒度|かくせいど|カクセイド|覚醒|かくせい|arousal|アローザル)/i;
+  function normalize(text) {
+    return String(text)
+      .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+      .replace(/[〇零一二三四五六七八九]/g, c => String(KANJI[c]))
+      .replace(/[、。,.]/g, ' ');
+  }
+  // 数字として読める語（数字1文字、または読み仮名）を返す。1〜9 以外は null
+  function num(tok) {
+    const t = tok.trim();
+    if (/^[1-9]$/.test(t)) return +t;
+    if (t in READ) return READ[t];
+    return null;
+  }
+  function parseVoice(text, { oneAxis = null } = {}) {
+    const s = normalize(text);
+    const out = {};
+    if (/(再生|さいせい|スタート)/.test(s)) out.cmd = 'play';
+    else if (/(停止|ていし|ストップ|止めて|とめて)/.test(s)) out.cmd = 'pause';
+    // 「軸の語＋数字」を順に拾う（軸の語は長いものから当てる）
+    const re = new RegExp(`(${AXIS_A.source}|${AXIS_V.source})\\s*(は|が|を)?\\s*([1-9](?![0-9])|${Object.keys(READ).sort((x, y) => y.length - x.length).join('|')})`, 'gi');   // 長い読みを先に（「しち」を「し」と読まない）
+    let m;
+    while ((m = re.exec(s))) {
+      const n = num(m[m.length - 1]); if (n == null) continue;
+      if (AXIS_A.test(m[1])) out.a = n; else out.v = n;
+    }
+    if (out.v == null && out.a == null) {
+      const ns = (s.match(/[0-9]+/g) || []).filter(x => /^[1-9]$/.test(x)).map(Number);   // 10 などの2桁は数えない
+      if (ns.length === 2) { out.v = ns[0]; out.a = ns[1]; }
+      else if (ns.length === 1 && oneAxis) out[oneAxis] = ns[0];
+    }
+    return out;
+  }
+
+  // ---------- 入力の反映 ----------
+  function toast(msg, kind = 'ok') {
+    const el = $('hint'); el.textContent = msg; el.hidden = false; el.classList.toggle('ok', kind === 'ok');
+    clearTimeout(toast.tm); toast.tm = setTimeout(() => { el.hidden = true; el.classList.remove('ok'); }, 2500);
+  }
+  // 1軸だけを評価する状態か（CARMA・RankTrace の回、カスタムの1軸）
+  function oneAxis() {
+    const o = S.meta.options || {};
+    if (o.axis && (_.M.id === 'carma' || _.M.id === 'ranktrace')) return o.axis;
+    if (_.M.id === 'custom' && (o.dims === 'v' || o.dims === 'a')) return o.dims;
+    return null;
+  }
+  function applyVoice(p, t, text) {
+    const vals = {}; for (const ax of ['v', 'a']) if (p[ax] != null) vals[ax] = p[ax];
+    const one = oneAxis(); if (one) for (const ax of Object.keys(vals)) if (ax !== one) delete vals[ax];
+    const label = Object.entries(vals).map(([ax, v]) => (ax === 'v' ? '快度' : '覚醒度') + v).join(' ');
+    addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +t.toFixed(4) }) });
+    if (p.cmd === 'play' && video.src && video.paused) video.play();
+    if (p.cmd === 'pause' && !video.paused) video.pause();
+    if (!Object.keys(vals).length) { if (!p.cmd) toast(`聞き取り：「${text}」（値として読めませんでした）`, 'warn'); return false; }
+    const M = _.M;
+    if (M.model === 'events' || M.unbounded) { toast('この方式では声による値の入力は使えません', 'warn'); return false; }
+    if (M.model === 'table') {
+      let s = binAt(t); if (s === nSec() && t >= (S.meta.duration || 0) - 0.05) s = nSec() - 1;
+      if (s < 0 || s >= nSec()) { toast('評価区間の外です（声の入力）', 'warn'); addLog('input_out_of_range', { detail: 'voice t=' + t.toFixed(3) }); return false; }
+      _.setCells(s, vals, 'voice');
+    } else {
+      const before = snapshot(); let ch = false;
+      for (const [ax, v] of Object.entries(vals)) ch = placePoint(ax, +t.toFixed(4), v) || ch;
+      if (ch) { pushUndo(before); addLog('voice_input', { axis: Object.keys(vals).join(''), value: Object.values(vals).join('/'), detail: 't=' + t.toFixed(4) }); }
+      _.refresh();
+    }
+    toast(`聞き取り：${label}（${_.fmt(t)}）`);
+    return true;
+  }
+
+  // ---------- 認識の開始・停止 ----------
+  let rec = null, on = false;
+  const heardAt = new Map();   // 結果の番号 → 話し始めの動画時刻
+  function start() {
+    if (!Rec) { toast('このブラウザは音声認識に対応していません（Chrome・Edge で使えます）', 'warn'); return; }
+    rec = new Rec(); rec.lang = 'ja-JP'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+    heardAt.clear();
+    rec.onresult = e => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (!heardAt.has(i)) heardAt.set(i, clamp(video.currentTime || 0, 0, S.meta.duration || 0));
+        if (r.isFinal) { const text = r[0].transcript; applyVoice(parseVoice(text, { oneAxis: oneAxis() }), heardAt.get(i), text); }
+      }
+    };
+    rec.onerror = e => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      toast('音声認識のエラー：' + e.error + (e.error === 'not-allowed' ? '（マイクの使用を許可してください）' : e.error === 'network' ? '（ネット接続が必要です）' : ''), 'warn');
+      addLog('voice_error', { value: e.error });
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setOn(false);
+    };
+    rec.onend = () => { if (on) setTimeout(() => { if (on) { heardAt.clear(); try { rec.start(); } catch (_) {} } }, 200); };   // 無音で止まったら再開
+    try { rec.start(); } catch (_) {}
+  }
+  function setOn(v) {
+    if (v === on) return;
+    on = v;
+    if (on) start(); else if (rec) { const r = rec; rec = null; try { r.stop(); } catch (_) {} }
+    $('voiceBtn').classList.toggle('on', on); $('voiceBtn').textContent = on ? '● 音声' : '音声';
+    addLog('voice', { value: on ? 'on' : 'off' });
+  }
+  $('voiceBtn').addEventListener('click', e => { e.currentTarget.blur(); setOn(!on); });
+  if (!Rec) { $('voiceBtn').disabled = true; $('voiceBtn').title = 'このブラウザは音声認識に対応していません（Chrome・Edge で使えます）'; }
+
+  Object.assign(_, { parseVoice, applyVoice, setVoice: setOn });
+})();

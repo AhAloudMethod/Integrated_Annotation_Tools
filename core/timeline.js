@@ -163,7 +163,7 @@
     $('clock').textContent = fmt(t) + ' / ' + fmt(S.meta.duration) + (S.meta.duration && !inRange(t) ? '（評価区間外）' : '');
     $('playBtn').textContent = video.paused ? '再生' : '停止';
     $('armBox').hidden = writeMode() !== 'armed';
-    $('armBtn').textContent = S.armed ? '● 記録中（R）' : '記録オフ（R）';
+    $('armBtn').textContent = S.armed ? '● 記録中' : '記録 R';
     $('armBtn').classList.toggle('on', S.armed);
     if (_.M && S.data) {
       let st = '';

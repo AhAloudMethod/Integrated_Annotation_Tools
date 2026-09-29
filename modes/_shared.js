@@ -45,7 +45,7 @@
     parent.appendChild(l); return cb;
   }
   function armHint(msg = '記録オフです。R キー（またはゲームパッドのAボタン）で記録を始めます') {
-    const el = document.getElementById('hint'); el.textContent = msg; el.hidden = false;
+    const el = document.getElementById('hint'); el.classList.remove('ok'); el.textContent = msg; el.hidden = false;
     clearTimeout(armHint.tm); armHint.tm = setTimeout(() => { el.hidden = true; }, 2500);
   }
   // 平面キャンバス：座標 ↔ 値（x=快度、y=覚醒度）

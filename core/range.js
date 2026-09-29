@@ -20,7 +20,7 @@
     if (s === n && t >= (S.meta.duration || 0) - 0.05) s = n - 1;
     if (s >= 0 && s < n) return s;
     const el = $('hint');
-    el.textContent = '評価区間の外です。評価区間の中に移動してから入力してください'; el.hidden = false;
+    el.classList.remove('ok'); el.textContent = '評価区間の外です。評価区間の中に移動してから入力してください'; el.hidden = false;
     clearTimeout(inputSec.tm); inputSec.tm = setTimeout(() => { el.hidden = true; }, 2500);
     addLog('input_out_of_range', { detail: 't=' + t.toFixed(3) });
     return null;
