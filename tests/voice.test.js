@@ -170,6 +170,30 @@ const FAKE = () => {
     await p.close();
   }
 
+  // Chrome の優先語（phrases）がサーバーでの認識で使えない場合（エラー phrases-not-supported）：優先語なしで作り直して聞き取りを続ける
+  {
+    const c2 = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+    await c2.addInitScript(FAKE);
+    await c2.addInitScript(() => {
+      window.SpeechRecognitionPhrase = class { constructor(p, b) { this.phrase = p; this.boost = b; } };
+      const Base = window.SpeechRecognition;
+      window.SpeechRecognition = class extends Base {
+        constructor() { super(); this.phrases = []; window.__made = (window.__made || 0) + 1; }
+        start() { super.start(); if (this.phrases.length) setTimeout(() => this.onerror && this.onerror({ error: 'phrases-not-supported' }), 20); }
+        abort() { this.started = false; }
+      };
+    });
+    const p = await c2.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.dismiss());
+    await p.goto(URL); await p.selectOption('#mode', 'key'); await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0);
+    await p.click('#voiceBtn'); await p.waitForTimeout(300);
+    await p.evaluate(() => AH.seekTo(2)); await p.waitForTimeout(150);
+    await say(p, '快度6', true);
+    const r = await p.evaluate(() => ({ made: window.__made, on: document.getElementById('voiceBtn').classList.contains('on'), v: AH.S.data.points.v.map(x => [x.t, x.val]),
+      err: AH.S.log.filter(l => l.type === 'voice_error').map(l => l.value + ':' + l.detail), hint: document.getElementById('hint').textContent }));
+    check('phrases-not-supported なら優先語なしで作り直して聞き取りを続ける', r.made === 2 && r.on && JSON.stringify(r.v) === '[[0,5],[2,6]]' && r.err.join() === 'phrases-not-supported:retry without phrases' && !/エラー/.test(r.hint), JSON.stringify(r));
+    await c2.close();
+  }
+
   // 8. 聞き間違いの補正：同音の語の読み替え・候補の選択・履歴
   {
     const p = await open('key');

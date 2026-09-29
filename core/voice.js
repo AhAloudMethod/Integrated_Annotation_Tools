@@ -176,26 +176,38 @@
   // ---- Chrome の音声認識（Web Speech API） ----
   function webspeech() {
     if (!Rec) { toast('このブラウザは Chrome の音声認識に対応していません（「設定」で Vosk を選んでください）', 'warn'); return null; }
-    const rec = new Rec(); rec.lang = 'ja-JP'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
-    // 認識の優先語（対応している Chrome のみ。対応していなければ何もしない）
-    try { if (window.SpeechRecognitionPhrase && 'phrases' in rec) rec.phrases = ['快度', '覚醒度', '秒', '再生', '停止'].map(w => new window.SpeechRecognitionPhrase(w, 5)); } catch (_) {}
-    let alive = true;
-    rec.onresult = e => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        partial();
-        if (r.isFinal) final(Array.from({ length: r.length }, (_x, k) => r[k].transcript));
-      }
-    };
-    rec.onerror = e => {
-      if (e.error === 'no-speech' || e.error === 'aborted') return;
-      fail('音声認識のエラー：' + e.error + (e.error === 'not-allowed' ? '（マイクの使用を許可してください）' : e.error === 'network' ? '（ネット接続が必要です）' : ''), e.error,
-        e.error === 'not-allowed' || e.error === 'service-not-allowed');
-    };
-    rec.onend = () => { if (alive) setTimeout(() => { if (alive) try { rec.start(); } catch (_) {} }, 200); };   // 無音で止まったら再開
-    try { rec.start(); } catch (_) {}
+    let alive = true, rec = null;
+    function make() {
+      const r0 = new Rec(); r0.lang = 'ja-JP'; r0.continuous = true; r0.interimResults = true; r0.maxAlternatives = 5;
+      // 認識の優先語。phrases があっても、サーバーでの認識では使えない Chrome がある（エラー phrases-not-supported）。
+      // そのときは優先語なしで作り直し、このページを開いている間は使わない
+      if (usePhrases) try { if (window.SpeechRecognitionPhrase && 'phrases' in r0) r0.phrases = ['快度', '覚醒度', '秒', '再生', '停止'].map(w => new window.SpeechRecognitionPhrase(w, 5)); } catch (_) { usePhrases = false; }
+      r0.onresult = e => {
+        if (r0 !== rec) return;
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          partial();
+          if (r.isFinal) final(Array.from({ length: r.length }, (_x, k) => r[k].transcript));
+        }
+      };
+      r0.onerror = e => {
+        if (r0 !== rec || e.error === 'no-speech' || e.error === 'aborted') return;
+        if (e.error === 'phrases-not-supported') {
+          usePhrases = false; addLog('voice_error', { value: e.error, detail: 'retry without phrases' });
+          try { r0.abort(); } catch (_) {}
+          rec = make(); try { rec.start(); } catch (_) {}
+          return;
+        }
+        fail('音声認識のエラー：' + e.error + (e.error === 'not-allowed' ? '（マイクの使用を許可してください）' : e.error === 'network' ? '（ネット接続が必要です）' : ''), e.error,
+          e.error === 'not-allowed' || e.error === 'service-not-allowed');
+      };
+      r0.onend = () => { if (alive && r0 === rec) setTimeout(() => { if (alive && r0 === rec) try { r0.start(); } catch (_) {} }, 200); };   // 無音で止まったら再開
+      return r0;
+    }
+    rec = make(); try { rec.start(); } catch (_) {}
     return { stop() { alive = false; try { rec.stop(); } catch (_) {} } };
   }
+  let usePhrases = true;   // 優先語を使うか（phrases-not-supported が出たらこのページでは使わない）
 
   // ---- Vosk（vendor/vosk.js。モデルは初回に選んでブラウザに保存） ----
   // 聞き取る語を限定するときの語の一覧（モデルの単語に合わせる）。[unk] はそれ以外の語
