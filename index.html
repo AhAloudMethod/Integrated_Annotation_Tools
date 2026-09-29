@@ -48,6 +48,8 @@
         <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
         <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
+        <label class="chk"><input id="f0Show" type="checkbox" checked> 動画の音声の F0（声の高さ）を表示する</label>
+        <p class="muted" id="f0Status">F0：動画を開くと計算します</p>
         <div class="sub">
           <button id="pipBtn" type="button" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出す">小窓で再生</button>
           <div id="pipHelp" hidden>
@@ -108,6 +110,9 @@
   </div>
   <div id="under"></div>
   <div class="side">
+    <div id="f0Now" class="f0Now" hidden title="動画の音声の F0（声の高さ）。メーターは この動画の F0 の範囲の中での位置">
+      <span class="f0Lab">F0</span><b id="f0Val">—</b><span class="f0Meter"><span id="f0Bar"></span></span>
+    </div>
     <div id="panel"></div>
   </div>
   <div class="tl"><canvas id="tl" tabindex="0" aria-label="タイムライン。クリックでその時刻に移動"></canvas></div>
@@ -132,6 +137,7 @@
 <script src="core/layout.js"></script>
 <script src="core/vwin.js"></script>
 <script src="core/colors.js"></script>
+<script src="core/f0.js"></script>
 <script src="core/voice.js"></script>
 <script src="core/init.js"></script>
 <!-- 入力方式（modes/）：_shared.js のあと、登録順＝入力方式の選択肢の並び順 -->

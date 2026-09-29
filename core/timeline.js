@@ -8,15 +8,18 @@
     const w = tl.clientWidth, h = tl.clientHeight, D = S.meta.duration;
     const xOf = t => PAD_L + (D ? t / D : 0) * (w - PAD_L - PAD_R);
     const tOf = x => clamp((x - PAD_L) / (w - PAD_L - PAD_R), 0, 1) * D;
-    const lanes = [{ ax: 'v', name: '快度', col: css('--val'), y0: 8, y1: (h - RULER) / 2 - 8 },
-                   { ax: 'a', name: '覚醒度', col: css('--aro'), y0: (h - RULER) / 2 + 8, y1: h - RULER - 8 }];
+    // F0 を表示するときは、下に F0 の欄（FH px）を足す
+    const FH = _.f0Shown && _.f0Shown() && video.src ? 56 : 0, H2 = h - RULER - FH;
+    const lanes = [{ ax: 'v', name: '快度', col: css('--val'), y0: 8, y1: H2 / 2 - 8 },
+                   { ax: 'a', name: '覚醒度', col: css('--aro'), y0: H2 / 2 + 8, y1: H2 - 8 }];
+    const f0Lane = FH ? { y0: H2 + 8, y1: h - RULER - 4, top: H2 } : null;
     for (const L of lanes) {
       L.lo = 1; L.hi = 9;
       if (_.M && _.M.unbounded && S.data) { const vs = S.data.points[L.ax].map(p => p.val); L.lo = Math.min(...vs) - 1; L.hi = Math.max(...vs) + 1; }
       L.yOf = v => L.y1 - (v - L.lo) / (L.hi - L.lo) * (L.y1 - L.y0);
       L.vOf = y => L.lo + (L.y1 - y) / (L.y1 - L.y0) * (L.hi - L.lo);
     }
-    return { w, h, D, xOf, tOf, lanes };
+    return { w, h, D, xOf, tOf, lanes, f0Lane };
   }
 
   function drawTimeline() {
@@ -75,6 +78,7 @@
         }
       }
     }
+    if (D && G.f0Lane) drawF0(g, G);
     if (D) {
       if (_.stroke) {
         g.fillStyle = css('--pen'); g.globalAlpha = 0.15;
@@ -84,6 +88,30 @@
       g.strokeStyle = _.stroke ? css('--pen') : css('--head'); g.lineWidth = 1.5;
       g.beginPath(); g.moveTo(x, 2); g.lineTo(x, h); g.stroke();
     }
+  }
+
+  // F0 の欄：声ありの区間を線でつなぐ（縦軸は対数。範囲はその動画の F0 の分布から）
+  function drawF0(g, G) {
+    const { w, xOf, f0Lane: L } = G, F = _.F0;
+    g.strokeStyle = css('--line'); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, Math.round(L.top) + 0.5); g.lineTo(w, Math.round(L.top) + 0.5); g.stroke();
+    g.fillStyle = css('--muted'); g.fillText('F0', 2, L.y0 + 10);
+    if (F.status !== 'ready') { g.fillText(F.status === 'loading' ? '計算中…' : F.status === 'error' ? '読み込めませんでした' : '', PAD_L + 6, L.y0 + 22); return; }
+    const lo = Math.log(F.lo), span = Math.log(F.hi) - lo, yOf = f => L.y1 - (Math.log(f) - lo) / span * (L.y1 - L.y0);
+    g.font = '10px system-ui, sans-serif';
+    g.fillText(Math.round(F.hi) + 'Hz', 2, L.y0 + 22); g.fillText(Math.round(F.lo), 2, L.y1);
+    g.font = '11px system-ui, sans-serif';
+    g.strokeStyle = css('--f0'); g.lineWidth = 1.5; g.beginPath();
+    let pen = false; const off = 0.02;   // 窓の中心の時刻
+    for (let k = 0; k < F.f0.length; k++) {
+      const f = F.f0[k];
+      if (!(f > 0)) { pen = false; continue; }
+      const x = xOf(k * F.hop + off), y = Math.max(L.y0, Math.min(L.y1, yOf(f)));
+      if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
+    }
+    g.stroke();
+    const now = _.f0At(video.currentTime || 0);
+    if (now > 0) { g.fillStyle = css('--f0'); g.beginPath(); g.arc(xOf(video.currentTime), Math.max(L.y0, Math.min(L.y1, yOf(now))), 3.5, 0, 7); g.fill(); }
   }
 
   // グラフ直接編集：連続方式はなぞった範囲の値を描き換え、区間方式は区間の値を設定する
@@ -127,7 +155,8 @@
     if (!S.meta.duration) return;
     const r = tl.getBoundingClientRect(), y = e.clientY - r.top;
     tl.setPointerCapture(e.pointerId);
-    if (y >= r.height - RULER || !graphEditable()) { seeking = true; _.seekTo(geom().tOf(e.clientX - r.left)); return; }
+    const Gd = geom();
+    if (y >= r.height - RULER || !graphEditable() || (Gd.f0Lane && y >= Gd.f0Lane.top)) { seeking = true; _.seekTo(geom().tOf(e.clientX - r.left)); return; }
     endStroke('graph');
     const G = geom(), axis = y < (G.lanes[0].y1 + G.lanes[1].y0) / 2 ? 'v' : 'a';
     edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set() };
@@ -160,6 +189,7 @@
 
   function refresh() {
     const t = video.currentTime || 0;
+    if (_.renderF0) _.renderF0();
     $('clock').textContent = fmt(t) + ' / ' + fmt(S.meta.duration) + (S.meta.duration && !inRange(t) ? '（評価区間外）' : '');
     $('playBtn').textContent = video.paused ? '再生' : '停止';
     $('armBox').hidden = writeMode() !== 'armed';

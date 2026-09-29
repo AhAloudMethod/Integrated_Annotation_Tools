@@ -59,12 +59,13 @@
   function fitTools() {
     const side = document.querySelector('.side'), panel = $('panel');
     const el = panel.querySelector('canvas.plane, canvas.bars, canvas.trace, .arPlane');
+    const f0 = $('f0Now'), f0h = f0 && !f0.hidden ? f0.offsetHeight + 8 : 0;   // 今の F0 の欄の分
     if (el) {
       const square = el.matches('canvas.plane, .arPlane');
       el.style.width = ''; el.style.height = '';
       if (square) el.style.width = '40px'; else el.style.height = '40px';
       const rest = panel.offsetHeight - 40;
-      const avail = side.clientHeight - rest - 4;
+      const avail = side.clientHeight - rest - f0h - 4;
       const box = el.parentElement, cs = getComputedStyle(box);
       const colW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       if (square) el.style.width = Math.max(150, Math.min(colW, avail)) + 'px';
@@ -75,7 +76,7 @@
       document.body.style.setProperty('--samH', '40px');
       const rest = panel.offsetHeight - 40 * panel.querySelectorAll('.sam .samRow').length;
       const rows = Math.max(1, panel.querySelectorAll('.sam .samRow').length);
-      document.body.style.setProperty('--samH', Math.round(Math.max(40, Math.min(130, (side.clientHeight - rest - 8) / rows))) + 'px');
+      document.body.style.setProperty('--samH', Math.round(Math.max(40, Math.min(130, (side.clientHeight - rest - f0h - 8) / rows))) + 'px');
     }
   }
   $('panel').addEventListener('toggle', () => resize(), true);   // カスタムの設計軸（details）の開閉

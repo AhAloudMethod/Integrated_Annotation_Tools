@@ -130,7 +130,8 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // ---- 6. グラフに快度と覚醒度の区切り線 ----
   {
     const p = await open('emujoy'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
-    await p.evaluate(() => { AH.S.data.points.v[0].val = 9; AH.refresh(); });   // 記録の線を中立の線から離す
+    await p.evaluate(() => { AH._.setF0Shown(false); AH.S.data.points.v[0].val = 9; AH.refresh(); });   // F0 の欄は消して2段で測る。記録の線を中立の線から離す
+    await p.waitForTimeout(150);
     const r = await p.evaluate(() => {
       const c = document.getElementById('tl'), d = devicePixelRatio || 1, h = c.clientHeight, y = Math.round(((h - 18) / 2) * d);
       const g = c.getContext('2d'), px = x => [...g.getImageData(Math.round(x * d), y, 1, 1).data];
@@ -144,6 +145,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('グラフに区切り線がある', r.at[3] > 0 && r.mid[3] > 0 && r.above[3] === 0, JSON.stringify(r));
     check('区切り線は赤', R > 150 && R > G * 2 && R > B * 2, JSON.stringify(r.mid));
     check('中立（5）の線は実線', r.neutral.every(a => a > 0), JSON.stringify(r.neutral));
+    await p.evaluate(() => AH._.setF0Shown(true));
     await p.close();
   }
 

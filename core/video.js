@@ -14,6 +14,7 @@
     video.src = URL.createObjectURL(f);
     video.hidden = false; $('empty').hidden = true;
     S.meta.video_file = f.name; S.meta.participant = $('pid').value.trim();
+    if (_.loadF0) _.loadF0(f);   // 動画の音声の F0 を計算しておく（表示しないときも。設定でいつでも出せるように）
     video.addEventListener('loadedmetadata', () => {
       S.meta.duration = video.duration;
       S.meta.range = null;

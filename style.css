@@ -5,11 +5,11 @@
 /* ==================== 共通 ==================== */
 :root{
   --bg:#EEF1F3; --panel:#FFFFFF; --ink:#1D2630; --muted:#66727F; --line:#D5DBE0;
-  --val:#1F7A8C; --aro:#A86B12; --head:#1D2630; --grid:#E3E7EA; --pen:#C0392B; --hit:#2E9E5B;
+  --val:#1F7A8C; --aro:#A86B12; --f0:#6B4FA0; --head:#1D2630; --grid:#E3E7EA; --pen:#C0392B; --hit:#2E9E5B;
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
-    --val:#4FB3C6; --aro:#E0A64A; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E; }
+    --val:#4FB3C6; --aro:#E0A64A; --f0:#B39DDB; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E; }
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -63,6 +63,13 @@ body[data-side=narrow]{--side:240px} body[data-side=wide]{--side:340px}
 .tl{grid-area:tl;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px}
 #tl{width:100%;height:150px;display:block;cursor:pointer}
 body.noTl .tl{display:none}
+body.f0 #tl{height:206px}
+/* 今の F0（ツールの列の上） */
+.f0Now{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 10px;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.f0Now .f0Lab{font-size:12px;color:var(--muted)}
+.f0Now b{min-width:6.5em;color:var(--f0);font-size:15px}
+.f0Meter{flex:1;height:8px;border-radius:4px;background:var(--grid);overflow:hidden}
+.f0Meter span{display:block;height:100%;width:0;background:var(--f0);border-radius:4px}
 .time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
 
 /* 動画を別の場所（別ウィンドウ・小窓）で表示中：動画欄を外し、ツールに画面を使う */

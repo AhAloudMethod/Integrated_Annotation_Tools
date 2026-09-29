@@ -65,6 +65,12 @@
       }
       out('_bins.csv', [...binHead, 'n_changes', 'sum_d_valence', 'sum_d_arousal'], rows);
     }
+    if (_.F0 && _.F0.status === 'ready') {   // 動画の音声の F0（10ms ごと。t は窓の中心、声なしは空欄）
+      const F = _.F0, rows = [];
+      for (let k = 0; k < F.f0.length; k++) rows.push([(k * F.hop + 0.02).toFixed(3), F.f0[k] > 0 ? F.f0[k].toFixed(1) : '', F.rms[k].toFixed(5)]);
+      out('_f0.csv', ['t', 'f0_hz', 'rms'], rows);
+    }
+    S.meta.f0 = { shown: !!(_.f0Shown && _.f0Shown()), method: 'YIN 16kHz win=40ms hop=10ms 70-1000Hz th=0.15' };
     out('_events.csv', ['wall_ms', 'video_t', 'type', 'axis', 'value', 'detail'], S.log.map(e => [e.wall_ms, e.video_t, e.type, e.axis, e.value, e.detail]));
     download(base + '_session.json', JSON.stringify({ meta: S.meta, data: S.data, log: S.log }, null, 1), 'application/json');
     $('status').textContent = `書き出しました（${files.length + 1}ファイル）`;
