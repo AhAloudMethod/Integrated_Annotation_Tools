@@ -114,6 +114,47 @@ const FAKE = () => {
     await p.close();
   }
 
+  // 7. 「◯秒」と言うとその時刻に入る
+  {
+    const p = await open('key');
+    const c = await p.evaluate(() => {
+      const P = AH._.parseVoice;
+      return { a: P('12秒 快度7'), b: P('1分5秒 7 3'), c: P('十二秒、覚醒度三'), d: P('5秒 7 3'), e: P('2.5秒 快度4'), f: P('２分 快度６'), g: P('快度7') };
+    });
+    const eq = (o, e) => JSON.stringify(o) === JSON.stringify(e);
+    check('「12秒 快度7」', eq(c.a, { time: 12, v: 7 }), JSON.stringify(c.a));
+    check('「1分5秒 7 3」', eq(c.b, { time: 65, v: 7, a: 3 }), JSON.stringify(c.b));
+    check('漢数字「十二秒、覚醒度三」', eq(c.c, { time: 12, a: 3 }), JSON.stringify(c.c));
+    check('時刻の数字は値に数えない「5秒 7 3」', eq(c.d, { time: 5, v: 7, a: 3 }), JSON.stringify(c.d));
+    check('小数・全角「2.5秒」「２分」', eq(c.e, { time: 2.5, v: 4 }) && eq(c.f, { time: 120, v: 6 }), JSON.stringify([c.e, c.f]));
+    check('時刻を言わなければ time なし', eq(c.g, { v: 7 }), JSON.stringify(c.g));
+
+    // カウントダウン表記（既定）：「3秒」＝残り3秒の区間の始め（12秒の動画なら 8 秒）
+    await p.click('#voiceBtn');
+    await p.evaluate(() => AH.seekTo(1)); await p.waitForTimeout(150);
+    await say(p, '3秒 快度7', true);
+    const cd = await p.evaluate(() => AH.S.data.points.v.map(x => [x.t, x.val]));
+    // 経過表記：「3秒」＝評価区間の開始から3秒
+    await p.evaluate(() => { AH.S.meta.range = { start: 2, count: 10, bin: 1, label: 'elapsed' }; });
+    await say(p, '3秒 覚醒度2', true);
+    const el = await p.evaluate(() => AH.S.data.points.a.map(x => [x.t, x.val]));
+    // 評価区間の外の時刻は入らない
+    await say(p, '30秒 快度1', true);
+    const out = await p.evaluate(() => ({ n: AH.S.data.points.v.length, hint: document.getElementById('hint').textContent }));
+    check('カウントダウン表記：残り3秒 → 動画の8秒', JSON.stringify(cd) === '[[0,5],[8,7]]', JSON.stringify(cd));
+    check('経過表記：開始2秒＋3秒 → 動画の5秒', JSON.stringify(el) === '[[0,5],[5,2]]', JSON.stringify(el));
+    check('言った時刻が評価区間の外なら入らない', out.n === 2 && /評価区間の外/.test(out.hint), JSON.stringify(out));
+    await p.close();
+  }
+  {
+    const p = await open('affectgrid');
+    await p.click('#voiceBtn'); await p.evaluate(() => AH.seekTo(0.5)); await p.waitForTimeout(150);
+    await say(p, '10秒 8 2', true);                                 // カウントダウン残り10秒 → 区間1
+    const r = await p.evaluate(() => [AH.S.data.cells.v[1], AH.S.data.cells.a[1], AH.S.data.cells.v.filter(x => x != null).length]);
+    check('区間の方式：言った時刻の区間に入る', r.join() === '8,2,1', r.join());
+    await p.close();
+  }
+
   // 6. 音声認識がないブラウザ（Firefox 系）ではボタンを無効にする
   {
     const c2 = await browser.newContext(); await c2.addInitScript(() => { delete window.SpeechRecognition; delete window.webkitSpeechRecognition; });

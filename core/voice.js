@@ -1,6 +1,8 @@
 // 声で値を入力する（Web Speech API。Chrome・Edge。Firefox 系は非対応）
 // 「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸の方式では数字1つでも入る。
 // 「再生」「停止」でも操作できる。値は話し始めた時刻（最初の途中結果が届いた時点の動画時刻）に入れる。
+// 「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入れる。時刻は評価区間の「列の表記」と同じ読み方
+// （カウントダウン＝残り秒、経過＝評価区間の開始からの秒）。
 (() => {
   const _ = AH._;
   const { $, video, S, addLog, pushUndo, snapshot, placePoint, binAt, nSec, clamp } = _;
@@ -11,11 +13,29 @@
   const READ = { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9 };
   const AXIS_V = /(快度|かいど|カイド|快|かい|valence|バレンス)/i;
   const AXIS_A = /(覚醒度|かくせいど|カクセイド|覚醒|かくせい|arousal|アローザル)/i;
+  // 漢数字の並び（「十二」「二十三」「百五」など）を数にする
+  function kanjiNum(k) {
+    let total = 0, cur = 0;
+    for (const c of k) {
+      if (c === '百') { total += (cur || 1) * 100; cur = 0; }
+      else if (c === '十') { total += (cur || 1) * 10; cur = 0; }
+      else cur = cur * 10 + KANJI[c];
+    }
+    return total + cur;
+  }
   function normalize(text) {
     return String(text)
-      .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-      .replace(/[〇零一二三四五六七八九]/g, c => String(KANJI[c]))
-      .replace(/[、。,.]/g, ' ');
+      .replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)))
+      .replace(/[〇零一二三四五六七八九十百]+/g, kanjiNum)
+      .replace(/(?<![0-9])\.|\.(?![0-9])/g, ' ')   // 小数点以外の「.」は区切り
+      .replace(/[、。,]/g, ' ');
+  }
+  // 「◯分◯秒」「◯秒」「◯分」を秒数にする。見つからなければ null
+  const TIME_RE = /(?:([0-9]+)\s*分\s*)?([0-9]+(?:\.[0-9]+)?)\s*秒|([0-9]+)\s*分(?!\s*[0-9])/;
+  function spokenTime(s) {
+    const m = s.match(TIME_RE); if (!m) return null;
+    const sec = m[3] != null ? +m[3] * 60 : (+(m[1] || 0)) * 60 + +m[2];
+    return { sec, rest: s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length) };
   }
   // 数字として読める語（数字1文字、または読み仮名）を返す。1〜9 以外は null
   function num(tok) {
@@ -25,8 +45,10 @@
     return null;
   }
   function parseVoice(text, { oneAxis = null } = {}) {
-    const s = normalize(text);
+    let s = normalize(text);
     const out = {};
+    const tm = spokenTime(s);
+    if (tm) { out.time = tm.sec; s = tm.rest; }   // 時刻の部分は値の数字として数えない
     if (/(再生|さいせい|スタート)/.test(s)) out.cmd = 'play';
     else if (/(停止|ていし|ストップ|止めて|とめて)/.test(s)) out.cmd = 'pause';
     // 「軸の語＋数字」を順に拾う（軸の語は長いものから当てる）
@@ -56,11 +78,22 @@
     if (_.M.id === 'custom' && (o.dims === 'v' || o.dims === 'a')) return o.dims;
     return null;
   }
+  // 言われた秒数（列の表記と同じ読み方）を動画の時刻にする
+  function videoTimeOf(sec) {
+    const r = _.RG();
+    if (r.label === 'elapsed') return r.start + sec;
+    const s = nSec() - 1 - Math.round(sec / r.bin);   // カウントダウン：残り sec 秒の区間
+    return _.binStart(s);
+  }
   function applyVoice(p, t, text) {
+    if (p.time != null) t = videoTimeOf(p.time);
     const vals = {}; for (const ax of ['v', 'a']) if (p[ax] != null) vals[ax] = p[ax];
     const one = oneAxis(); if (one) for (const ax of Object.keys(vals)) if (ax !== one) delete vals[ax];
     const label = Object.entries(vals).map(([ax, v]) => (ax === 'v' ? '快度' : '覚醒度') + v).join(' ');
     addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +t.toFixed(4) }) });
+    if (p.time != null && (t < _.RG().start - 1e-6 || t >= _.rangeEnd() - 1e-6)) {
+      toast(`「${p.time}秒」は評価区間の外です（声の入力）`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
+    }
     if (p.cmd === 'play' && video.src && video.paused) video.play();
     if (p.cmd === 'pause' && !video.paused) video.pause();
     if (!Object.keys(vals).length) { if (!p.cmd) toast(`聞き取り：「${text}」（値として読めませんでした）`, 'warn'); return false; }
@@ -76,7 +109,7 @@
       if (ch) { pushUndo(before); addLog('voice_input', { axis: Object.keys(vals).join(''), value: Object.values(vals).join('/'), detail: 't=' + t.toFixed(4) }); }
       _.refresh();
     }
-    toast(`聞き取り：${label}（${_.fmt(t)}）`);
+    toast(`聞き取り：${label}（${p.time != null ? `「${p.time}秒」→ 動画の ` : ''}${_.fmt(t)}）`);
     return true;
   }
 
