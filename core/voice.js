@@ -43,8 +43,8 @@
     return unalias(String(text).replace(/([^\s0-9０-９])[\s　]+(?=[^\s0-9０-９])/g, '$1'))
       .replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)))
       .replace(/[〇零一二三四五六七八九十百]+/g, kanjiNum)
-      // 「秒」「分」の前の読み仮名の数字（Vosk は「さん 秒」のように出す）
-      .replace(/(きゅう|いち|さん|よん|ろく|なな|しち|はち|じゅう|に|し|ご|く)(?=\s*[秒分])/g, w => String({ いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9, じゅう: 10 }[w]))
+      // 「秒」「分」の前の読み仮名の数字（Vosk は「さん 秒」のように出す）。直前が「二十」などの十の位なら足す（「二 十 よん 秒」→ 24秒）
+      .replace(/([1-9]0)?(きゅう|いち|さん|よん|ろく|なな|しち|はち|じゅう|に|し|ご|く)(?=\s*[秒分])/g, (_m, tens, w) => String((+tens || 0) + { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9, じゅう: 10 }[w]))
       .replace(/(?<![0-9])\.|\.(?![0-9])/g, ' ')   // 小数点以外の「.」は区切り
       .replace(/[、。,]/g, ' ');
   }
@@ -67,6 +67,7 @@
     const out = {};
     const tm = spokenTime(s);
     if (tm) { out.time = tm.sec; s = tm.rest; }   // 時刻の部分は値の数字として数えない
+    else if (/[秒]/.test(s)) out.timeMissing = true;   // 「秒」は聞こえたが数字が聞き取れなかった（値を入れない）
     if (/(再生|さいせい|スタート)/.test(s)) out.cmd = 'play';
     else if (/(停止|ていし|ストップ|止めて|とめて)/.test(s)) out.cmd = 'pause';
     // 「軸の語＋数字」を順に拾う（軸の語は長いものから当てる）
@@ -119,6 +120,10 @@
     const label = Object.entries(vals).map(([ax, v]) => (ax === 'v' ? '快度' : '覚醒度') + v).join(' ');
     // t_heard＝話し始めた動画時刻、t_target＝値を入れる動画時刻（時刻を言ったときはその時刻）
     addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +tHeard.toFixed(4), t_target: +t.toFixed(4), alts }) });
+    if (p.timeMissing && Object.keys(vals).length) {   // 時刻を言ったのに数字が落ちた：話し始めの時刻に入れると間違った位置に入るので入れない
+      toast(`「${text.trim()}」：時刻が聞き取れませんでした。もう一度言ってください（値は入れていません）`, 'warn');
+      addLog('voice_time_missing', { detail: text }); return false;
+    }
     if (p.time != null && (t < _.RG().start - 1e-6 || t >= _.rangeEnd() - 1e-6)) {
       toast(`「${p.time}秒」は評価区間の外です（声の入力）`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
     }
@@ -194,9 +199,12 @@
 
   // ---- Vosk（vendor/vosk.js。モデルは初回に選んでブラウザに保存） ----
   // 聞き取る語を限定するときの語の一覧（モデルの単語に合わせる）。[unk] はそれ以外の語
+  // 数は 1〜99 を1語として入れる（モデルは「二十四」「十二」を1語で持つ。十の位と一の位に分けると「二 十 よん」と崩れる）
+  const KD = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const kanji = n => (n < 10 ? KD[n - 1] : (n >= 20 ? KD[Math.floor(n / 10) - 1] : '') + '十' + (n % 10 ? KD[n % 10 - 1] : ''));
   const VOSK_WORDS = ['快', '覚醒',   // 「快度」「覚醒度」はモデルの単語にないので「快＋度」「覚醒＋度」で聞き取る
-    '度', '秒', '分', '十', '再生', '停止',
-    '一', '二', '三', '四', '五', '六', '七', '八', '九', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+    '度', '秒', '分', '再生', '停止',
+    ...Array.from({ length: 99 }, (_x, i) => kanji(i + 1)), 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
   const grammar = () => JSON.stringify([...VOSK_WORDS, '[unk]']);
   let voskLib = null;
   function loadVoskLib() {
@@ -348,5 +356,5 @@
   syncVoiceUI(); refreshModelStatus();
 
   showHist();
-  Object.assign(_, { parseVoice, applyVoice, setVoice: setOn, setVoiceEngine: setEngine, voiceFinal: final, voicePartial: partial, voskGetModel: () => (modelFile ? getVoskModel() : null) });
+  Object.assign(_, { voskWords: () => VOSK_WORDS.slice(), parseVoice, applyVoice, setVoice: setOn, setVoiceEngine: setEngine, voiceFinal: final, voicePartial: partial, voskGetModel: () => (modelFile ? getVoskModel() : null) });
 })();

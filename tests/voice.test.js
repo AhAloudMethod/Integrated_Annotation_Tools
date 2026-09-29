@@ -120,9 +120,12 @@ const FAKE = () => {
     const p = await open('key');
     const c = await p.evaluate(() => {
       const P = AH._.parseVoice;
-      return { kana: P('さん 秒 覚醒 度 二'), kana2: P('じゅう 秒 快 度 に'), a: P('12秒 快度7'), b: P('1分5秒 7 3'), c: P('十二秒、覚醒度三'), d: P('5秒 7 3'), e: P('2.5秒 快度4'), f: P('２分 快度６'), g: P('快度7') };
+      return { v24: P('二十四 秒 快 度 三'), split: P('二 十 よん 秒 快 度 さん'), miss: P(' 秒 快 度 さん'), words: AH._.voskWords(), kana: P('さん 秒 覚醒 度 二'), kana2: P('じゅう 秒 快 度 に'), a: P('12秒 快度7'), b: P('1分5秒 7 3'), c: P('十二秒、覚醒度三'), d: P('5秒 7 3'), e: P('2.5秒 快度4'), f: P('２分 快度６'), g: P('快度7') };
     });
     const eq = (o, e) => JSON.stringify(o) === JSON.stringify(e);
+    check('Vosk の出力「二十四 秒 快 度 三」「二 十 よん 秒 快 度 さん」→ 24秒', eq(c.v24, { time: 24, v: 3 }) && eq(c.split, { time: 24, v: 3 }), JSON.stringify([c.v24, c.split]));
+    check('「秒」の数字が落ちたら timeMissing', eq(c.miss, { timeMissing: true, v: 3 }), JSON.stringify(c.miss));
+    check('Vosk の聞き取る語に 1〜99 の数がある', ['二十四', '十二', '九十九', '十'].every(w => c.words.includes(w)) && !c.words.includes('快度'), c.words.length + '語');
     check('Vosk の出力「さん 秒 覚醒 度 二」「じゅう 秒 快 度 に」', eq(c.kana, { time: 3, a: 2 }) && eq(c.kana2, { time: 10, v: 2 }), JSON.stringify([c.kana, c.kana2]));
     check('「12秒 快度7」', eq(c.a, { time: 12, v: 7 }), JSON.stringify(c.a));
     check('「1分5秒 7 3」', eq(c.b, { time: 65, v: 7, a: 3 }), JSON.stringify(c.b));
@@ -154,6 +157,16 @@ const FAKE = () => {
     await say(p, '10秒 8 2', true);                                 // カウントダウン残り10秒 → 区間1
     const r = await p.evaluate(() => [AH.S.data.cells.v[1], AH.S.data.cells.a[1], AH.S.data.cells.v.filter(x => x != null).length]);
     check('区間の方式：言った時刻の区間に入る', r.join() === '8,2,1', r.join());
+    await p.close();
+  }
+
+  // 時刻の数字が落ちた発話は値を入れない（話し始めの時刻に入ると間違った位置になるため）
+  {
+    const p = await open('key');
+    await p.click('#voiceBtn'); await p.evaluate(() => AH.seekTo(4)); await p.waitForTimeout(150);
+    await say(p, ' 秒 快 度 さん', true);
+    const r = await p.evaluate(() => ({ n: AH.S.data.points.v.length, hint: document.getElementById('hint').textContent, log: AH.S.log.some(l => l.type === 'voice_time_missing') }));
+    check('時刻の数字が落ちたら値を入れず案内する', r.n === 1 && /時刻が聞き取れません/.test(r.hint) && r.log, JSON.stringify(r));
     await p.close();
   }
 
