@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, '..');
 const files = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-    if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+    if (e.name === 'node_modules' || e.name === 'vendor' || e.name === 'models' || e.name.startsWith('.')) continue;   // vendor は外部ライブラリ
     const p = path.join(d, e.name);
     if (e.isDirectory()) walk(p); else if (e.name.endsWith('.js')) files.push(p);
   }

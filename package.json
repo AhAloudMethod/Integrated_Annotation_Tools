@@ -1,12 +1,14 @@
 {
   "name": "ah-annotator",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "あアラウド アノテーション試作ツール（index.html をブラウザで直接開いて使う。ビルド不要）",
   "scripts": {
     "test": "node tests/run-all.js",
     "check": "node tests/check-syntax.js",
-    "fixture": "node tests/make-fixture.js"
+    "fixture": "node tests/make-fixture.js",
+    "vosk-model": "node tools/vosk-model.js",
+    "voice-fixture": "node tests/make-voice-fixture.js"
   },
   "devDependencies": {
     "playwright-core": "^1.63.0"

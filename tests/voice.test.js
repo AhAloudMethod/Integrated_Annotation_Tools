@@ -10,6 +10,7 @@ const FAKE = () => {
     start() { this.started = true; } stop() { this.started = false; }
   }
   window.SpeechRecognition = FakeRec;
+  try { localStorage.setItem('ahann_voice_engine', 'webspeech'); } catch (_) {}   // このテストは Chrome の音声認識を偽物で試す
   window.__say = (text, final = true) => {
     const r = window.__rec; if (!r || !r.started) return false;
     const idx = r.cur ?? r.results.length;
@@ -119,9 +120,10 @@ const FAKE = () => {
     const p = await open('key');
     const c = await p.evaluate(() => {
       const P = AH._.parseVoice;
-      return { a: P('12秒 快度7'), b: P('1分5秒 7 3'), c: P('十二秒、覚醒度三'), d: P('5秒 7 3'), e: P('2.5秒 快度4'), f: P('２分 快度６'), g: P('快度7') };
+      return { kana: P('さん 秒 覚醒 度 二'), kana2: P('じゅう 秒 快 度 に'), a: P('12秒 快度7'), b: P('1分5秒 7 3'), c: P('十二秒、覚醒度三'), d: P('5秒 7 3'), e: P('2.5秒 快度4'), f: P('２分 快度６'), g: P('快度7') };
     });
     const eq = (o, e) => JSON.stringify(o) === JSON.stringify(e);
+    check('Vosk の出力「さん 秒 覚醒 度 二」「じゅう 秒 快 度 に」', eq(c.kana, { time: 3, a: 2 }) && eq(c.kana2, { time: 10, v: 2 }), JSON.stringify([c.kana, c.kana2]));
     check('「12秒 快度7」', eq(c.a, { time: 12, v: 7 }), JSON.stringify(c.a));
     check('「1分5秒 7 3」', eq(c.b, { time: 65, v: 7, a: 3 }), JSON.stringify(c.b));
     check('漢数字「十二秒、覚醒度三」', eq(c.c, { time: 12, a: 3 }), JSON.stringify(c.c));
@@ -182,12 +184,27 @@ const FAKE = () => {
     await p.close();
   }
 
-  // 6. 音声認識がないブラウザ（Firefox 系）ではボタンを無効にする
+  // 6. Chrome の音声認識がないブラウザ（Firefox 系）：ボタンは使え、認識は Vosk になる（Chrome の音声認識は選べない）
   {
-    const c2 = await browser.newContext(); await c2.addInitScript(() => { delete window.SpeechRecognition; delete window.webkitSpeechRecognition; });
+    const c2 = await browser.newContext(); await c2.addInitScript(() => { delete window.SpeechRecognition; delete window.webkitSpeechRecognition; localStorage.removeItem('ahann_voice_engine'); });
     const p = await c2.newPage(); await p.goto(URL);
-    check('音声認識がないブラウザではボタンが無効', await p.$eval('#voiceBtn', b => b.disabled));
+    const r = await p.evaluate(() => ({ btn: document.getElementById('voiceBtn').disabled, eng: document.getElementById('voiceEngine').value, ws: document.querySelector('#voiceEngine option[value=webspeech]').disabled, box: !document.getElementById('voskBox').hidden }));
+    check('Chrome の音声認識がないブラウザでは Vosk になる', !r.btn && r.eng === 'vosk' && r.ws && r.box, JSON.stringify(r));
+    // モデル未設定で音声をオンにすると案内してオフに戻る
+    await p.click('#voiceBtn'); await p.waitForTimeout(500);
+    const st = await p.evaluate(() => ({ on: document.getElementById('voiceBtn').classList.contains('on'), hint: document.getElementById('hint').textContent }));
+    check('Vosk のモデルが未設定なら案内してオフに戻る', !st.on && /モデルが未設定/.test(st.hint), JSON.stringify(st));
     await c2.close();
+  }
+  // 設定で認識エンジンを切り替えられ、保存される
+  {
+    const p = await open('key');
+    await p.click('#setBtn'); await p.selectOption('#voiceEngine', 'vosk');
+    const shown = await p.evaluate(() => !document.getElementById('voskBox').hidden);
+    const saved = await p.evaluate(() => localStorage.getItem('ahann_voice_engine'));
+    await p.selectOption('#voiceEngine', 'webspeech');
+    check('設定で認識エンジンを切り替えられる（Vosk の欄が出る）', shown && saved === 'vosk', JSON.stringify({ shown, saved }));
+    await p.close();
   }
 
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
