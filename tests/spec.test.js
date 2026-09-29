@@ -130,13 +130,20 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // ---- 6. グラフに快度と覚醒度の区切り線 ----
   {
     const p = await open('emujoy'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+    await p.evaluate(() => { AH.S.data.points.v[0].val = 9; AH.refresh(); });   // 記録の線を中立の線から離す
     const r = await p.evaluate(() => {
       const c = document.getElementById('tl'), d = devicePixelRatio || 1, h = c.clientHeight, y = Math.round(((h - 18) / 2) * d);
       const g = c.getContext('2d'), px = x => [...g.getImageData(Math.round(x * d), y, 1, 1).data];
       const above = [...g.getImageData(Math.round(20 * d), y - Math.round(4 * d), 1, 1).data];
-      return { at: px(20), mid: px(c.clientWidth / 3 + 3), above };
+      // 快度の欄の中立（5）の線：8px 続けて途切れない（点線ではない）。記録の線と重ならない位置（右端寄り）で見る
+      const y5 = Math.round((8 + ((h - 18) / 2 - 8 - 8) / 2) * d), x0 = Math.round((c.clientWidth - 60) * d);
+      const neutral = Array.from({ length: Math.round(8 * d) }, (_x, k) => g.getImageData(x0 + k, y5, 1, 1).data[3]);
+      return { at: px(20), mid: px(c.clientWidth / 3 + 3), above, neutral };
     });
+    const [R, G, B] = r.mid;
     check('グラフに区切り線がある', r.at[3] > 0 && r.mid[3] > 0 && r.above[3] === 0, JSON.stringify(r));
+    check('区切り線は赤', R > 150 && R > G * 2 && R > B * 2, JSON.stringify(r.mid));
+    check('中立（5）の線は実線', r.neutral.every(a => a > 0), JSON.stringify(r.neutral));
     await p.close();
   }
 

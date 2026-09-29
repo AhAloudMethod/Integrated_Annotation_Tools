@@ -41,14 +41,14 @@
     }
     // 快度と覚醒度の欄の区切り線
     const yDiv = Math.round((G.lanes[0].y1 + G.lanes[1].y0) / 2) + 0.5;
-    g.strokeStyle = css('--muted'); g.lineWidth = 1; g.globalAlpha = 0.7;
-    g.beginPath(); g.moveTo(0, yDiv); g.lineTo(w, yDiv); g.stroke(); g.globalAlpha = 1;
+    g.strokeStyle = css('--pen'); g.lineWidth = 1.5;   // 赤
+    g.beginPath(); g.moveTo(0, yDiv); g.lineTo(w, yDiv); g.stroke();
     for (const L of G.lanes) {
       g.fillStyle = css('--muted'); g.fillText(L.name, 2, L.y0 + 10);
       if (!(_.M && _.M.unbounded)) {
         g.fillText('5', PAD_L - 12, L.yOf(5) + 4);
-        g.strokeStyle = css('--line'); g.setLineDash([3, 3]); g.lineWidth = 1;
-        g.beginPath(); g.moveTo(PAD_L, L.yOf(5)); g.lineTo(w - PAD_R, L.yOf(5)); g.stroke(); g.setLineDash([]);
+        g.strokeStyle = css('--line'); g.lineWidth = 1;   // 中立（5）の線は実線
+        g.beginPath(); g.moveTo(PAD_L, L.yOf(5)); g.lineTo(w - PAD_R, L.yOf(5)); g.stroke();
       }
       if (!D || !S.data) continue;
       g.strokeStyle = L.col; g.fillStyle = L.col; g.lineWidth = 2;
