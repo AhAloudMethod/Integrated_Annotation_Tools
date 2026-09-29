@@ -39,7 +39,7 @@
       ps.forEach((p, i) => { const nx = i + 1 < ps.length ? ps[i + 1].t : t; if (!i) g.moveTo(X(p.t), Y(p.val)); else g.lineTo(X(p.t), Y(p.val)); g.lineTo(X(nx), Y(p.val)); });
       g.stroke();
       g.fillStyle = AH.isWriting() ? AH.css('--pen') : AH.css('--ink'); g.beginPath(); g.arc(X(t), Y(ctrl), 5, 0, 7); g.fill();
-      g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.fillText(ax() === 'v' ? '快度（相対）' : '覚醒度（相対）', P + 4, P + 14);
+      g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.fillText(AH.ax(ax()).name + '（相対）', P + 4, P + 14);
     },
   });
 })();

@@ -33,7 +33,7 @@
   const stored = t => ({ v: AH.valueAt('v', t), a: AH.valueAt('a', t) });
   const shown = t => (pen.down ? { v: pen.v, a: pen.a } : stored(t));
   function nowRow(parent) {
-    const r = h('div', { class: 'nowRow' }, '<span class="v">快度 <b>5.00</b></span><span class="a">覚醒度 <b>5.00</b></span>');
+    const r = h('div', { class: 'nowRow' }, `<span class="v">${AH.ax('v').short} <b>5.00</b></span><span class="a">${AH.ax('a').short} <b>5.00</b></span>`);
     parent.appendChild(r);
     const f = x => (x == null || isNaN(x) ? '–' : (+x).toFixed(2));
     return c => { const b = r.querySelectorAll('b'); b[0].textContent = f(c.v); b[1].textContent = f(c.a); };
@@ -79,9 +79,10 @@
     g.moveTo(q.X(5), q.y0); g.lineTo(q.X(5), q.y0 + q.s); g.moveTo(q.x0, q.Y(5)); g.lineTo(q.x0 + q.s, q.Y(5)); g.stroke(); g.setLineDash([]);
     if (labels) {
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif';
-      g.textAlign = 'center'; g.fillText('覚醒', q.X(5), q.y0 - 7); g.fillText('眠気', q.X(5), q.y0 + q.s + 14);
-      g.textAlign = 'left'; g.fillText('不快', q.x0, q.y0 + q.s + 14);
-      g.textAlign = 'right'; g.fillText('快', q.x0 + q.s, q.y0 + q.s + 14); g.textAlign = 'left';
+      const V = AH.ax('v'), A = AH.ax('a');
+      g.textAlign = 'center'; g.fillText(A.hi, q.X(5), q.y0 - 7); g.fillText(A.lo, q.X(5), q.y0 + q.s + 14);
+      g.textAlign = 'left'; g.fillText(V.lo, q.x0, q.y0 + q.s + 14);
+      g.textAlign = 'right'; g.fillText(V.hi, q.x0 + q.s, q.y0 + q.s + 14); g.textAlign = 'left';
     }
     return q;
   }
@@ -190,8 +191,8 @@
   // 1軸ずつ2回に分けて評価する方式（CARMA・RankTrace）の「評価する軸」の切り替え
   function passSelector(parent) {
     const box = h('div', { class: 'opts pass' }, '評価する軸：');
-    for (const [ax, name] of [['v', '快度'], ['a', '覚醒度']]) {
-      const l = h('label', {}, `<input type="radio" name="pass" value="${ax}"> ${name}`), r = l.querySelector('input');
+    for (const ax of ['v', 'a']) {
+      const l = h('label', {}, `<input type="radio" name="pass" value="${ax}"> ${AH.ax(ax).name}`), r = l.querySelector('input');
       r.checked = opts().axis === ax;
       r.addEventListener('change', () => { AH.setArmed(false); AH.setOption('axis', ax); r.blur(); });
       box.appendChild(l);

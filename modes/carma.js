@@ -31,7 +31,7 @@
       const w = c.clientWidth, H = c.clientHeight, x = w / 2, y0 = 30, y1 = H - 30, Y = v => y1 - (v - 1) / 8 * (y1 - y0);
       const isV = ax() === 'v', col = AH.css(isV ? '--val' : '--aro');
       g.clearRect(0, 0, w, H); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = AH.css('--muted');
-      g.fillText(isV ? '快' : '覚醒', x, 18); g.fillText(isV ? '不快' : '眠気', x, H - 8);
+      const L = AH.ax(ax()); g.fillText(L.hi, x, 18); g.fillText(L.lo, x, H - 8);
       g.strokeStyle = AH.css('--line'); g.lineWidth = 6; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke();
       g.lineWidth = 1; g.textAlign = 'right';
       for (let i = 1; i <= 9; i++) { g.beginPath(); g.moveTo(x - 14, Y(i)); g.lineTo(x - 6, Y(i)); g.stroke(); g.fillText(i, x - 18, Y(i) + 4); }

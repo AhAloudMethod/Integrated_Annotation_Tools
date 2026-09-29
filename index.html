@@ -42,6 +42,9 @@
     <button id="setBtn" title="表示と再生の設定">設定</button>
     <div id="setPanel" class="rgPanel right setPanel" hidden>
       <section class="setCol">
+        <div class="refTitle">評価の軸</div>
+        <select id="axesSel" aria-label="評価の軸"></select>
+        <p class="muted">軸の名前・両端のラベル・書き出しの列名・声の語が変わります（値の持ち方は同じ）。SAM・Affect Grid・FEELTRACE・AffectRank は VA のまま。</p>
         <div class="refTitle">表示・再生</div>
         <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
         <label>再生速度 <select id="rate"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
@@ -121,6 +124,7 @@
 <!-- 共通部分（core/）：読み込み順に依存する。最初が state.js、最後が init.js（公開 API AH.* を作る） -->
 <script src="core/state.js"></script>
 <script src="core/draw.js"></script>
+<script src="core/axes.js"></script>
 <script src="core/range.js"></script>
 <script src="core/series.js"></script>
 <script src="core/stroke.js"></script>

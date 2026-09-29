@@ -23,7 +23,7 @@
     S, pen, video, init, register, refresh, remount, addLog, pushUndo, snapshot, css, fitCanvas, fmt, clamp, r2,
     vt, valueAt, placePoint, deletePointBefore, penDown, penMove, penUp, setArmed, endStroke, isWriting: () => !!_.stroke,
     nSec, curSec, inputSec, binStart, secLabel, rangeSig, inRange, setCell, setCells, addEvent, deleteEventBefore, seekTo, togglePlay, setOption,
-    gamepad, quadColor, gradColor, intensity, rgba, hasVideo: () => !!video.src,
+    gamepad, quadColor, gradColor, intensity, rgba, hasVideo: () => !!video.src, ax: k => _.ax(k), relabel: t => _.relabel(t),
   });
   Object.defineProperty(AH, 'mode', { get() { return _.M; }, enumerable: true });
 })();

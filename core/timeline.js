@@ -10,8 +10,8 @@
     const tOf = x => clamp((x - PAD_L) / (w - PAD_L - PAD_R), 0, 1) * D;
     // F0 を表示するときは、下に F0 の欄（FH px）を足す
     const FH = _.f0Shown && _.f0Shown() && video.src ? 56 : 0, H2 = h - RULER - FH;
-    const lanes = [{ ax: 'v', name: '快度', col: css('--val'), y0: 8, y1: H2 / 2 - 8 },
-                   { ax: 'a', name: '覚醒度', col: css('--aro'), y0: H2 / 2 + 8, y1: H2 - 8 }];
+    const lanes = [{ ax: 'v', name: _.ax('v').short, col: css('--val'), y0: 8, y1: H2 / 2 - 8 },
+                   { ax: 'a', name: _.ax('a').short, col: css('--aro'), y0: H2 / 2 + 8, y1: H2 - 8 }];
     const f0Lane = FH ? { y0: H2 + 8, y1: h - RULER - 4, top: H2 } : null;
     for (const L of lanes) {
       L.lo = 1; L.hi = 9;
@@ -198,7 +198,7 @@
     if (_.M && S.data) {
       let st = '';
       if (model() === 'series') st = `書き込み ${S.data.strokes.length} 回`;
-      if (model() === 'table') st = `入力済み 快度 ${S.data.cells.v.filter(x => x != null).length}/${nSec()}・覚醒度 ${S.data.cells.a.filter(x => x != null).length}/${nSec()}`;
+      if (model() === 'table') st = `入力済み ${_.ax('v').short} ${S.data.cells.v.filter(x => x != null).length}/${nSec()}・${_.ax('a').short} ${S.data.cells.a.filter(x => x != null).length}/${nSec()}`;
       if (model() === 'events') st = `変化 ${S.data.events.length} 回`;
       $('status').textContent = video.src ? st + (_.stroke ? '（記録中）' : '') : '練習中（動画を開くと、練習の入力は消えて記録が始まります）';
       if (_.M.update) _.M.update(t);

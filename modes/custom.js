@@ -94,7 +94,7 @@
     sel('表現', 'rep', Object.entries(REPS));
     const inputs = nine(o().rep) || o().time === 'disc' ? [['mouse', 'マウス'], ['keyboard', 'キーボード（数字）']] : [['mouse', 'マウス'], ['keyboard', 'キーボード'], ['gamepad', 'ゲームパッド']];
     sel('入力', 'input', inputs);
-    sel('次元', 'dims', [['both', '2軸同時'], ['v', '快度のみ（1軸ずつの回）'], ['a', '覚醒度のみ（1軸ずつの回）']]);
+    sel('次元', 'dims', [['both', '2軸同時'], ['v', AH.ax('v').name + 'のみ（1軸ずつの回）'], ['a', AH.ax('a').name + 'のみ（1軸ずつの回）']]);
     if (o().rep === 'sliders' && o().time === 'cont') sel('尺度', 'scale', [['abs', '絶対（1〜9）'], ['rel', '相対（上下限なし）']]);
     box.appendChild(grid);
     const fb = h('div', { class: 'opts' }, 'フィードバック：');
@@ -157,7 +157,8 @@
   function drawSliders(t, cv) {
     const w = c.clientWidth, H = c.clientHeight; g.clearRect(0, 0, w, H);
     const y0 = 34, y1 = H - 40;
-    for (const [i, ax, name, hi, lo] of [[0, 'v', '快度', '快', '不快'], [1, 'a', '覚醒度', '覚醒', '眠気']]) {
+    for (const [i, ax] of [[0, 'v'], [1, 'a']]) {
+      const { name, hi, lo } = AH.ax(ax);
       const on = act().includes(ax), x = act().length === 1 ? (on ? w / 2 : -999) : w * (i ? 0.72 : 0.28);
       if (x < 0) continue;
       let lo_ = 1, hi_ = 9;
@@ -183,7 +184,8 @@
       g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
       g.setLineDash([3, 3]); g.beginPath(); g.moveTo(cx - R, cy); g.lineTo(cx + R, cy); g.moveTo(cx, cy - R); g.lineTo(cx, cy + R); g.stroke(); g.setLineDash([]);
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
-      g.fillText('覚醒', cx, cy - R - 8); g.fillText('眠気', cx, cy + R + 16); g.textAlign = 'right'; g.fillText('不快', cx - R - 4, cy + 4); g.textAlign = 'left'; g.fillText('快', cx + R + 4, cy + 4);
+      const V = AH.ax('v'), A = AH.ax('a');
+      g.fillText(A.hi, cx, cy - R - 8); g.fillText(A.lo, cx, cy + R + 16); g.textAlign = 'right'; g.fillText(V.lo, cx - R - 4, cy + 4); g.textAlign = 'left'; g.fillText(V.hi, cx + R + 4, cy + 4);
     } else if (o().rep === 'grid') {
       const s9 = (w - PAD * 2) / 9; g.clearRect(0, 0, w, w);
       for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) {
@@ -191,7 +193,8 @@
         g.strokeStyle = AH.css('--line'); g.lineWidth = (i === 4 || j === 4) ? 1.6 : 1; g.strokeRect(PAD + i * s9, PAD + j * s9, s9, s9);
       }
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
-      g.fillText('覚醒', w / 2, PAD - 8); g.fillText('眠気', w / 2, w - PAD + 16); g.textAlign = 'left'; g.fillText('不快', PAD, w - PAD + 16); g.textAlign = 'right'; g.fillText('快', w - PAD, w - PAD + 16); g.textAlign = 'left';
+      const V = AH.ax('v'), A = AH.ax('a');
+      g.fillText(A.hi, w / 2, PAD - 8); g.fillText(A.lo, w / 2, w - PAD + 16); g.textAlign = 'left'; g.fillText(V.lo, PAD, w - PAD + 16); g.textAlign = 'right'; g.fillText(V.hi, w - PAD, w - PAD + 16); g.textAlign = 'left';
       return;
     } else { const q = drawSquareFrame(g, c, PAD); X = q.X; Y = q.Y; }
     if (cv.v == null || cv.a == null) return;
@@ -236,9 +239,10 @@
         if (o().rep === 'sam') { const sb = h('div', { class: 'planeBox sam' }); rows = samRows(sb, (ax, i) => pointAction({ [ax]: i }), act()); panel.appendChild(sb); }
         else {
           rows = {};
-          for (const [ax, name] of [['v', '快度'], ['a', '覚醒度']]) {
+          for (const ax of ['v', 'a']) {
             if (!act().includes(ax)) continue;
-            const r = h('div', { class: 'axis ' + ax }, `<h2><span>${name}</span></h2><div class="keys"></div><div class="ends"><span>${ax === 'v' ? '不快' : '眠気'}</span><span>${ax === 'v' ? '快' : '覚醒'}</span></div>`);
+            const L = AH.ax(ax);
+            const r = h('div', { class: 'axis ' + ax }, `<h2><span>${L.name}</span></h2><div class="keys"></div><div class="ends"><span>${L.lo}</span><span>${L.hi}</span></div>`);
             const kc = r.querySelector('.keys');
             for (let i = 1; i <= 9; i++) kc.appendChild(h('button', { 'data-v': i, onclick: e => { pointAction({ [ax]: i }); e.currentTarget.blur(); } }, String(i)));
             box.appendChild(r); rows[ax] = kc;

@@ -26,8 +26,9 @@
     for (const [from, to] of ALIAS_LIST) s = s.split(from).join(to);
     return s;
   }
-  const AXIS_V = /(快度|かいど|カイド|快|かい|valence|バレンス)/i;
-  const AXIS_A = /(覚醒度|かくせいど|カクセイド|覚醒|かくせい|arousal|アローザル)/i;
+  // 軸の語は評価の軸の組（core/axes.js）から作る。VA では「快度」「覚醒度」、PANA では「ポジティブ」「ネガティブ」など
+  const esc = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const axisRe = k => new RegExp('(' + _.ax(k).words.slice().sort((x, y) => y.length - x.length).map(esc).join('|') + ')', 'i');
   // 漢数字の並び（「十二」「二十三」「百五」など）を数にする
   function kanjiNum(k) {
     let total = 0, cur = 0;
@@ -71,6 +72,7 @@
     if (/(再生|さいせい|スタート)/.test(s)) out.cmd = 'play';
     else if (/(停止|ていし|ストップ|止めて|とめて)/.test(s)) out.cmd = 'pause';
     // 「軸の語＋数字」を順に拾う（軸の語は長いものから当てる）
+    const AXIS_V = axisRe('v'), AXIS_A = axisRe('a');
     const re = new RegExp(`(${AXIS_A.source}|${AXIS_V.source})\\s*(は|が|を)?\\s*([1-9](?![0-9])|${Object.keys(READ).sort((x, y) => y.length - x.length).join('|')})`, 'gi');   // 長い読みを先に（「しち」を「し」と読まない）
     let m;
     while ((m = re.exec(s))) {
@@ -117,7 +119,7 @@
     if (p.time != null) t = videoTimeOf(p.time);
     const vals = {}; for (const ax of ['v', 'a']) if (p[ax] != null) vals[ax] = p[ax];
     const one = oneAxis(); if (one) for (const ax of Object.keys(vals)) if (ax !== one) delete vals[ax];
-    const label = Object.entries(vals).map(([ax, v]) => (ax === 'v' ? '快度' : '覚醒度') + v).join(' ');
+    const label = Object.entries(vals).map(([ax, v]) => _.ax(ax).short + v).join(' ');
     // t_heard＝話し始めた動画時刻、t_target＝値を入れる動画時刻（時刻を言ったときはその時刻）
     addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +tHeard.toFixed(4), t_target: +t.toFixed(4), alts }) });
     if (p.timeMissing && Object.keys(vals).length) {   // 時刻を言ったのに数字が落ちた：話し始めの時刻に入れると間違った位置に入るので入れない
@@ -217,7 +219,9 @@
   const VOSK_WORDS = ['快', '覚醒',   // 「快度」「覚醒度」はモデルの単語にないので「快＋度」「覚醒＋度」で聞き取る
     '度', '秒', '分', '再生', '停止',
     ...Array.from({ length: 99 }, (_x, i) => kanji(i + 1)), 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
-  const grammar = () => JSON.stringify([...VOSK_WORDS, '[unk]']);
+  // 評価の軸が VA 以外なら、その軸の語（モデルにある1語のもの）も聞き取る
+  const AXIS_VOSK = { pana: ['ポジティブ', 'ネガティブ', '正', '負', 'の', '感情', 'プラス', 'マイナス'], thayer: ['エネルギー', '活気', '緊張'] };
+  const grammar = () => JSON.stringify([...VOSK_WORDS, ...(AXIS_VOSK[_.axesCurrent()] || []), '[unk]']);
   let voskLib = null;
   function loadVoskLib() {
     if (window.Vosk) return Promise.resolve(window.Vosk);

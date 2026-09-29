@@ -9,7 +9,7 @@
     writeMode: () => 'hold', writeAxes: () => ['v', 'a'], sample: () => pen,
     help: '<p>再生中に平面上でボタンを押している間だけ記録され、その区間は前の記録を上書きします。押さずに再生すれば見直すだけです。一時停止中のクリックはその時刻に変化点を1つ置きます。</p>',
     mount({ panel }) {
-      ({ c } = planeCanvas(panel, '快度・覚醒度の平面')); now = nowRow(c.parentNode);
+      ({ c } = planeCanvas(panel, AH.ax('v').name + '・' + AH.ax('a').name + 'の平面')); now = nowRow(c.parentNode);
       const o = h('div', { class: 'opts' }); toggle(o, 'face', '顔'); toggle(o, 'tail', '軌跡'); c.parentNode.appendChild(o);
       bindHold(c, e => squareVal(c, e, PAD));
     },

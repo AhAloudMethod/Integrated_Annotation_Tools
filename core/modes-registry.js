@@ -8,7 +8,7 @@
     for (const el of ['panel', 'overlay', 'under']) $(el).innerHTML = '';
     $('stage').style.boxShadow = '';
     document.body.dataset.side = _.M.side || 'normal';
-    $('modeHelp').innerHTML = _.M.help || '';
+    $('modeHelp').innerHTML = _.relabel(_.M.help || '');
     _.M.mount({ panel: $('panel'), overlay: $('overlay'), under: $('under') });
     _.resize();
   }

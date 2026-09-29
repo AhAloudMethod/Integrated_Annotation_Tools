@@ -8,7 +8,8 @@
     sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
     const tb = h('table', { class: 'xl' });
     let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s }, AH.secLabel(s))); tb.appendChild(tr);
-    for (const [ax, name] of [['v', '快度(1:不快ー9:快)'], ['a', '覚醒度(1:眠気ー9:覚醒)']]) {
+    for (const ax of ['v', 'a']) {
+      const L = AH.ax(ax), name = `${L.name}(1:${L.lo}ー9:${L.hi})`;
       tr = h('tr', {}, `<th>${name}</th>`);
       for (let s = 0; s < n; s++) {
         const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: 'numeric', maxlength: '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
@@ -42,6 +43,7 @@
       const ref = h('div', { class: 'planeBox' }, '<div class="refTitle">ラベル・プロット表</div>');
       const t = h('table', { class: 'ref' }, '<tr><th>感情ラベル</th><th>覚醒度</th><th>快度</th></tr>' + LABELS.map(([l, a, v]) => `<tr><td>${l}</td><td>${a}</td><td>${v}</td></tr>`).join(''));
       ref.appendChild(t);
+      if (AH._.axesCurrent() !== 'va') t.hidden = true;   // 感情ラベルの表は VA のときだけ
       memo = h('textarea', { rows: '3', placeholder: '判断に迷ったなど何かあればメモ' });
       memo.addEventListener('change', () => { S.data.memo = memo.value; AH.addLog('memo', { detail: memo.value.length + ' chars' }); });
       ref.appendChild(memo); panel.appendChild(ref);
