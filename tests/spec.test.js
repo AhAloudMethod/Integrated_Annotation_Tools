@@ -1,6 +1,7 @@
 // 仕様追加の回帰（v0.5）：評価区間の終了・動画ごとの評価区間・記録オフの操作・RCEA・HaloLight・グラフの区切り・書き込み後の値・色の設定
 const { chromium } = require('playwright-core');
-const { URL, VID, BROWSER } = require('./_env');
+const fs = require('fs');
+const { URL, VID, BROWSER, out } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
 
 (async () => {
@@ -54,6 +55,10 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const log = await q.evaluate(() => AH.S.log.some(l => l.type === 'range_restore'));
     check('評価区間を動画に紐づけて覚える', a.start === 2 && a.count === 6 && JSON.stringify(b) === JSON.stringify(a) && shown.join() === '2,8', JSON.stringify({ a, b, shown }));
     check('参加者IDが違っても同じ動画なら同じ区間', JSON.stringify(c) === JSON.stringify(a) && log, JSON.stringify(c));
+    const renamed = out('renamed-video.mp4'); fs.copyFileSync(VID, renamed);   // ファイル名を変えた・移した同じ動画
+    await q.setInputFiles('#file', renamed); await q.waitForFunction(() => AH.S.meta.video_file === 'renamed-video.mp4'); await q.waitForTimeout(400);
+    const d = await range(q);
+    check('ファイル名を変えても同じ動画なら同じ区間', JSON.stringify(d) === JSON.stringify(a), JSON.stringify(d));
     await q.evaluate(() => localStorage.clear()); await q.close();
   }
 

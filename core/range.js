@@ -29,12 +29,21 @@
   // 列の表記：countdown＝動画内カウントダウンの残り（区間の数から逆算）、elapsed＝評価開始からの経過
   const secLabel = s => (RG().label === 'elapsed' ? fmtS(s * RG().bin) : fmtS((nSec() - 1 - s) * RG().bin));
   const rangeSig = () => JSON.stringify(RG());
-  // 評価区間は動画ごとに覚える（動画のファイル名で。参加者ID・入力方式が違っても共通）
+  // 評価区間は動画ごとに覚える（参加者ID・入力方式が違っても共通）。
+  // ファイル名に加えてファイルの大きさ＋長さでも覚え、名前を変えた・移した動画でも復元する（名前が優先）
   const rangeKey = file => 'ahann_range:' + file;
-  function loadRange(file) {
-    try { const r = JSON.parse(localStorage.getItem(rangeKey(file)) || 'null'); return r && r.count > 0 && r.bin > 0 ? r : null; } catch (_) { return null; }
+  const sigKey = sig => 'ahann_range_sig:' + sig;
+  function loadRange(file, sig) {
+    const get = k => { try { const r = JSON.parse(localStorage.getItem(k) || 'null'); return r && r.count > 0 && r.bin > 0 ? r : null; } catch (_) { return null; } };
+    return get(rangeKey(file)) || (sig ? get(sigKey(sig)) : null);
   }
-  function saveRange() { if (!S.meta.video_file) return; try { localStorage.setItem(rangeKey(S.meta.video_file), JSON.stringify(RG())); } catch (_) {} }
+  function saveRange() {
+    if (!S.meta.video_file) return;
+    try {
+      localStorage.setItem(rangeKey(S.meta.video_file), JSON.stringify(RG()));
+      if (S.videoSig) localStorage.setItem(sigKey(S.videoSig), JSON.stringify(RG()));
+    } catch (_) {}
+  }
   function setRange(r) {
     S.meta.range = { ...RG(), ...r };
     saveRange();

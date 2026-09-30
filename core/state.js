@@ -25,6 +25,7 @@ const AH = { _: {} };
     data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, events:[], memo:''}
     log: [], undo: [], t0: performance.now(), lastTime: 0,
     armed: false,
+    videoSig: '',   // 動画の見分け（ファイルの大きさ＋長さ）。ファイル名を変えても評価区間を復元するため
   };
   const emptyData = () => {
     const iv = _.M ? _.M.init : { v: 5, a: 5 };

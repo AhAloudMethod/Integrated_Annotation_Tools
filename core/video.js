@@ -12,15 +12,20 @@
     setArmed(false); pen.down = false;   // 練習中の記録オンも解除
     if (video.src) { endStroke('reload'); _.autosave(); URL.revokeObjectURL(video.src); }
     video.src = URL.createObjectURL(f);
+    S.videoSig = '';
     video.hidden = false; $('empty').hidden = true;
     S.meta.video_file = f.name; S.meta.participant = $('pid').value.trim();
     if (_.loadF0) _.loadF0(f);   // 動画の音声の F0 を計算しておく（表示しないときも。設定でいつでも出せるように）
     video.addEventListener('loadedmetadata', () => {
       S.meta.duration = video.duration;
       S.meta.range = null;
+      S.videoSig = `${f.size}:${video.duration.toFixed(2)}`;
       if (!_.tryRestore()) newSession(`${f.name} dur=${video.duration.toFixed(3)} mode=${S.meta.mode}`);
-      const saved = _.loadRange(f.name);   // この動画に覚えてある評価区間を使う
-      if (saved && JSON.stringify(saved) !== JSON.stringify(S.meta.range)) { S.meta.range = saved; addLog('range_restore', { detail: JSON.stringify(saved) }); }
+      const saved = _.loadRange(f.name, S.videoSig);   // この動画に覚えてある評価区間を使う（ファイル名を変えていても）
+      if (saved) {
+        if (JSON.stringify(saved) !== JSON.stringify(S.meta.range)) { S.meta.range = saved; addLog('range_restore', { detail: JSON.stringify(saved) }); }
+        _.saveRange();   // 今の名前でも覚え直す
+      }
       video.playbackRate = +$('rate').value;
       selectMode(S.meta.mode, true); syncRangeUI(); refresh();
     }, { once: true });
