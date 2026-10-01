@@ -126,6 +126,9 @@ const FAKE = () => {
     check('Vosk の出力「二十四 秒 快 度 三」「二 十 よん 秒 快 度 さん」→ 24秒', eq(c.v24, { time: 24, v: 3 }) && eq(c.split, { time: 24, v: 3 }), JSON.stringify([c.v24, c.split]));
     check('「秒」の数字が落ちたら timeMissing', eq(c.miss, { timeMissing: true, v: 3 }), JSON.stringify(c.miss));
     check('Vosk の聞き取る語に 1〜99 の数がある', ['二十四', '十二', '九十九', '十'].every(w => c.words.includes(w)) && !c.words.includes('快度'), c.words.length + '語');
+    const k2 = await p.evaluate(() => { const P = AH._.parseVoice; return [P('じゅう ご 秒 快 度 よん'), P('に じゅう よん 秒 覚醒 度 なな'), P('なな さん'), P('七 三'), P('一 分 じゅう 秒 七 三')]; });
+    check('Vosk の読み仮名の数「じゅう ご 秒」「に じゅう よん 秒」', eq(k2[0], { time: 15, v: 4 }) && eq(k2[1], { time: 24, a: 7 }), JSON.stringify(k2.slice(0, 2)));
+    check('Vosk の数だけの発話「なな さん」「七 三」「一 分 じゅう 秒 七 三」', eq(k2[2], { v: 7, a: 3 }) && eq(k2[3], { v: 7, a: 3 }) && eq(k2[4], { time: 70, v: 7, a: 3 }), JSON.stringify(k2.slice(2)));
     check('Vosk の出力「さん 秒 覚醒 度 二」「じゅう 秒 快 度 に」', eq(c.kana, { time: 3, a: 2 }) && eq(c.kana2, { time: 10, v: 2 }), JSON.stringify([c.kana, c.kana2]));
     check('「12秒 快度7」', eq(c.a, { time: 12, v: 7 }), JSON.stringify(c.a));
     check('「1分5秒 7 3」', eq(c.b, { time: 65, v: 7, a: 3 }), JSON.stringify(c.b));
@@ -149,6 +152,10 @@ const FAKE = () => {
     check('カウントダウン表記：残り3秒 → 動画の8秒', JSON.stringify(cd) === '[[0,5],[8,7]]', JSON.stringify(cd));
     check('経過表記：開始2秒＋3秒 → 動画の5秒', JSON.stringify(el) === '[[0,5],[5,2]]', JSON.stringify(el));
     check('言った時刻が評価区間の外なら入らない', out.n === 2 && /評価区間の外/.test(out.hint), JSON.stringify(out));
+    // 時刻だけを言って区切っても、続けて言った値をその時刻に入れる（次の値には持ち越さない）
+    await say(p, '4秒', true); await say(p, '快度6', true); await say(p, '快度3', true);
+    const carry = await p.evaluate(() => AH.S.data.points.v.map(x => [x.t, x.val]));
+    check('「4秒」→「快度6」は4秒に入り、次の「快度3」は今の時刻', JSON.stringify(carry) === '[[0,5],[1,3],[6,6],[8,7]]', JSON.stringify(carry));
     await p.close();
   }
   {

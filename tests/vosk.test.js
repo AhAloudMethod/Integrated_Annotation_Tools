@@ -30,7 +30,6 @@ const WAV = path.join(__dirname, 'fixtures', 'voice.wav');
     await p.waitForFunction(() => /保存済み|開いている間/.test(document.getElementById('voskModelStatus').textContent), null, { timeout: 60000 });
     await p.click('#voiceBtn');
     // 経路全体が動くこと：語を限定すると「快度、七」が t=0 に入る。限定なしは何かしら聞き取れる
-    // （2つ目の「三秒、覚醒度、二」は合成音声では「三」が落ちることがあるので、結果は情報として出すだけ）
     let ok = false;
     const cond = restrict ? () => AH.valueAt('v', 0) === 7 : () => AH.S.log.some(l => l.type === 'voice_heard');
     try { await p.waitForFunction(cond, null, { timeout: 120000, polling: 500 }); ok = true; } catch (_) {}
@@ -40,6 +39,8 @@ const WAV = path.join(__dirname, 'fixtures', 'voice.wav');
     const second = await p.evaluate(() => ({ a_at_7_9: AH.valueAt('a', 7.9), a_at_8_05: AH.valueAt('a', 8.05) }));
     check(`Vosk（${restrict ? '語を限定' : '限定なし'}）：マイクから聞き取って値が入る`, ok && !!ready, JSON.stringify({ ready, sec: ((Date.now() - t0) / 1000).toFixed(0) }));
     console.log(`info Vosk（${restrict ? '語を限定' : '限定なし'}）の聞き取り：${JSON.stringify(heard)}  2つ目（残り3秒＝動画8秒に覚醒度2）：${JSON.stringify(second)}`);
+    // 語を限定すると、「秒」の前で落ちた数も聞き直して拾う（以前は「秒 覚醒 度 二」となり入らなかった）
+    if (restrict) check('Vosk（語を限定）：2つ目「三秒、覚醒度、二」が残り3秒に入る', second.a_at_7_9 === 5 && second.a_at_8_05 === 2, JSON.stringify(second));
     // 保存したモデルは次に開いたときも使える（選び直さなくてよい）
     const p2 = await ctx.newPage(); await p2.goto(URL); await p2.waitForTimeout(500);
     const status = await p2.$eval('#voskModelStatus', e => e.textContent);

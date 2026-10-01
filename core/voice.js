@@ -30,6 +30,7 @@
   const esc = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const axisRe = k => new RegExp('(' + _.ax(k).words.slice().sort((x, y) => y.length - x.length).map(esc).join('|') + ')', 'i');
   // 漢数字の並び（「十二」「二十三」「百五」など）を数にする
+  const KANA_KANJI = { いち: '一', に: '二', さん: '三', よん: '四', し: '四', ご: '五', ろく: '六', なな: '七', しち: '七', はち: '八', きゅう: '九', く: '九', じゅう: '十' };
   function kanjiNum(k) {
     let total = 0, cur = 0;
     for (const c of k) {
@@ -41,11 +42,14 @@
   }
   function normalize(text) {
     // 数字以外どうしの間の空白を詰めてから読み替える（「角 精度」→「角精度」。「7 3」の空白は残す）
-    return unalias(String(text).replace(/([^\s0-9０-９])[\s　]+(?=[^\s0-9０-９])/g, '$1'))
+    // 1文字だけで立つ漢数字（Vosk の「七 三」）は先に数字にする。「二 十 よん」のように十の位と続くものは除く
+    return unalias(String(text).replace(/(?<![十百][\s　]*)(^|[\s　])([一二三四五六七八九])(?=[\s　]+[^十百\s　]|[\s　]*$)/g, (_m, a, k) => a + KANJI[k])
+      .replace(/([^\s0-9０-９])[\s　]+(?=[^\s0-9０-９])/g, '$1'))
       .replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)))
+      // 「秒」「分」の前の読み仮名の数字（Vosk は「じゅう ご 秒」「に じゅう よん 秒」のように出す）を漢数字にしてから数にする。
+      // 漢数字と混ざっていてもよい（「二 十 よん 秒」→ 二十四 → 24秒）
+      .replace(/(?:きゅう|じゅう|いち|さん|よん|ろく|なな|しち|はち|に|し|ご|く)+(?=\s*[秒分])/g, run => run.replace(/きゅう|じゅう|いち|さん|よん|ろく|なな|しち|はち|に|し|ご|く/g, w => KANA_KANJI[w]))
       .replace(/[〇零一二三四五六七八九十百]+/g, kanjiNum)
-      // 「秒」「分」の前の読み仮名の数字（Vosk は「さん 秒」のように出す）。直前が「二十」などの十の位なら足す（「二 十 よん 秒」→ 24秒）
-      .replace(/([1-9]0)?(きゅう|いち|さん|よん|ろく|なな|しち|はち|じゅう|に|し|ご|く)(?=\s*[秒分])/g, (_m, tens, w) => String((+tens || 0) + { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9, じゅう: 10 }[w]))
       .replace(/(?<![0-9])\.|\.(?![0-9])/g, ' ')   // 小数点以外の「.」は区切り
       .replace(/[、。,]/g, ' ');
   }
@@ -63,7 +67,11 @@
     if (t in READ) return READ[t];
     return null;
   }
+  // 数だけの発話（Vosk の「なな さん」「七 三」）は、詰めたり読み替えたりする前に数字にする
+  const NUM_ONLY = { ...KANJI, いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9 };
   function parseVoice(text, { oneAxis = null } = {}) {
+    const toks = String(text).trim().split(/[\s　、。,]+/).filter(Boolean);
+    if (toks.length && toks.length <= 2 && toks.every(w => NUM_ONLY[w] >= 1)) text = toks.map(w => NUM_ONLY[w]).join(' ');
     let s = normalize(text);
     const out = {};
     const tm = spokenTime(s);
@@ -158,17 +166,28 @@
   let restrict = true;   // Vosk：聞き取る語を限定する
   try { restrict = localStorage.getItem('ahann_voice_restrict') !== '0'; } catch (_) {}
   let heardT = null;     // 話し始めの動画時刻（確定したら消す）
+  let lastTime = null;   // 時刻だけを言った発話 { time, at }（続く値に付ける）
   const nowT = () => clamp(video.currentTime || 0, 0, S.meta.duration || 0);
   function partial() { if (heardT == null) heardT = nowT(); }
-  function final(alts) {
-    const t = heardT ?? nowT(); heardT = null;
+  function final(alts, t0) {
+    const t = t0 ?? heardT ?? nowT(); heardT = null;
     alts = alts.filter(a => a != null && String(a).trim() !== '');
     if (!alts.length) return;
     // 候補のうち、値（またはコマンド）として読めた最初のものを使う
     const parsed = alts.map(a => parseVoice(a, { oneAxis: oneAxis() }));
     let k = parsed.findIndex(p => p.v != null || p.a != null);
     if (k < 0) k = parsed.findIndex(p => p.cmd); if (k < 0) k = 0;
-    applyVoice(parsed[k], t, alts[k], alts);
+    const p = parsed[k];
+    // 時刻だけの発話（「15秒」で区切ってから「快度4」）は覚えておき、3秒以内に続く値に付ける
+    if (p.time != null && p.v == null && p.a == null && !p.cmd) {
+      lastTime = { time: p.time, at: performance.now() };
+      hist.unshift({ t, text: alts[k], res: p.time + '秒（続けて値を）' }); hist.length = Math.min(hist.length, 10); showHist();
+      addLog('voice_heard', { value: alts[k], detail: JSON.stringify({ ...p, t_heard: +t.toFixed(4), pending: true, alts }) });
+      return;
+    }
+    if (p.time == null && !p.timeMissing && (p.v != null || p.a != null) && lastTime && performance.now() - lastTime.at < 3000) p.time = lastTime.time;
+    lastTime = null;
+    applyVoice(p, t, alts[k], alts);
   }
   function fail(msg, code, stop) {
     toast(msg, 'warn'); addLog('voice_error', { value: code, detail: engineId });
@@ -222,6 +241,10 @@
   // 評価の軸が VA 以外なら、その軸の語（モデルにある1語のもの）も聞き取る
   const AXIS_VOSK = { pana: ['ポジティブ', 'ネガティブ', '正', '負', 'の', '感情', 'プラス', 'マイナス'], thayer: ['エネルギー', '活気', '緊張'] };
   const grammar = () => JSON.stringify([...VOSK_WORDS, ...(AXIS_VOSK[_.axesCurrent()] || []), '[unk]']);
+  // 「秒」「分」の前の数を聞き直すときの語（数と「秒」「分」だけ。[unk] を入れないので、どれかの数として聞き取る）。
+  // vosk-browser 0.0.8 の文法は語の並びを縛れない（句を渡しても語ごとに自由に並ぶ）ので、語を限ることで数を拾う
+  const NUM_WORDS = [...Array.from({ length: 99 }, (_x, i) => kanji(i + 1)), 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう', 'じゅう'];
+  const numGrammar = () => JSON.stringify([...NUM_WORDS, '秒', '分']);
   let voskLib = null;
   function loadVoskLib() {
     if (window.Vosk) return Promise.resolve(window.Vosk);
@@ -294,28 +317,79 @@
     return voskLoading;
   }
   function vosk() {
-    let alive = true, ctx = null, stream = null, node = null, recog = null;
+    let alive = true, ctx = null, stream = null, node = null, recog = null, fixer = null, fixWait = null;
     (async () => {
       if (!modelFile) modelFile = await idbGet();
       if (!modelFile) { fail('Vosk のモデルが未設定です。「設定」の「モデルを選ぶ」で .tar.gz を選んでください', 'no-model', true); return; }
       let model;
       try { model = await getVoskModel(); } catch (e) { fail('Vosk のモデルを読み込めませんでした：' + (e && e.message || e), 'model-load', true); return; }
       if (!alive) return;
-      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 }, video: false }); }
+      // 雑音抑制・エコー除去は切る（発話の頭が削られて、最初に言う数が落ちやすい。Vosk は加工しない音で学習している）
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true, channelCount: 1 }, video: false }); }
       catch (e) { fail('マイクを使えませんでした（マイクの使用を許可してください）：' + e.message, 'not-allowed', true); return; }
       if (!alive) { stream.getTracks().forEach(t => t.stop()); return; }
       // モデルの標準（16kHz）で処理する。対応しないブラウザ（異なる標本化周波数をつなげない Firefox など）は機器の周波数のまま
       let src;
       try { ctx = new AudioContext({ sampleRate: 16000 }); src = ctx.createMediaStreamSource(stream); }
       catch (_) { try { ctx && ctx.close(); } catch (_e) {} ctx = new AudioContext(); src = ctx.createMediaStreamSource(stream); }
-      recog = restrict ? new model.KaldiRecognizer(ctx.sampleRate, grammar()) : new model.KaldiRecognizer(ctx.sampleRate);
+      const sr = ctx.sampleRate;
+      recog = restrict ? new model.KaldiRecognizer(sr, grammar()) : new model.KaldiRecognizer(sr);
+      recog.setWords(true);   // 語ごとの時刻（「秒」の前の数を聞き直すため）
+      if (restrict) { fixer = new model.KaldiRecognizer(sr, numGrammar()); fixer.on('result', m => { if (fixWait) fixWait(m && m.result); }); }
+      // 認識器に渡した音を15秒ぶん取っておく（語の時刻は渡し始めからの秒）
+      const ring = new Float32Array(sr * 15); let fed = 0;
+      const keep = x => { const i = fed % ring.length, n = Math.min(x.length, ring.length - i); ring.set(x.subarray(0, n), i); ring.set(x.subarray(n), 0); fed += x.length; };
+      const clip = (t0, t1) => {
+        const i0 = Math.max(Math.round(t0 * sr), fed - ring.length, 0), i1 = Math.min(Math.round(t1 * sr), fed), out = new Float32Array(Math.max(0, i1 - i0));
+        for (let i = 0; i < out.length; i++) out[i] = ring[(i0 + i) % ring.length];
+        return out;
+      };
+      // 数を落とした箇所を、その前後の音だけを数の語に限って聞き直す（[unk] に取られやすい）
+      //  ・「秒」「分」の直前に数が無い（「[unk] 秒」「秒」）→ その前の音から時刻の数を拾う
+      //  ・「度」の直後が [unk]（「覚醒 度 [unk]」）→ その音から値の数を拾う
+      const isNum = w => NUM_WORDS.includes(w) || w in KANA_KANJI;
+      async function redo(t0, t1) {
+        const seg = clip(Math.max(0, t0), t1); if (seg.length < sr * 0.15) return null;
+        const r = await new Promise(res => {
+          const tm = setTimeout(() => { fixWait = null; res(null); }, 3000);
+          fixWait = x => { if (x && x.text && x.text.trim()) { clearTimeout(tm); fixWait = null; res(x); } };
+          fixer.acceptWaveformFloat(seg, sr); fixer.acceptWaveformFloat(new Float32Array(Math.round(sr * 0.3)), sr); fixer.retrieveFinalResult();
+        });
+        const ns = r ? r.text.split(/\s+/).filter(isNum) : [];
+        return ns.length ? ns : null;
+      }
+      async function fixWords(words) {
+        if (!fixer) return null;
+        const ws = words.map(w => ({ ...w })); let changed = false;
+        for (let k = 0; k < ws.length; k++) {
+          const w = ws[k], prev = ws[k - 1], next = ws[k + 1];
+          if (/^[秒分]$/.test(w.word) && !(prev && isNum(prev.word))) {
+            const unk = !!prev && prev.word === '[unk]';
+            const ns = await redo((unk ? prev.start : Math.max(prev ? prev.end : 0, w.start - 1.5)) - 0.15, w.end + 0.05);
+            if (!ns) continue;
+            ws.splice(unk ? k - 1 : k, unk ? 1 : 0, ...ns.map(word => ({ word })));
+            k += ns.length - (unk ? 1 : 0); changed = true;
+          } else if (w.word === '度' && next && next.word === '[unk]') {
+            const ns = (await redo(w.end - 0.02, next.end + 0.05) || []).filter(x => x.length === 1 || x in KANA_KANJI && x !== 'じゅう');   // 値は 1〜9
+            if (!ns.length) continue;
+            ws.splice(k + 1, 1, { word: ns[0] }); changed = true;
+          }
+        }
+        if (!changed) return null;
+        const text = ws.map(w => w.word).join(' ');
+        addLog('voice_refix', { value: text, detail: words.map(w => w.word).join(' ') });
+        return text;
+      }
       recog.on('partialresult', m => { if (m && m.result && m.result.partial && m.result.partial.replace(/\[unk\]/g, '').trim()) partial(); });
-      recog.on('result', m => {
-        const t = ((m && m.result && m.result.text) || '').replace(/\[unk\]/g, ' ');
-        if (t.trim()) final([t]); else heardT = null;
+      recog.on('result', async m => {
+        const r = (m && m.result) || {}, t = heardT; heardT = null;
+        let text = r.text || '';
+        if (restrict && Array.isArray(r.result)) try { text = (await fixWords(r.result)) || text; } catch (_) {}
+        text = text.replace(/\[unk\]/g, ' ');
+        if (alive && text.trim()) final([text], t ?? undefined);
       });
       node = ctx.createScriptProcessor(4096, 1, 1);
-      node.onaudioprocess = e => { if (alive) try { recog.acceptWaveform(e.inputBuffer); } catch (_) {} };
+      node.onaudioprocess = e => { if (alive) try { keep(e.inputBuffer.getChannelData(0)); recog.acceptWaveform(e.inputBuffer); } catch (_) {} };
       src.connect(node); node.connect(ctx.destination);
       addLog('voice_ready', { detail: `vosk sr=${ctx.sampleRate} ${restrict ? 'restrict' : 'free'}` });
       toast('Vosk：聞き取りを始めました' + (restrict ? '（語を限定）' : ''));
@@ -327,6 +401,7 @@
         try { stream && stream.getTracks().forEach(t => t.stop()); } catch (_) {}
         try { ctx && ctx.close(); } catch (_) {}
         try { recog && recog.remove && recog.remove(); } catch (_) {}
+        try { fixer && fixer.remove && fixer.remove(); } catch (_) {}
       },
     };
   }
@@ -334,7 +409,7 @@
   // ---------- オン／オフと設定欄 ----------
   function setOn(v) {
     if (v === on) return;
-    on = v; heardT = null;
+    on = v; heardT = null; lastTime = null;
     if (on) { eng = engineId === 'vosk' ? vosk() : webspeech(); if (!eng) on = false; }
     else if (eng) { const e = eng; eng = null; e.stop(); }
     $('voiceBtn').classList.toggle('on', on); $('voiceBtn').textContent = on ? '● 音声' : '音声';
