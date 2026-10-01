@@ -21,7 +21,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // 1. 評価区間の外への入力は拒否（Affect Grid・SAM・カスタム区間ごと）
   for (const mode of ['affectgrid', 'sam', 'custom']) {
     const p = await open(mode);
-    if (mode === 'custom') { await p.locator('.cfgGrid select').nth(0).selectOption('disc'); await p.waitForTimeout(100); }
+    if (mode === 'custom') { await p.locator('select[aria-label=時間]').selectOption('disc'); await p.waitForTimeout(100); }
     await setRange(p);
     const hit = async () => {
       if (mode === 'sam') await p.click('.samRow.v button[data-v="7"]');

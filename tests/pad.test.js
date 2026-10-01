@@ -154,7 +154,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)', SLD = 'Test Sliders (V
     const v0 = await sample(p);
     check('カスタム（平面・マウス）：ジョイスティックで armed・位置＝値', s0.wm === 'armed' && v0.v === 7 && v0.a === 3 && v0.pad === 'joy', JSON.stringify([s0.wm, v0]));
     await axes(p, 0, { 0: 0, 1: 0 });
-    await p.selectOption('select[aria-label=表現]', 'sliders'); await p.evaluate(() => document.activeElement.blur());
+    await p.selectOption('select[aria-label=インタフェース]', 'sliders'); await p.evaluate(() => document.activeElement.blur());
     await axes(p, 0, { 2: -0.5, 3: 0.25 }); await p.waitForTimeout(150);
     const c1 = await p.evaluate(() => ({ wm: AH.mode.writeMode(), ...AH.mode.peek() }));
     check('カスタム（スライダー・マウス）：スライダーの機器で armed・1本目＝横 3、2本目＝縦 6', c1.wm === 'armed' && c1.v === 3 && c1.a === 6, JSON.stringify(c1));

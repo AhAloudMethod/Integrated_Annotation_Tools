@@ -7,6 +7,7 @@ const EXPECTED_ORDER = [
   '時間連続・1次元: carma ranktrace',
   '離散（区間ごと）: excel affectgrid sam',
   '相対（変化の方向）: affectrank',
+  '変化の時点: change',
   'カスタム: custom',
 ];
 // 方式ファイルや外部から使われる公開 API（分割で増えるのは可、減るのは不可）

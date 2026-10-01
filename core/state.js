@@ -33,7 +33,8 @@ const AH = { _: {} };
              strokes: [], cells: { v: [], a: [] }, events: [], memo: '' };
   };
   const model = () => (_.M ? _.M.model : 'series');
-  const isInt = () => !!(_.M && (model() === 'table' || _.M.integer || (_.M.isInteger && _.M.isInteger())));
+  // 値が整数か。方式が isInteger を持てばそれに従う（カスタムの「値」）。なければ区間表と integer の方式が整数
+  const isInt = () => !!(_.M && (_.M.isInteger ? _.M.isInteger() : model() === 'table' || _.M.integer));
 
   const wall = () => +(performance.now() - S.t0).toFixed(1);
   const vt = () => +video.currentTime.toFixed(4);

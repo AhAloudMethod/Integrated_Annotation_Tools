@@ -86,10 +86,12 @@
     }
     return q;
   }
-  // 過去 sec 秒の軌跡を点列で返す
+  // 過去 sec 秒の軌跡を点列で返す。実際に評価した範囲だけを使う：書き込み中はその書き始めから、
+  // それ以外は最初に記録した時刻から（書き始める前の値＝初期値 5・5 などから線を引かない）
+  const firstWritten = () => Math.min(...['v', 'a'].map(ax => { const p = S.data.points[ax].find(q => !q.init); return p ? p.t : Infinity; }));
   function trail(t, sec, n, cur) {
-    const out = [];
-    for (let i = n; i >= 1; i--) { const tt = Math.max(0, t - sec * i / n); out.push({ ...stored(tt), age: i / n }); }
+    const from = AH._.stroke ? AH._.stroke.t0 : firstWritten(), out = [];
+    for (let i = n; i >= 1; i--) { const tt = Math.max(0, t - sec * i / n); if (tt >= from - 1e-6) out.push({ ...stored(tt), age: i / n }); }
     out.push({ ...cur, age: 0 }); return out;
   }
 
@@ -241,8 +243,37 @@
     parent.appendChild(box);
   }
 
+  // AffectRank の8方向ボタン（AffectRank・カスタム）。axes が1軸なら、その軸だけが変わる2方向にする。
+  // [ラベル, dv, da, テンキー]。返り値の onKey(e) はテンキーと Backspace（直近の入力の削除）を処理する
+  const RANK_DIRS = [['活発', 0, 1, 'Numpad8'], ['活発・快', 1, 1, 'Numpad9'], ['快', 1, 0, 'Numpad6'], ['非活発・快', 1, -1, 'Numpad3'],
+                     ['非活発', 0, -1, 'Numpad2'], ['非活発・不快', -1, -1, 'Numpad1'], ['不快', -1, 0, 'Numpad4'], ['活発・不快', -1, 1, 'Numpad7']];
+  function rankPad(parent, axes = ['v', 'a']) {
+    const dirs = RANK_DIRS.filter(d => (axes.includes('v') || !d[1]) && (axes.includes('a') || !d[2]));
+    const btns = {}, box = h('div', { class: 'planeBox' }), pl = h('div', { class: 'arPlane' });
+    const fire = d => { AH.addEvent({ label: d[0], dv: d[1], da: d[2] }); const b = btns[d[0]]; b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 350); };
+    if (axes.includes('v')) pl.appendChild(h('div', { class: 'arAxis h' }));
+    if (axes.includes('a')) pl.appendChild(h('div', { class: 'arAxis v' }));
+    for (const d of dirs) {
+      const b = h('button', { class: 'arBtn', title: d[0], style: `left:${50 + d[1] * 38}%;top:${50 - d[2] * 38}%`, onclick: e => { fire(d); e.currentTarget.blur(); } }, `<span>${d[0]}</span>`);
+      pl.appendChild(b); btns[d[0]] = b;
+    }
+    const list = h('div', { class: 'arList' });
+    box.appendChild(pl); box.appendChild(list); parent.appendChild(box);
+    return {
+      onKey(e) {
+        const d = dirs.find(x => x[3] === e.code); if (d) { fire(d); return true; }
+        if (e.code === 'Backspace') { AH.deleteEventBefore(AH.vt()); return true; }
+        return false;
+      },
+      update() {
+        const ev = S.data.events.slice(-5).reverse();
+        list.innerHTML = ev.length ? ev.map(x => `<div>${AH.fmt(x.t)}　${x.label}</div>`).join('') : '<div class="muted">まだ入力がありません</div>';
+      },
+    };
+  }
+
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, trail,
-    secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector,
+    secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

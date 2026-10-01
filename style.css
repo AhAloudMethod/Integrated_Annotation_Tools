@@ -221,4 +221,11 @@ table.ref th{color:var(--muted);font-weight:500}
 .arBtn.hit{background:var(--hit);border-color:var(--hit);color:#fff}
 .arList{font-size:13px;font-variant-numeric:tabular-nums;margin-top:8px;min-height:5em}
 .arPlane{margin:0 auto}
+/* 変化ボタン：大きな丸いボタン1つ */
+.chgBox{text-align:center}
+.chgBtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:160px;height:160px;border-radius:50%;font-size:22px;font-weight:600;
+  background:color-mix(in srgb,#3B6FD9 18%,var(--panel));border-color:#3B6FD9;margin:12px auto}
+.chgBtn small{font-size:11px;font-weight:400;color:var(--muted);margin-top:4px}
+.chgBtn.hit{background:var(--hit);border-color:var(--hit);color:#fff}
+.chgBtn.hit small{color:#fff}
 body.vwin #pipNote{display:none !important}

@@ -72,6 +72,7 @@
       } else if (model() === 'events') {
         const mid = (L.y0 + L.y1) / 2;
         for (const e of S.data.events) {
+          if (!e.dv && !e.da) { g.fillRect(xOf(e.t) - 1, L.y0 + 2, 2, L.y1 - L.y0 - 4); continue; }   // 方向のない変化（変化ボタン）は縦線
           const d = L.ax === 'v' ? e.dv : e.da; if (!d) continue;
           const x = xOf(e.t), y = mid - d * 10;
           g.beginPath(); g.moveTo(x, y - d * 6); g.lineTo(x - 5, y + d * 2); g.lineTo(x + 5, y + d * 2); g.closePath(); g.fill();

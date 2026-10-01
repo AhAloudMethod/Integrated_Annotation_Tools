@@ -62,7 +62,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // カスタム（スライダー×キーボード）
   {
     const p = await open('custom');
-    await p.locator('.cfgGrid select').nth(1).selectOption('sliders'); await p.locator('.cfgGrid select').nth(2).selectOption('keyboard');
+    await p.locator('select[aria-label=インタフェース]').selectOption('sliders'); await p.locator('select[aria-label=入力]').selectOption('keyboard');
     await p.evaluate(() => document.activeElement && document.activeElement.blur());
     await p.keyboard.press('Space'); await p.waitForTimeout(200);
     await p.keyboard.down('KeyW'); await p.waitForTimeout(400); await p.keyboard.up('KeyW'); await p.waitForTimeout(300);

@@ -62,7 +62,7 @@ const { URL, VID, BROWSER, out } = require('./_env');
   // 4. カスタム：いくつかの組み合わせ
   const custom = async (cfg, act, label) => {
     const q = await newPage('custom');
-    for (const [k, v] of Object.entries(cfg)) { const sel = q.locator('.cfgGrid select').nth({ time: 0, rep: 1, input: 2, dims: 3, scale: 4 }[k]); await sel.selectOption(v); await q.waitForTimeout(100); }
+    for (const [k, v] of Object.entries(cfg)) { const sel = q.locator('select[aria-label=' + { time: '時間', rep: 'インタフェース', input: '入力', dims: '次元', scale: '尺度', values: '値' }[k] + ']'); await sel.selectOption(v); await q.waitForTimeout(100); }
     await blur(q);
     await act(q);
     await q.waitForTimeout(300);
