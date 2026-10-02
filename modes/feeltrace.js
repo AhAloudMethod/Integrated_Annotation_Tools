@@ -26,9 +26,9 @@
       g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
       g.setLineDash([3, 3]); g.beginPath(); g.moveTo(cx - R, cy); g.lineTo(cx + R, cy); g.moveTo(cx, cy - R); g.lineTo(cx, cy + R); g.stroke(); g.setLineDash([]);
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
-      g.fillText('とても活発', cx, cy - R - 8); g.fillText('とても受動的', cx, cy + R + 16);
-      g.save(); g.translate(cx + R + 12, cy); g.rotate(Math.PI / 2); g.fillText('とても肯定的', 0, 0); g.restore();
-      g.save(); g.translate(cx - R - 12, cy); g.rotate(-Math.PI / 2); g.fillText('とても否定的', 0, 0); g.restore();
+      g.fillText('とても活発', cx, cy - R - 8); g.fillText('とても不活発', cx, cy + R + 16);
+      g.save(); g.translate(cx + R + 12, cy); g.rotate(Math.PI / 2); g.fillText('とてもポジティブ', 0, 0); g.restore();
+      g.save(); g.translate(cx - R - 12, cy); g.rotate(-Math.PI / 2); g.fillText('とてもネガティブ', 0, 0); g.restore();
       for (const [deg, wd] of WORDS) { const r = deg * Math.PI / 180; g.fillText(wd, cx + Math.cos(r) * R * 0.72, cy - Math.sin(r) * R * 0.72 + 4); }
       g.textAlign = 'left';
       const cur = stk.on() ? stk.shown(t) : shown(t);

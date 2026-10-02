@@ -246,7 +246,7 @@
     get unbounded() { return o().time === 'cont' && rel(); },
     isInteger: () => o().values === 'int',
     get help() {
-      if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝活発、9＝活発・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
+      if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
       if (pointType()) how = o().time === 'disc' ? 'クリック（または数字キー：快度＝1〜9、覚醒度＝Shift+数字）で今の区間の値を設定します。<kbd>Backspace</kbd> で今の区間を消去。' : 'クリック（または数字キー）でその時刻に変化点を置きます。<kbd>Backspace</kbd> で直前の変化点を削除。';

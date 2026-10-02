@@ -81,8 +81,9 @@
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif';
       const V = AH.ax('v'), A = AH.ax('a');
       g.textAlign = 'center'; g.fillText(A.hi, q.X(5), q.y0 - 7); g.fillText(A.lo, q.X(5), q.y0 + q.s + 14);
-      g.textAlign = 'left'; g.fillText(V.lo, q.x0, q.y0 + q.s + 14);
-      g.textAlign = 'right'; g.fillText(V.hi, q.x0 + q.s, q.y0 + q.s + 14); g.textAlign = 'left';
+      g.save(); g.translate(q.x0 - 8, q.Y(5)); g.rotate(-Math.PI / 2); g.fillText(V.lo, 0, 0); g.restore();
+      g.save(); g.translate(q.x0 + q.s + 8, q.Y(5)); g.rotate(Math.PI / 2); g.fillText(V.hi, 0, 0); g.restore();
+      g.textAlign = 'left';
     }
     return q;
   }
@@ -245,8 +246,8 @@
 
   // AffectRank の8方向ボタン（AffectRank・カスタム）。axes が1軸なら、その軸だけが変わる2方向にする。
   // [ラベル, dv, da, テンキー]。返り値の onKey(e) はテンキーと Backspace（直近の入力の削除）を処理する
-  const RANK_DIRS = [['活発', 0, 1, 'Numpad8'], ['活発・快', 1, 1, 'Numpad9'], ['快', 1, 0, 'Numpad6'], ['非活発・快', 1, -1, 'Numpad3'],
-                     ['非活発', 0, -1, 'Numpad2'], ['非活発・不快', -1, -1, 'Numpad1'], ['不快', -1, 0, 'Numpad4'], ['活発・不快', -1, 1, 'Numpad7']];
+  const RANK_DIRS = [['覚醒', 0, 1, 'Numpad8'], ['覚醒・快', 1, 1, 'Numpad9'], ['快', 1, 0, 'Numpad6'], ['非覚醒・快', 1, -1, 'Numpad3'],
+                     ['非覚醒', 0, -1, 'Numpad2'], ['非覚醒・不快', -1, -1, 'Numpad1'], ['不快', -1, 0, 'Numpad4'], ['覚醒・不快', -1, 1, 'Numpad7']];
   function rankPad(parent, axes = ['v', 'a']) {
     const dirs = RANK_DIRS.filter(d => (axes.includes('v') || !d[1]) && (axes.includes('a') || !d[2]));
     const btns = {}, box = h('div', { class: 'planeBox' }), pl = h('div', { class: 'arPlane' });
