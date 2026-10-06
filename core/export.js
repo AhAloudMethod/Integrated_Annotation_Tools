@@ -79,6 +79,7 @@
       out('_f0.csv', ['t', 'f0_hz', 'rms'], rows);
     }
     S.meta.listen = { on: _.listenUsable(), flow: 'listen-pause-replay-record' };   // 聴いてから入力（区間を聴いて止め、再生し直して記録）で評価したか
+    S.meta.display = _.displayMeta();   // 目盛りの線・スティックを四角に広げたか
     S.meta.f0 = { shown: !!(_.f0Shown && _.f0Shown()), method: 'YIN 16kHz win=40ms hop=10ms 70-1000Hz th=0.15' };
     out('_events.csv', ['wall_ms', 'video_t', 'type', 'axis', 'value', 'detail'], S.log.map(e => [e.wall_ms, e.video_t, e.type, e.axis, e.value, e.detail]));
     download(base + '_session.json', JSON.stringify({ meta: S.meta, data: S.data, log: S.log }, null, 1), 'application/json');

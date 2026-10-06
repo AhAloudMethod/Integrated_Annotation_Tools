@@ -1,7 +1,7 @@
 // キー操作
 (() => {
   const _ = AH._;
-  const { video, S, undo, writeMode, setArmed, seekTo, togglePlay } = _;
+  const { video, S, undo, redo, writeMode, setArmed, seekTo, togglePlay } = _;
   // ---------- キー操作 ----------
   document.addEventListener('keydown', e => {
     let tag = e.target.tagName;
@@ -25,7 +25,8 @@
       e.preventDefault();
       seekTo(video.currentTime + (e.shiftKey ? 0.1 : 1) * (e.code === 'ArrowLeft' ? -1 : 1));
     }
-    else if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
+    else if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+    else if (e.code === 'KeyY' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
     else if (e.code === 'KeyR' && writeMode() === 'armed') { e.preventDefault(); setArmed(!S.armed); }
   });
   document.addEventListener('keyup', e => { if (_.M && _.M.onKeyUp) _.M.onKeyUp(e); });

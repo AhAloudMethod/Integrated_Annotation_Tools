@@ -10,6 +10,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
   const errs = [];
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true });
   await ctx.addInitScript(() => {
+    localStorage.setItem('ahann_pad_square', '0');   // スティックを四角に広げない（線形の対応を確かめる。広げる処理は display.test.js）
     window.__pads = [];
     Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => { const a = [null, null, null, null]; for (const p of window.__pads) a[p.index] = p; return a; } });
     window.__connect = (id, index) => { const p = { id, index, connected: true, mapping: '', timestamp: 0, axes: [0, 0, 0, 0], buttons: Array.from({ length: 8 }, () => ({ pressed: false, touched: false, value: 0 })) }; window.__pads.push(p); return p; };

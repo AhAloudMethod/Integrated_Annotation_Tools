@@ -1,7 +1,7 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
   const { S, pen, video } = AH;
-  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, trail, secStrip, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
   const o = () => opts();
   const follow = follower();
   // インタフェース（rep）。grid・sam・buttons は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
@@ -198,6 +198,7 @@
       g.fillText(name + (rel() ? '（相対）' : ''), x, 14); g.font = '10px system-ui, sans-serif';
       if (!rel()) { g.fillText(hi, x, 28); g.fillText(lo, x, H - 24); }
       g.strokeStyle = AH.css('--line'); g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke(); g.lineCap = 'butt';
+      if (!rel()) gridBar(g, x, Y);
       if (!rel()) { g.lineWidth = 1; for (let k = 1; k <= 9; k++) { g.beginPath(); g.moveTo(x - 16, Y(k)); g.lineTo(x - 9, Y(k)); g.stroke(); } }
       if (cv[ax] == null) continue;
       g.fillStyle = AH.isWriting() ? AH.css('--pen') : col; g.fillRect(x - 22, Y(cv[ax]) - 5, 44, 10);
@@ -214,6 +215,7 @@
       g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
       g.setLineDash([3, 3]); g.beginPath(); g.moveTo(cx - R, cy); g.lineTo(cx + R, cy); g.moveTo(cx, cy - R); g.lineTo(cx, cy + R); g.stroke(); g.setLineDash([]);
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
+      gridCircle(g, cx, cy, R);
       const V = AH.ax('v'), A = AH.ax('a');
       g.fillText(A.hi, cx, cy - R - 8); g.fillText(A.lo, cx, cy + R + 16); g.textAlign = 'right'; g.fillText(V.lo, cx - R - 4, cy + 4); g.textAlign = 'left'; g.fillText(V.hi, cx + R + 4, cy + 4);
     } else if (o().rep === 'grid') {

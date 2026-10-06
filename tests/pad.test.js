@@ -11,6 +11,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)', SLD = 'Test Sliders (V
   const newCtx = async (vp = { width: 1366, height: 768 }) => {
     const ctx = await browser.newContext({ viewport: vp, acceptDownloads: true });
     await ctx.addInitScript(() => {
+      localStorage.setItem('ahann_pad_square', '0');   // スティックを四角に広げない（線形の対応を確かめる。広げる処理は display.test.js）
       window.__pads = [];
       window.__mkPad = (id, index, nAxes = 4, nBtn = 8) => ({ id, index, connected: true, mapping: '', timestamp: 0,
         axes: Array(nAxes).fill(0), buttons: Array.from({ length: nBtn }, () => ({ pressed: false, touched: false, value: 0 })) });

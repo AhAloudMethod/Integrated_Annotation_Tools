@@ -73,12 +73,33 @@
     const box = h('div', { class: 'planeBox' }), c = h('canvas', { class: 'plane', 'aria-label': aria });
     box.appendChild(c); parent.appendChild(box); return { box, c };
   }
+  // 目盛りの線（「設定」でオンのとき）：1〜9 の整数の位置に薄い線。X・Y は値→座標、範囲 [x0,x1]×[y0,y1]。clip（円）を渡すとその中だけに引く
+  function gridLines(g, X, Y, x0, y0, x1, y1, clip) {
+    g.save();
+    if (clip) { g.beginPath(); g.arc(clip.cx, clip.cy, clip.R, 0, 7); g.clip(); }
+    g.strokeStyle = AH.css('--line'); g.globalAlpha = 0.7; g.lineWidth = 1; g.beginPath();
+    for (let k = 2; k <= 8; k++) { if (k === 5) continue; g.moveTo(X(k), y0); g.lineTo(X(k), y1); g.moveTo(x0, Y(k)); g.lineTo(x1, Y(k)); }
+    g.stroke(); g.restore();
+  }
+  // 円の入力面の目盛りの線（中心 cx・cy、半径 R が値 1〜9 の幅）
+  function gridCircle(g, cx, cy, R) {
+    if (!AH.gridShown()) return;
+    gridLines(g, v => cx + (v - 5) / 4 * R, a => cy - (a - 5) / 4 * R, cx - R, cy - R, cx + R, cy + R, { cx, cy, R });
+  }
+  // スライダー・レバーの目盛りの線（x を中心に幅 w。Y は値→座標）
+  function gridBar(g, x, Y, w = 56) {
+    if (!AH.gridShown()) return;
+    g.save(); g.strokeStyle = AH.css('--line'); g.globalAlpha = 0.9; g.lineWidth = 1; g.beginPath();
+    for (let k = 1; k <= 9; k++) { g.moveTo(x - w / 2, Y(k)); g.lineTo(x + w / 2, Y(k)); }
+    g.stroke(); g.restore();
+  }
   function drawSquareFrame(g, c, pad, labels = true) {
     const w = c.clientWidth, q = square(c, pad);
     g.clearRect(0, 0, w, w);
     g.strokeStyle = AH.css('--line'); g.lineWidth = 1; g.strokeRect(q.x0, q.y0, q.s, q.s);
     g.setLineDash([3, 3]); g.beginPath();
     g.moveTo(q.X(5), q.y0); g.lineTo(q.X(5), q.y0 + q.s); g.moveTo(q.x0, q.Y(5)); g.lineTo(q.x0 + q.s, q.Y(5)); g.stroke(); g.setLineDash([]);
+    if (AH.gridShown()) gridLines(g, q.X, q.Y, q.x0, q.y0, q.x0 + q.s, q.y0 + q.s);
     if (labels) {
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif';
       const V = AH.ax('v'), A = AH.ax('a');
@@ -207,6 +228,11 @@
         if (j && j.active) {
           let { x, y } = j;
           if (circle) { const d = Math.hypot(x, y); if (d > 1) { x /= d; y /= d; } }
+          else if (AH.padSquare()) {
+            // 四角の平面：スティックの可動域（円）を四角に広げる。方向はそのままで、倒し切る（半径1）と四角の縁に届く（斜めでも角まで）
+            const m = Math.max(Math.abs(x), Math.abs(y)), r = Math.min(1, Math.hypot(x, y));
+            if (m > 0) { x = x / m * r; y = y / m * r; }
+          }
           return { v: AH.r2(5 + x * 4), a: AH.r2(5 + y * 4), pad: 'joy' };
         }
         if (pen.down) return { v: pen.v, a: pen.a };
@@ -289,7 +315,7 @@
   }
 
   AH.ui = {
-    opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, trail,
+    opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
     secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

@@ -53,6 +53,7 @@
         <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
         <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
+        <label class="chk" title="平面・円・スライダー・レバーに 1〜9 の整数の位置の薄い線を引く"><input id="gridShow" type="checkbox"> 入力面に目盛りの線（1〜9）を表示する</label>
         <label class="chk"><input id="f0Show" type="checkbox" checked> 動画の音声の F0（声の高さ）を表示する</label>
         <label class="chk" title="連続の方式で、1区間を再生すると区間の終わりで止まる。Enter／ボタン0 で同じ区間を音声つきで再生し直し、その間の入力を記録する。終わると次の区間を聴く（R でもう一度聴く）"><input id="listenMode" type="checkbox"> 1区間ずつ聴いてから入力する（連続の方式）</label>
         <p class="muted" id="f0Status">F0：動画を開くと計算します</p>
@@ -83,6 +84,14 @@
           <div class="refTitle">声の聞き取り（最新10件）</div>
           <ul id="voiceHist" class="voiceHist"></ul>
         </div>
+        <div class="sub padBox">
+          <div class="refTitle">コントローラー（ゲームパッド）</div>
+          <label class="chk"><input id="padJoyUse" type="checkbox" checked> ジョイスティックを使う <select id="padJoyDev" aria-label="ジョイスティックに使う機器"><option value="">自動</option></select></label>
+          <label class="chk" title="スティックの可動域は円なので、斜めに倒し切っても角（9・9 など）に届かない。四角の平面では、方向はそのままに倒し切ると四角の縁に届くよう広げる（円の方式には効かない）"><input id="padSquare" type="checkbox" checked> 四角の平面ではスティックを角まで届かせる</label>
+          <label class="chk"><input id="padSliderUse" type="checkbox" checked> スライダーを使う <select id="padSliderDev" aria-label="スライダーに使う機器"><option value="">自動</option></select></label>
+          <div id="padList" class="padList"><p class="muted">接続されていません（機器のボタンを押すと認識されます）</p></div>
+          <p class="muted">軸0・1＝スティック横・縦、軸2・3＝スライダー1・2（上＝＋）、ボタン0＝記録オン／オフ（？ と README）</p>
+        </div>
       </section>
       <section class="setCol">
         <div class="refTitle">色</div>
@@ -91,13 +100,6 @@
           <div id="colorGrid" class="colorGrid"></div>
           <p class="muted">四隅が象限、上下左右が軸方向の色です。軸方向は「自動」（両隣の象限の中間）にもできます。グラデーションはこの8色の間を補間します。</p>
         </div>
-        <div class="sub padBox">
-          <div class="refTitle">コントローラー（ゲームパッド）</div>
-          <label class="chk"><input id="padJoyUse" type="checkbox" checked> ジョイスティックを使う <select id="padJoyDev" aria-label="ジョイスティックに使う機器"><option value="">自動</option></select></label>
-          <label class="chk"><input id="padSliderUse" type="checkbox" checked> スライダーを使う <select id="padSliderDev" aria-label="スライダーに使う機器"><option value="">自動</option></select></label>
-          <div id="padList" class="padList"><p class="muted">接続されていません（機器のボタンを押すと認識されます）</p></div>
-          <p class="muted">軸0・1＝スティック横・縦、軸2・3＝スライダー1・2（上＝＋）、ボタン0＝記録オン／オフ（？ と README）</p>
-        </div>
       </section>
     </div>
   </span>
@@ -105,7 +107,7 @@
     <button id="helpBtn" title="操作の説明">？</button>
     <div id="helpPanel" class="rgPanel right help" hidden>
       <div id="modeHelp"></div>
-      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し</p>
+      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Y</kbd> やり直し</p>
       <p>見返し（ヘッダーの「見返し」または <kbd>V</kbd>）：止まらずに再生して、記録済みの値を追います。見返しの間は値を変えません（入力面は操作できず、ボタン0は再生／停止）。もう一度押すと戻ります。</p>
       <p>聴いてから入力（「設定」でオン。連続の方式）：1区間を再生すると区間の終わりで止まります（聴く）。<kbd>Enter</kbd>（またはボタン0）で同じ区間を始めから音声つきで再生し直し、その間の入力（スティック・スライダー・キー・マウス）を記録します。区間の終わりで記録を終え、そのまま次の区間を聴きます。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
       <p>「動画を別窓へ」：動画だけを別のウィンドウに出します。モニターへドラッグし、ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作はそのまま効きます。閉じると動画はこの画面に戻ります。</p>
@@ -150,6 +152,7 @@
 <script src="core/video.js"></script>
 <script src="core/listen.js"></script>
 <script src="core/review.js"></script>
+<script src="core/display.js"></script>
 <script src="core/loop.js"></script>
 <script src="core/keys.js"></script>
 <script src="core/export.js"></script>

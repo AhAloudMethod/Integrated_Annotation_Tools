@@ -23,7 +23,7 @@ const AH = { _: {} };
   const S = {
     meta: { participant: '', video_file: '', duration: 0, session_start_iso: '', tool: 'ah-annotator-v0.5', mode: '', options: {}, range: null },
     data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, events:[], memo:''}
-    log: [], undo: [], t0: performance.now(), lastTime: 0,
+    log: [], undo: [], redo: [], t0: performance.now(), lastTime: 0,
     armed: false,
     videoSig: '',   // 動画の見分け（ファイルの大きさ＋長さ）。ファイル名を変えても評価区間を復元するため
   };
@@ -45,13 +45,22 @@ const AH = { _: {} };
     _.autosave();
   }
   const snapshot = () => JSON.parse(JSON.stringify(S.data));
-  const pushUndo = s => { S.undo.push(s || snapshot()); if (S.undo.length > 200) S.undo.shift(); };
+  // 取り消し（Ctrl+Z）とやり直し（Ctrl+Y／Ctrl+Shift+Z）。新しく値を変えると、やり直しの履歴は消える
+  const pushUndo = s => { S.undo.push(s || snapshot()); if (S.undo.length > 200) S.undo.shift(); S.redo = []; };
   function undo() {
     if (!S.undo.length) return;
     _.endStroke('undo');
+    S.redo.push(snapshot());
     S.data = S.undo.pop();
     addLog('undo'); _.refresh();
   }
+  function redo() {
+    if (!S.redo.length) return;
+    _.endStroke('redo');
+    S.undo.push(snapshot());
+    S.data = S.redo.pop();
+    addLog('redo'); _.refresh();
+  }
 
-  Object.assign(_, { FPS, SNAP, $, video, tl, tctx, modes, S, emptyData, model, isInt, wall, vt, r2, clamp, addLog, snapshot, pushUndo, undo });
+  Object.assign(_, { FPS, SNAP, $, video, tl, tctx, modes, S, emptyData, model, isInt, wall, vt, r2, clamp, addLog, snapshot, pushUndo, undo, redo });
 })();

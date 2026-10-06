@@ -1,7 +1,7 @@
 // ---- CARMA（1次元スライダー） ----
 (() => {
   const { video } = AH;
-  const { opts, follower, h, heldRate, sliders, passSelector } = AH.ui;
+  const { opts, follower, h, heldRate, sliders, passSelector, gridBar } = AH.ui;
   const follow = follower();
   let c, g; let ctrl = 5, drag = false; const RATE = 4;
   const k = heldRate(['ArrowUp'], ['ArrowDown']);
@@ -35,6 +35,7 @@
       const isV = ax() === 'v', col = AH.css(isV ? '--val' : '--aro');
       g.clearRect(0, 0, w, H); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = AH.css('--muted');
       const L = AH.ax(ax()); g.fillText(L.hi, x, 18); g.fillText(L.lo, x, H - 8);
+      gridBar(g, x, Y);
       g.strokeStyle = AH.css('--line'); g.lineWidth = 6; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke();
       g.lineWidth = 1; g.textAlign = 'right';
       for (let i = 1; i <= 9; i++) { g.beginPath(); g.moveTo(x - 14, Y(i)); g.lineTo(x - 6, Y(i)); g.stroke(); g.fillText(i, x - 18, Y(i) + 4); }

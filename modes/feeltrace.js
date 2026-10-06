@@ -1,7 +1,7 @@
 // ---- FEELTRACE（円形・位置の色・感情語・縮む円の軌跡） ----
 (() => {
   const { pen } = AH;
-  const { shown, nowRow, circleVal, bindHold, planeCanvas, trail, stick } = AH.ui;
+  const { shown, nowRow, circleVal, bindHold, planeCanvas, trail, stick, gridCircle } = AH.ui;
   let c, g, now; const PAD = 30;
   const stk = stick(true);   // 円の外は円周に吸着
   // 感情語の目印（角度: 0=快, 90=高覚醒）。原典の英語の語と配置は論文系/FEELTRACE の図で要確認
@@ -25,6 +25,7 @@
       g.strokeStyle = AH.css('--line'); g.lineWidth = 1;
       g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
       g.setLineDash([3, 3]); g.beginPath(); g.moveTo(cx - R, cy); g.lineTo(cx + R, cy); g.moveTo(cx, cy - R); g.lineTo(cx, cy + R); g.stroke(); g.setLineDash([]);
+      gridCircle(g, cx, cy, R);
       g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
       g.fillText('とても活発', cx, cy - R - 8); g.fillText('とても不活発', cx, cy + R + 16);
       g.save(); g.translate(cx + R + 12, cy); g.rotate(Math.PI / 2); g.fillText('とてもポジティブ', 0, 0); g.restore();

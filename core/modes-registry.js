@@ -30,7 +30,7 @@
     selectMode(id, true); refresh();
   }
   function newSession(detail, range) {
-    S.data = emptyData(); S.log = []; S.undo = [];
+    S.data = emptyData(); S.log = []; S.undo = []; S.redo = [];
     S.t0 = performance.now(); S.meta.session_start_iso = new Date().toISOString();
     S.meta.range = range || defaultRange(S.meta.duration);
     addLog('session_start', { detail });

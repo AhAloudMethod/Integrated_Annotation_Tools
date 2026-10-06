@@ -1,7 +1,7 @@
 // ---- Full Throttle の操作（快度・覚醒度を両手で1軸ずつ） ----
 (() => {
   const { video } = AH;
-  const { follower, h, stored, heldRate, sliders } = AH.ui;
+  const { follower, h, stored, heldRate, sliders, gridBar } = AH.ui;
   const follow = follower();
   let c, g; const ctrl = { v: 5, a: 5 }; const RATE = 4;
   const kv = heldRate(['KeyW'], ['KeyS']), ka = heldRate(['ArrowUp'], ['ArrowDown']);
@@ -36,6 +36,7 @@
         const x = w * (i ? 0.72 : 0.28), y0 = 34, y1 = H - 40, Y = v => y1 - (v - 1) / 8 * (y1 - y0);
         g.fillStyle = AH.css('--muted'); g.font = '12px system-ui, sans-serif'; g.textAlign = 'center';
         g.fillText(name, x, 14); g.fillText(keys, x, H - 8); g.font = '10px system-ui, sans-serif'; g.fillText(hi, x, 28); g.fillText(lo, x, H - 24);
+        gridBar(g, x, Y);
         g.strokeStyle = AH.css('--line'); g.lineWidth = 8; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y1); g.stroke();
         g.strokeStyle = col; g.beginPath(); g.moveTo(x, Y(5)); g.lineTo(x, Y(val)); g.stroke(); g.lineCap = 'butt';
         g.fillStyle = AH.isWriting() ? AH.css('--pen') : col; g.fillRect(x - 22, Y(val) - 5, 44, 10);

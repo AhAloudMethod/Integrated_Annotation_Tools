@@ -15,7 +15,7 @@
       if (!confirm(`「${modes[S.meta.mode].label}」でこの参加者ID・動画の途中データがあります。続きから再開しますか？\n（キャンセルすると新しく始めます）`)) {
         localStorage.removeItem(key()); return false;
       }
-      S.data = s.data; S.log = s.log; S.undo = s.undo || [];
+      S.data = s.data; S.log = s.log; S.undo = s.undo || []; S.redo = [];
       S.meta = { ...s.meta, duration: video.duration };
       S.t0 = performance.now() - (S.log.length ? S.log[S.log.length - 1].wall_ms : 0);
       addLog('restore'); return true;

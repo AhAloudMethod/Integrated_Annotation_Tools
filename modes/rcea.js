@@ -1,8 +1,8 @@
 // ---- RCEA（円形の仮想ジョイスティック・象限色・画面枠の色）。ジョイスティックは動画の外（ツールの列）に置く ----
 (() => {
   const { pen } = AH;
-  const { opts, h, stored, nowRow, toggle, circleVal, bindHold, stick } = AH.ui;
-  let pad, g, now; const PAD = 6;
+  const { opts, h, stored, nowRow, toggle, circleVal, bindHold, stick, gridCircle } = AH.ui;
+  let pad, g, now; const PAD = 22;   // 円の外に軸のラベルを書く余白
   const stk = stick(true);   // ジョイスティック（円の外は円周に吸着）
   const spring = () => !!opts().spring;
   AH.register({
@@ -30,6 +30,14 @@
         g.fillStyle = AH.rgba(col, 0.35); g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, R, a0, a1); g.closePath(); g.fill();
       }
       g.strokeStyle = AH.css('--line'); g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
+      gridCircle(g, cx, cy, R);
+      // 軸のラベル：上＝覚醒の高い側、下＝低い側、左＝快度の低い側、右＝高い側
+      const V = AH.ax('v'), A = AH.ax('a');
+      g.fillStyle = AH.css('--muted'); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
+      g.fillText(A.hi, cx, cy - R - 8); g.fillText(A.lo, cx, cy + R + 16);
+      g.save(); g.translate(cx - R - 8, cy); g.rotate(-Math.PI / 2); g.fillText(V.lo, 0, 0); g.restore();
+      g.save(); g.translate(cx + R + 8, cy); g.rotate(Math.PI / 2); g.fillText(V.hi, 0, 0); g.restore();
+      g.textAlign = 'left';
       const x = cx + (cur.v - 5) / 4 * R, y = cy - (cur.a - 5) / 4 * R;
       g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(x, y, 12, 0, 7); g.fill();
       g.strokeStyle = AH.isWriting() ? AH.css('--pen') : 'rgba(0,0,0,.55)'; g.lineWidth = 2; g.stroke();
