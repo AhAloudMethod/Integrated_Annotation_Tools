@@ -3,8 +3,10 @@
   const _ = AH._;
   const { $, video, S, clamp, addLog, fmt } = _;
   // ---------- 評価区間（動画の時刻とは独立） ----------
-  // start: 区間0が始まる動画時刻、count: 区間の数、bin: 1区間の長さ（秒）、label: 列の表記
-  const defaultRange = D => ({ start: 0, count: Math.max(1, Math.round(D || 0)), bin: 1, label: 'countdown' });
+  // start: 区間0が始まる動画時刻、count: 区間の数、bin: 1区間の長さ（秒）、label: 列の表記、
+  // target: 決めた終了（区間の区切りに揃える前）。開始・区間の長さを変えたら、いつもここから区間の数を決め直す
+  // （揃えた終了から決め直すと、変えるたびに端数が切り捨てられて終了が手前へ縮んでいった）
+  const defaultRange = D => ({ start: 0, count: Math.max(1, Math.round(D || 0)), bin: 1, label: 'countdown', target: D || 0 });
   const RG = () => S.meta.range || defaultRange(S.meta.duration);
   const nSec = () => RG().count;
   const binStart = s => RG().start + s * RG().bin;
@@ -62,16 +64,16 @@
   // 開始・終了・1区間の長さから区間の数を決める（終了は区間の区切りに揃える）
   const countFor = (start, end, bin) => Math.max(1, Math.floor((end - start) / bin + 1e-6));
   function onRangeInput(changed) {
-    const r = RG(), end0 = r.start + r.count * r.bin;
+    const r = RG(), target = r.target ?? (r.start + r.count * r.bin);
     const start = Math.max(0, +$('rgStart').value || 0), bin = Math.max(0.1, +$('rgBin').value || 1), label = $('rgLabel').value;
-    if (changed === 'rgCount') setRange({ start, bin, label, count: Math.max(1, Math.round(+$('rgCount').value || 1)) });
-    else if (changed === 'rgEnd') setRange({ start, bin, label, count: countFor(start, Math.max(start + bin, +$('rgEnd').value || 0), bin) });
+    if (changed === 'rgCount') { const count = Math.max(1, Math.round(+$('rgCount').value || 1)); setRange({ start, bin, label, count, target: +(start + count * bin).toFixed(3) }); }
+    else if (changed === 'rgEnd') { const end = Math.max(start + bin, +$('rgEnd').value || 0); setRange({ start, bin, label, count: countFor(start, end, bin), target: end }); }
     else if (changed === 'rgLabel') setRange({ label });
-    else setRange({ start, bin, label, count: countFor(start, Math.max(start + bin, end0), bin) });   // 開始・区間の長さの変更は終了を保つ
+    else setRange({ start, bin, label, count: countFor(start, Math.max(start + bin, target), bin) });   // 開始・区間の長さの変更は、決めた終了を保つ
   }
   for (const id of ['rgStart', 'rgEnd', 'rgCount', 'rgBin', 'rgLabel']) $(id).addEventListener('change', () => onRangeInput(id));
-  function setEnd(end) { const r = RG(); setRange({ count: countFor(r.start, Math.max(r.start + r.bin, end), r.bin) }); }
-  $('rgNow').addEventListener('click', e => { const r = RG(), end0 = r.start + r.count * r.bin, start = +video.currentTime.toFixed(2); setRange({ start, count: countFor(start, Math.max(start + r.bin, end0), r.bin) }); e.target.blur(); });
+  function setEnd(end) { const r = RG(); setRange({ count: countFor(r.start, Math.max(r.start + r.bin, end), r.bin), target: end }); }
+  $('rgNow').addEventListener('click', e => { const r = RG(), target = r.target ?? (r.start + r.count * r.bin), start = +video.currentTime.toFixed(2); setRange({ start, count: countFor(start, Math.max(start + r.bin, target), r.bin) }); e.target.blur(); });
   $('rgEndNow').addEventListener('click', e => { setEnd(+video.currentTime.toFixed(2)); e.target.blur(); });
   $('rgFit').addEventListener('click', e => { setEnd(S.meta.duration); e.target.blur(); });
 

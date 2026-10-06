@@ -34,11 +34,16 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => AH.seekTo(7)); await p.waitForTimeout(150); await p.click('#rgEndNow');
     const d = await range(p);
     await p.click('#rgFit'); const e = await range(p);
+    // 区間の長さを行き来しても終了が手前へ縮まない（決めた終了 12 秒から毎回決め直す）
+    await setField(p, 'rgStart', 0); await setField(p, 'rgBin', 1); await p.click('#rgFit');
+    const ends = [];
+    for (const b of [0.7, 1, 0.3, 1, 2.5, 1]) { await setField(p, 'rgBin', b); ends.push(+(await p.inputValue('#rgEnd'))); }
     check('終了を指定すると区間の数が決まる', a.start === 1.5 && a.count === 8 && a.bin === 1, JSON.stringify(a));
     check('区間の長さの変更で終了を保つ', b.count === 4 && bEnd === '9.5', JSON.stringify(b) + ' end=' + bEnd);
     check('区間の数の変更で終了が動く', c === '5.5', 'end=' + c);
     check('今の時刻を終了にする', d.count === 2 && d.start + d.count * d.bin === 5.5, JSON.stringify(d));   // 7秒は2秒区間の区切り 5.5 に揃う
     check('動画の終わりまで', e.start + e.count * e.bin <= 12 && e.start + (e.count + 1) * e.bin > 12, JSON.stringify(e));
+    check('区間の長さを行き来しても終了が縮まない（1 秒に戻すと 12 秒）', JSON.stringify(ends) === '[11.9,12,12,12,10,12]', JSON.stringify(ends));
     await p.close();
   }
 
