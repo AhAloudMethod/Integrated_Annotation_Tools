@@ -25,9 +25,11 @@
   <span class="rgWrap">
     <button id="rgBtn" title="評価する範囲と区間の長さ">評価区間</button>
     <div id="rgPanel" class="rgPanel" hidden>
-      <label>開始（動画の秒） <input id="rgStart" type="number" min="0" step="0.01"></label>
+      <span class="rgBtns frRow"><button id="frBack" type="button" title="1フレーム戻る（, キー）">◀ 前</button><button id="frFwd" type="button" title="1フレーム進む（. キー）">次 ▶</button><span id="frInfo" class="muted"></span></span>
+      <label>フレームレート <input id="rgFps" type="number" min="1" max="240" step="any" title="再生中に表示されたフレームから推定する。推定できないブラウザでは 30。手で直せる（動画ごとに覚える）"></label>
+      <label>開始（動画の秒） <input id="rgStart" type="number" min="0" step="any"></label>
       <button id="rgNow" type="button">今の時刻を開始にする</button>
-      <label>終了（動画の秒） <input id="rgEnd" type="number" min="0" step="0.01"></label>
+      <label>終了（動画の秒） <input id="rgEnd" type="number" min="0" step="any"></label>
       <span class="rgBtns"><button id="rgEndNow" type="button">今の時刻を終了にする</button><button id="rgFit" type="button">動画の終わりまで</button></span>
       <label>区間の数 <input id="rgCount" type="number" min="1" step="1"></label>
       <label>1区間の長さ（秒） <input id="rgBin" type="number" min="0.1" step="0.1"></label>
@@ -107,7 +109,7 @@
     <button id="helpBtn" title="操作の説明">？</button>
     <div id="helpPanel" class="rgPanel right help" hidden>
       <div id="modeHelp"></div>
-      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Y</kbd> やり直し</p>
+      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Y</kbd> やり直し</p>
       <p>見返し（ヘッダーの「見返し」または <kbd>V</kbd>）：止まらずに再生して、記録済みの値を追います。見返しの間は値を変えません（入力面は操作できず、ボタン0は再生／停止）。もう一度押すと戻ります。</p>
       <p>聴いてから入力（「設定」でオン。連続の方式）：1区間を再生すると区間の終わりで止まります（聴く）。<kbd>Enter</kbd>（またはボタン0）で同じ区間を始めから音声つきで再生し直し、その間の入力（スティック・スライダー・キー・マウス）を記録します。区間の終わりで記録を終え、そのまま次の区間を聴きます。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
       <p>「動画を別窓へ」：動画だけを別のウィンドウに出します。モニターへドラッグし、ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作はそのまま効きます。閉じると動画はこの画面に戻ります。</p>
@@ -153,6 +155,7 @@
 <script src="core/listen.js"></script>
 <script src="core/review.js"></script>
 <script src="core/display.js"></script>
+<script src="core/frame.js"></script>
 <script src="core/loop.js"></script>
 <script src="core/keys.js"></script>
 <script src="core/export.js"></script>

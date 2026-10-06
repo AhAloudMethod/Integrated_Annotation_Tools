@@ -196,6 +196,7 @@
     $('playBtn').dataset.rate = video.playbackRate !== 1 ? '×' + video.playbackRate : '';   // 1 以外の再生速度はボタンの角に出す
     $('armBox').hidden = writeMode() !== 'armed' || _.listenUsable();
     _.listenStatus();
+    if (!$('rgPanel').hidden) _.frameSync();
     $('armBtn').textContent = S.armed ? '● 記録中' : '記録 R';
     $('armBtn').classList.toggle('on', S.armed);
     if (_.M && S.data) {

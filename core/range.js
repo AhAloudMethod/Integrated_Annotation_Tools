@@ -73,8 +73,10 @@
   }
   for (const id of ['rgStart', 'rgEnd', 'rgCount', 'rgBin', 'rgLabel']) $(id).addEventListener('change', () => onRangeInput(id));
   function setEnd(end) { const r = RG(); setRange({ count: countFor(r.start, Math.max(r.start + r.bin, end), r.bin), target: end }); }
-  $('rgNow').addEventListener('click', e => { const r = RG(), target = r.target ?? (r.start + r.count * r.bin), start = +video.currentTime.toFixed(2); setRange({ start, count: countFor(start, Math.max(start + r.bin, target), r.bin) }); e.target.blur(); });
-  $('rgEndNow').addEventListener('click', e => { setEnd(+video.currentTime.toFixed(2)); e.target.blur(); });
+  // 今の時刻：今表示しているフレームの始まりに揃える（1フレーム移動で合わせた位置をそのまま区切りにする）
+  const nowT = () => (_.frameStart ? _.frameStart(video.currentTime) : +video.currentTime.toFixed(3));
+  $('rgNow').addEventListener('click', e => { const r = RG(), target = r.target ?? (r.start + r.count * r.bin), start = nowT(); setRange({ start, count: countFor(start, Math.max(start + r.bin, target), r.bin) }); e.target.blur(); });
+  $('rgEndNow').addEventListener('click', e => { setEnd(nowT()); e.target.blur(); });
   $('rgFit').addEventListener('click', e => { setEnd(S.meta.duration); e.target.blur(); });
 
   Object.assign(_, { loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
