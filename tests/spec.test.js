@@ -32,7 +32,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await setField(p, 'rgCount', 2);                                // 区間の数を変えると終了が動く
     const c = await p.inputValue('#rgEnd');
     await p.evaluate(() => AH.seekTo(7)); await p.waitForTimeout(150); await p.click('#rgEndNow');
-    const d = await range(p);
+    const d = await range(p), endD = await p.inputValue('#rgEnd');
     await p.click('#rgFit'); const e = await range(p);
     // 区間の長さを行き来しても終了が手前へ縮まない（決めた終了 12 秒から毎回決め直す）
     await setField(p, 'rgStart', 0); await setField(p, 'rgBin', 1); await p.click('#rgFit');
@@ -41,9 +41,13 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('終了を指定すると区間の数が決まる', a.start === 1.5 && a.count === 8 && a.bin === 1, JSON.stringify(a));
     check('区間の長さの変更で終了を保つ', b.count === 4 && bEnd === '9.5', JSON.stringify(b) + ' end=' + bEnd);
     check('区間の数の変更で終了が動く', c === '5.5', 'end=' + c);
-    check('今の時刻を終了にする', d.count === 2 && d.start + d.count * d.bin === 5.5, JSON.stringify(d));   // 7秒は2秒区間の区切り 5.5 に揃う
-    check('動画の終わりまで', e.start + e.count * e.bin <= 12 && e.start + (e.count + 1) * e.bin > 12, JSON.stringify(e));
-    check('区間の長さを行き来しても終了が縮まない（1 秒に戻すと 12 秒）', JSON.stringify(ends) === '[11.9,12,12,12,10,12]', JSON.stringify(ends));
+    check('今の時刻を終了にする（最後の区間は 5.5〜7 の短い区間）', d.count === 3 && d.target === 7 && endD === '7', JSON.stringify(d) + ' end=' + endD);
+    check('動画の終わりまで（1.5 秒から2秒区間で 12 秒まで：最後は 11.5〜12 の短い区間）', e.count === 6 && e.target === 12 && await p.inputValue('#rgEnd') === '12', JSON.stringify(e));
+    // 終了が区切りに合わないとき：最後は短い区間（11〜11.5）で、書き出しの _bins の終わりも 11.5
+    await setField(p, 'rgBin', 1); await setField(p, 'rgEnd', 11.5);
+    const g = await range(p), btn = await p.textContent('#rgBtn'), last = await p.evaluate(() => [AH.binStart(AH.nSec() - 1), AH._.binEnd(AH.nSec() - 1), AH._.binEnd(0)]);
+    check('最後の1秒未満を捨てず、短い最後の区間（11〜11.5）にする', g.count === 12 && JSON.stringify(last) === '[11,11.5,1]' && /最後 0\.5秒/.test(btn), JSON.stringify({ g, last, btn }));
+    check('区間の長さを行き来しても終了は 12 秒のまま（端数は短い最後の区間）', JSON.stringify(ends) === '[12,12,12,12,12,12]', JSON.stringify(ends));
     await p.close();
   }
 

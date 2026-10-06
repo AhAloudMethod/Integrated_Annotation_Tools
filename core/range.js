@@ -4,13 +4,17 @@
   const { $, video, S, clamp, addLog, fmt } = _;
   // ---------- 評価区間（動画の時刻とは独立） ----------
   // start: 区間0が始まる動画時刻、count: 区間の数、bin: 1区間の長さ（秒）、label: 列の表記、
-  // target: 決めた終了（区間の区切りに揃える前）。開始・区間の長さを変えたら、いつもここから区間の数を決め直す
-  // （揃えた終了から決め直すと、変えるたびに端数が切り捨てられて終了が手前へ縮んでいった）
-  const defaultRange = D => ({ start: 0, count: Math.max(1, Math.round(D || 0)), bin: 1, label: 'countdown', target: D || 0 });
+  // target: 決めた終了。開始・区間の長さを変えたら、いつもここから区間の数を決め直す（揃えた終了から決め直すと終了が手前へ縮んでいった）。
+  // 終了が区間の区切りに合わないときは、最後の区間を終了までの短い区間にする（端数を捨てない）。半フレーム未満の端数は区切りの誤差とみなす
+  const tailTol = () => 0.5 / ((_.fps && _.fps()) || 30);
+  const countFor = (start, end, bin) => Math.max(1, Math.ceil((end - start - tailTol()) / bin));
+  const defaultRange = D => ({ start: 0, count: countFor(0, Math.max(D || 0, 1), 1), bin: 1, label: 'countdown', target: D || 0 });
   const RG = () => S.meta.range || defaultRange(S.meta.duration);
   const nSec = () => RG().count;
   const binStart = s => RG().start + s * RG().bin;
-  const rangeEnd = () => binStart(nSec());
+  // 評価区間の終わり：決めた終了（最後の区間の中にあるとき）か、区間の区切り
+  const rangeEnd = () => { const r = RG(), full = binStart(r.count); return r.target != null ? Math.min(full, Math.max(r.target, full - r.bin + 1e-3)) : full; };
+  const binEnd = s => (s >= nSec() - 1 ? rangeEnd() : binStart(s + 1));   // 区間 s の終わり（最後の区間は短いことがある）
   const binAt = t => Math.floor((t - RG().start) / RG().bin + 1e-6);
   const curSec = () => clamp(binAt(video.currentTime || 0), 0, nSec() - 1);
   const inRange = t => t >= RG().start - 1e-6 && t < rangeEnd() - 1e-6;
@@ -20,7 +24,7 @@
     const t = video.currentTime || 0, n = nSec();
     let s = binAt(t);
     if (s === n && t >= (S.meta.duration || 0) - 0.05) s = n - 1;
-    if (s >= 0 && s < n) return s;
+    if (s >= 0 && s < n && (s < n - 1 || t < rangeEnd() + 0.05)) return s;   // 最後の区間は決めた終了まで
     const el = $('hint');
     el.classList.remove('ok'); el.textContent = '評価区間の外です。評価区間の中に移動してから入力してください'; el.hidden = false;
     clearTimeout(inputSec.tm); inputSec.tm = setTimeout(() => { el.hidden = true; }, 2500);
@@ -57,12 +61,11 @@
   function syncRangeUI() {
     const r = RG();
     $('rgStart').value = r.start; $('rgCount').value = r.count; $('rgBin').value = r.bin; $('rgLabel').value = r.label;
-    $('rgEnd').value = +(r.start + r.count * r.bin).toFixed(3);
-    $('rgBtn').textContent = `区間 ${fmt(r.start).slice(0, -3)}〜 ${r.count}×${r.bin}秒`;
+    $('rgEnd').value = +rangeEnd().toFixed(4);
+    const last = rangeEnd() - binStart(r.count - 1);
+    $('rgBtn').textContent = `区間 ${fmt(r.start).slice(0, -3)}〜 ${r.count}×${r.bin}秒` + (last < r.bin - 1e-3 ? `（最後 ${+last.toFixed(2)}秒）` : '');
   }
   $('rgBtn').addEventListener('click', e => { const open = $('rgPanel').hidden; if (_.closePops) _.closePops(); $('rgPanel').hidden = !open; e.target.blur(); });
-  // 開始・終了・1区間の長さから区間の数を決める（終了は区間の区切りに揃える）
-  const countFor = (start, end, bin) => Math.max(1, Math.floor((end - start) / bin + 1e-6));
   function onRangeInput(changed) {
     const r = RG(), target = r.target ?? (r.start + r.count * r.bin);
     const start = Math.max(0, +$('rgStart').value || 0), bin = Math.max(0.1, +$('rgBin').value || 1), label = $('rgLabel').value;
@@ -79,5 +82,5 @@
   $('rgEndNow').addEventListener('click', e => { setEnd(nowT()); e.target.blur(); });
   $('rgFit').addEventListener('click', e => { setEnd(S.meta.duration); e.target.blur(); });
 
-  Object.assign(_, { loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();

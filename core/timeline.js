@@ -34,7 +34,7 @@
       g.globalAlpha = 1;
       // 区間の境界（評価区間に合わせた格子）と動画時刻の目盛り
       for (let s = 0; s <= nSec(); s++) {
-        const x = xOf(binStart(s)); if (binStart(s) > D + 1e-6) break;
+        const bs = s === nSec() ? rangeEnd() : binStart(s), x = xOf(bs); if (bs > D + 1e-6) break;
         g.strokeStyle = css('--grid'); g.lineWidth = s % 5 === 0 ? 1.2 : 0.6;
         g.beginPath(); g.moveTo(x, 4); g.lineTo(x, h - RULER); g.stroke();
       }
@@ -68,7 +68,7 @@
         if (isInt() && ps.length < 400) for (const p of ps) if (!p.init) { g.beginPath(); g.arc(xOf(p.t), L.yOf(p.val), 2.5, 0, 7); g.fill(); }
       } else if (model() === 'table') {
         const c = S.data.cells[L.ax];
-        for (let s = 0; s < nSec(); s++) if (c[s] != null) g.fillRect(xOf(binStart(s)) + 1, L.yOf(c[s]) - 1.5, xOf(Math.min(binStart(s + 1), D)) - xOf(binStart(s)) - 2, 3);
+        for (let s = 0; s < nSec(); s++) if (c[s] != null) g.fillRect(xOf(binStart(s)) + 1, L.yOf(c[s]) - 1.5, xOf(Math.min(_.binEnd(s), D)) - xOf(binStart(s)) - 2, 3);
       } else if (model() === 'events') {
         const mid = (L.y0 + L.y1) / 2;
         for (const e of S.data.events) {

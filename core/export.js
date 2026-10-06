@@ -24,7 +24,7 @@
     const out = (suffix, header, rows) => { download(base + suffix, toCSV(header.map(colName), rows), 'text/csv'); files.push(suffix); };
     S.meta.axes = _.axesCurrent();
     S.meta.gamepads = _.padMeta();   // ゲームパッドの設定・使った機器（core/gamepad.js）
-    const binCols = s => [s, secLabel(s), binStart(s).toFixed(3), binStart(s + 1).toFixed(3)];
+    const binCols = s => [s, secLabel(s), binStart(s).toFixed(3), _.binEnd(s).toFixed(3)];
     const binHead = ['bin', 'label', 't_start', 't_end'];
 
     if (model() === 'series') {
@@ -34,7 +34,7 @@
       // 区間系列。整数値の方式：各区間で最も長く続いた値（同数なら先）。連続値：各区間の平均（有界なら9段階丸めも）
       const rows = [];
       for (let s = 0; s < n; s++) {
-        const k0 = Math.round(binStart(s) * FPS), k1 = Math.min(Math.round(binStart(s + 1) * FPS), N + 1);
+        const k0 = Math.round(binStart(s) * FPS), k1 = Math.min(Math.round(_.binEnd(s) * FPS), N + 1);
         const ks = []; for (let k = k0; k < k1; k++) ks.push(k);
         const row = binCols(s);
         for (const ax of ['v', 'a']) {
@@ -68,7 +68,7 @@
       out('_ranks.csv', ['t', 'label', 'd_valence', 'd_arousal', 'source'], S.data.events.map(e => [e.t, e.label, e.dv, e.da, e.source || 'input']));
       const rows = [];
       for (let s = 0; s < n; s++) {
-        const es = S.data.events.filter(e => e.t >= binStart(s) && e.t < binStart(s + 1));
+        const es = S.data.events.filter(e => e.t >= binStart(s) && e.t < _.binEnd(s));
         rows.push([...binCols(s), es.length, es.reduce((p, e) => p + e.dv, 0), es.reduce((p, e) => p + e.da, 0)]);
       }
       out('_bins.csv', [...binHead, 'n_changes', 'sum_d_valence', 'sum_d_arousal'], rows);

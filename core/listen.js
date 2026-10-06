@@ -25,7 +25,7 @@
   let ownSeek = false; // 自分で動かしたシーク（記録の取り消しにしない）
   function aimFrom(t) {
     const b = binAt(t + 0.005);
-    target = b >= 0 && b < nSec() ? Math.min(binStart(b + 1), S.meta.duration || Infinity) : null;
+    target = b >= 0 && b < nSec() ? Math.min(_.binEnd(b), S.meta.duration || Infinity) : null;
   }
   function stopRecording(reason) {
     if (phase !== 'record') return;
