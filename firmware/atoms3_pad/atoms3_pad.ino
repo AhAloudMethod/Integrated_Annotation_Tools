@@ -84,10 +84,13 @@ bool i2cWrite(uint8_t addr, uint8_t reg, const uint8_t *buf, size_t len) {
   return Wire.endTransmission() == 0;
 }
 
+// 番地を書いたら一度 STOP を出してから読む。Joystick2・PbHub（STM32）は STOP を受けて送る値を用意するので、
+// STOP なし（repeated start）で読むと用意が間に合わず、前に読んだ値（ボタンの 1 なら x・y＝257≒中立）が返ることがある
 bool i2cRead(uint8_t addr, uint8_t reg, uint8_t *buf, size_t len) {
   Wire.beginTransmission(addr);
   Wire.write(reg);
-  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.endTransmission(true) != 0) return false;
+  delayMicroseconds(50);
   if (Wire.requestFrom(addr, (uint8_t)len) != len) return false;
   for (size_t i = 0; i < len; i++) buf[i] = Wire.read();
   return true;
