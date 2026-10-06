@@ -33,6 +33,12 @@
       <span class="rgBtns"><button id="rgEndNow" type="button">今の時刻を終了にする</button><button id="rgFit" type="button">動画の終わりまで</button></span>
       <label>区間の数 <input id="rgCount" type="number" min="1" step="1"></label>
       <label>1区間の長さ（秒） <input id="rgBin" type="number" min="0.1" step="0.1"></label>
+      <div class="sub">
+        <div class="refTitle">区切りを自分で置く（不揃いの区間）</div>
+        <span class="rgBtns"><button id="cutAdd" type="button" title="今表示しているフレームの始まりで区間を割る（区間方式の値は両方に引き継ぐ）">今の時刻で区切る</button><button id="cutDel" type="button" title="今の時刻に最も近い区切りを消す（前の区間の値を残す）">近くの区切りを消す</button></span>
+        <label>区切り（秒） <input id="cutList" type="text" placeholder="例：1.2, 2, 3.5" title="開始と終了の間の区切りの時刻（秒）。カンマで区切って書き換えられる"></label>
+        <button id="cutReset" type="button">等間隔に戻す</button>
+      </div>
       <label>列の表記 <select id="rgLabel"><option value="countdown">カウントダウン（残り）</option><option value="elapsed">経過</option></select></label>
       <p class="muted">開始・終了・1区間の長さを変えると区間の数を、区間の数を変えると終了を合わせ直します。終了が区間の区切りに合わないときは、最後の区間を終了までの短い区間にします（端数を捨てない）。区間方式（Excel・Affect Grid・SAM・カスタムの区間ごと）の入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
     </div>

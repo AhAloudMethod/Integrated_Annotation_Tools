@@ -211,6 +211,36 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await q2page.evaluate(() => localStorage.clear()); await q2page.close(); await p.close();
   }
 
+  // ---- 区切りを自分で置く（不揃いの区間） ----
+  {
+    const p = await open('excel');
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    await p.evaluate(() => { AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); for (const [s, v] of [[0, 1], [1, 2], [2, 3], [3, 4]]) AH.setCell('v', s, v); });
+    const geo = () => p.evaluate(() => ({ n: AH.nSec(), edges: AH.S.meta.range.edges || null, cells: [0, 1, 2, 3, 4, 5].map(i => AH.S.data.cells.v[i] ?? null), btn: document.getElementById('rgBtn').textContent, dis: document.getElementById('rgCount').disabled }));
+    await p.click('#rgBtn');
+    await p.evaluate(() => AH.seekTo(1.5)); await p.waitForTimeout(150); await p.click('#cutAdd'); await p.waitForTimeout(100);
+    const a = await geo(), ab = await p.evaluate(() => [AH.binStart(2), AH._.binEnd(1), AH._.binAt(1.4), AH._.binAt(1.6)]);
+    check('今の時刻で区切ると区間 1 が 1〜1.5・1.5〜2 に割れ、区間方式の値は両方に引き継ぐ', a.n === 13 && JSON.stringify(ab) === '[1.5,1.5,1,2]' && JSON.stringify(a.cells) === '[1,2,2,3,4,null]' && /不揃い/.test(a.btn) && a.dis, JSON.stringify({ a, ab }));
+    await p.evaluate(() => AH.seekTo(1.45)); await p.waitForTimeout(150); await p.click('#cutDel'); await p.waitForTimeout(100);
+    const b = await geo();
+    check('近くの区切り（1.5）を消すと元に戻り、前の区間の値を残す', b.n === 12 && JSON.stringify(b.cells) === '[1,2,3,4,null,null]', JSON.stringify(b));
+    await setField(p, 'cutList', '1.2, 2, 3.5'); await p.waitForTimeout(100);
+    const c = await geo();
+    check('区切りの一覧を書き換えると、その区切りの区間になる', JSON.stringify(c.edges) === '[0,1.2,2,3.5,12]' && c.n === 4, JSON.stringify(c));
+    await p.evaluate(() => AH.seekTo(10)); await p.waitForTimeout(150); await p.click('#rgEndNow'); await p.waitForTimeout(100);
+    const d = await geo();
+    check('不揃いの区間でも、今の時刻を終了にできる', JSON.stringify(d.edges) === '[0,1.2,2,3.5,10]', JSON.stringify(d));
+    const dl = []; p.on('download', x => dl.push(x));
+    await p.click('#exportBtn'); await p.waitForTimeout(1200);
+    const bins = fs.readFileSync(await dl.find(x => x.suggestedFilename().endsWith('_bins.csv')).path(), 'utf8').trim().split('\n').slice(1).map(l => l.split(',').slice(2, 4).join('-'));
+    check('書き出しの _bins.csv は不揃いの区間の始めと終わり', bins.join(' ') === '0.000-1.200 1.200-2.000 2.000-3.500 3.500-10.000', bins.join(' '));
+    await p.click('#rgBtn'); await p.click('#cutReset'); await p.waitForTimeout(100);
+    const e = await geo();
+    check('等間隔に戻す（0〜10 を 1 秒ずつ）', e.edges === null && e.n === 10 && !e.dis, JSON.stringify(e));
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

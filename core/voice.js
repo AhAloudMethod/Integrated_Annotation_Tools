@@ -111,6 +111,7 @@
   function videoTimeOf(sec) {
     const r = _.RG();
     if (r.label === 'elapsed') return r.start + sec;
+    if (r.edges) return _.binStart(clamp(_.binAt(_.rangeEnd() - sec - 1e-3), 0, nSec() - 1));   // 不揃いの区間：残り sec 秒の時刻を含む区間
     const s = nSec() - 1 - Math.round(sec / r.bin);   // カウントダウン：残り sec 秒の区間
     return _.binStart(s);
   }
