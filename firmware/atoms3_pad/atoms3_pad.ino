@@ -38,6 +38,7 @@ const uint8_t HUB_ADDR = 0x61;
 const uint8_t HUB_REG_ANALOG = 0x06;    // チャネルの番地（(ch + 4) << 4）に足す。IO0 の 12 bit
 const uint32_t LOOP_MS = 5;             // 200 Hz で読む
 const uint32_t RETRY_MS = 1000;         // 見つからない機器を探し直す間隔（抜き差ししても戻る）
+const int JOY_LOST_READS = 20;          // スティックの読み取りがこの回数（100 ms）続けて失敗したら外れたとみなす
 const uint32_t LOG_MS = 200;            // シリアルモニタへの表示の間隔
 const uint32_t DEBOUNCE_MS = 20;        // ボタンの状態がこの間続いたら切り替える（チャタリングで記録がオン・オフを繰り返さないように）
 
@@ -47,6 +48,10 @@ uint32_t retryAt = 0, logAt = 0;
 float faderAvg[2] = { -1, -1 };  // 読み値の移動平均（-1 は未初期化）
 int8_t faderOut[2] = { 0, 0 };
 int8_t lastX = 0, lastY = 0, lastZ = 0, lastRx = 0;
+int8_t stickX = 0, stickY = 0;   // 最後に読めたスティックの値
+bool stickRawPressed = false;
+int joyFails = 0;                // 続けて失敗した回数
+uint32_t joyFailTotal = 0;       // 起動からの失敗の回数（シリアルモニタに出す）
 uint32_t lastButtons = 0;
 bool sentOnce = false;
 
@@ -158,9 +163,19 @@ void setup() {
 void loop() {
   uint32_t now = millis();
 
-  int8_t x = 0, y = 0;
-  bool stickPressed = false;
-  if (joyFound && !readStick(x, y, stickPressed)) { joyFound = false; setStatusLed(); x = y = 0; }
+  // 読み取りが一度失敗しただけでは前の値を保つ（I2C がたまに失敗しても、スティックが一瞬だけ中立に戻らないように）
+  if (joyFound) {
+    if (readStick(stickX, stickY, stickRawPressed)) joyFails = 0;
+    else {
+      joyFailTotal++;
+      if (++joyFails >= JOY_LOST_READS) {
+        joyFound = false; joyFails = 0; setStatusLed();
+        stickX = stickY = 0; stickRawPressed = false;
+      }
+    }
+  }
+  int8_t x = stickX, y = stickY;
+  bool stickPressed = stickRawPressed;
   if ((!joyFound || !hubFound) && now >= retryAt) { findDevices(); retryAt = now + RETRY_MS; }
 
   int raw[2];
@@ -183,8 +198,8 @@ void loop() {
 
   if (now >= logAt) {
     logAt = now + LOG_MS;
-    Serial.printf("joy=%s x=%4d y=%4d press=%d | pbhub=%s fader1 raw=%4d axis=%4d | fader2 raw=%4d axis=%4d | button=%d\n",
-                  joyFound ? "ok" : "--", x, y, stickPressed, hubFound ? "ok" : "--", raw[0], z, raw[1], rx, bodyPressed);
+    Serial.printf("joy=%s x=%4d y=%4d press=%d fails=%lu | pbhub=%s fader1 raw=%4d axis=%4d | fader2 raw=%4d axis=%4d | button=%d\n",
+                  joyFound ? "ok" : "--", x, y, stickPressed, (unsigned long)joyFailTotal, hubFound ? "ok" : "--", raw[0], z, raw[1], rx, bodyPressed);
   }
   delay(LOOP_MS);
 }
