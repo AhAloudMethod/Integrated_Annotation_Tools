@@ -31,7 +31,8 @@
     return e;
   }
   const stored = t => ({ v: AH.valueAt('v', t), a: AH.valueAt('a', t) });
-  const shown = t => (pen.down ? { v: pen.v, a: pen.a } : stored(t));
+  // 聴いてから入力で止まっている間（AH.listenLive）は、記録済みの値ではなく今の入力（予覧）を映す
+  const shown = t => (pen.down || AH.listenLive() ? { v: pen.v, a: pen.a } : stored(t));
   function nowRow(parent) {
     const r = h('div', { class: 'nowRow' }, `<span class="v">${AH.ax('v').short} <b>5.00</b></span><span class="a">${AH.ax('a').short} <b>5.00</b></span>`);
     parent.appendChild(r);
@@ -208,10 +209,11 @@
           return { v: AH.r2(5 + x * 4), a: AH.r2(5 + y * 4), pad: 'joy' };
         }
         if (pen.down) return { v: pen.v, a: pen.a };
+        if (AH.listenLive() && pen.listenSet) return { v: pen.v, a: pen.a };   // 聴いてから入力：止まっている間にマウスで決めた値
         return j ? { v: 5, a: 5, pad: 'joy' } : { v: 5, a: 5 };
       },
       // 画面に出す値：記録オン・スティックを倒している・マウスで押している・練習中は今の値、それ以外は記録済みの値
-      shown: t => (S.armed || k.active() || pen.down || !AH.hasVideo() ? k.val() : stored(t)),
+      shown: t => (S.armed || k.active() || pen.down || AH.listenLive() || !AH.hasVideo() ? k.val() : stored(t)),
     };
     return k;
   }

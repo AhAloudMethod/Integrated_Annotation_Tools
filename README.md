@@ -28,6 +28,7 @@ core/                 共通部分（読み込み順に依存する。index.html
   timeline.js         下のグラフ（シーク・グラフでの直接編集）と画面の再描画 refresh
   modes-registry.js   方式の登録・切り替え・セッション開始
   video.js            動画の読み込み・再生制御・ヘッダーのボタン
+  listen.js           聴いてから入力（区間の終わりで止め、ボタンで同じ区間を再生し直して記録する）
   loop.js             毎フレームの処理（ストロークの開始・終了・サンプリング）
   keys.js             キー操作
   export.js           書き出し（CSV・JSON）
@@ -108,6 +109,13 @@ npm run check      # 全 JS に node --check
 
 - **再生制御**：全方式で一時停止、巻き戻し、シークができる。1回の視聴で評価し切ることは想定しない。
 - **連続方式の書き込み**：再生中に「押している間」または「記録オン（R）の間」だけ書き込み、その区間の前の記録を上書きする。書き込みを終えた後の値は「設定」の「書き込みを終えた後」で選ぶ。既定の「その値を保つ」は、離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」は、書き込み区間の直後から上書き前の値に戻す（途中だけを書き直すとき向け）。どちらで書いたかは `_strokes` の `after` に残る。上書きで消えた軌跡も含め、すべての書き込みを `_strokes.csv` と `_session.json` に残す。
+- **聴いてから入力**（連続の方式。「設定」の「1区間ずつ聴いてから入力する」、既定オフ・ブラウザに保存）：Excel のように「聴いて判断してから入れる」手順を、連続の入力のまま行う。
+  1. 再生すると、評価区間の1区間の終わりで自動で止まる（聴く。記録しない。止まる位置は区間の終わりの 2 ms 手前で、今の区間＝聴いた区間）。
+  2. 止まっている間に考える。入力（マウス・キー・ジョイスティック・スライダー）を動かすと画面の値は動くが、書き込まない（マウスのクリックも点を置かない）。
+  3. Enter（またはボタン0）で、同じ区間を始めから音声つきで再生し直し、その間の入力を記録する（記録オンと同じ連続の書き込み。最初の値は区間の始めに入る。マウスは離しても記録は続く）。
+  4. 区間の終わりで記録を終え、そのまま次の区間を聴く（1 に戻る）。最後の区間なら止まる。
+  - R で聴いた区間をもう一度聴く（記録しない）。Space は記録せずに次の区間へ。記録中に Space・シークすると、そこで記録を終える。記録オン（R）の記録ボタンは出ない。
+  - 書き込みは `_strokes` に `end_reason=listen`（区間の終わりまで記録したとき）で残る。区間方式（Excel など）と相対の方式（AffectRank など）には効かない。
 - **記録オフでの操作**：スライダー・レバー・RankTrace（CARMA・スロットル・RankTrace・カスタムのキーボード／ゲームパッド、スライダーの機器）は、記録オフでも動かせる。記録オンにすると、動かした位置から記録が始まる。記録オフのまま再生やシークで時刻が動いたときは、記録済みの値に追従する。
 - **コントローラー（ゲームパッド）**：ジョイスティック・スライダーの機器（自作の基板など）を Gamepad API で読む。機器のボタンを押すとブラウザが認識する。
   - 機器との約束（ツール側で決め打ち。基板側がこれに合わせる）：
@@ -218,9 +226,9 @@ npm run check      # 全 JS に node --check
 | `_ranks.csv` | `t, label, d_valence, d_arousal, source` | 変化の入力の時刻・方向の名前・方向（−1/0/+1）・入れ方（input＝クリック・キー、gamepad＝ジョイスティック） |
 | `_events.csv` | `wall_ms, video_t, type, axis, value, detail` | wall_ms＝セッション開始からの経過ミリ秒（復元したときは続きから）、video_t＝そのときの動画の秒 |
 
-`_events.csv` の `type`：`session_start`・`restore`・`mode_switch`・`play`・`pause`・`seek`（detail＝移動前の時刻）・`ended`・`rate`・`range`・`option`・`graph_edit`・`pip`・`export`・`undo`・`arm`／`disarm`・`input`／`input_same`（変化点キーなど）・`click`（一時停止中のクリック）・`delete`・`stroke`（detail＝区間・サンプル数・終わった理由）・`graph_draw`／`graph_cells`・`cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（区間の値）・`cell_focus`・`memo`・`rank`（AffectRank）・`pad_connect`／`pad_disconnect`（value＝機器名、detail＝番号・軸とボタンの数）・`pad_assign`（ジョイスティック・スライダーに使う機器が変わった）・`pad_setting`（コントローラーの設定）。
+`_events.csv` の `type`：`session_start`・`restore`・`mode_switch`・`play`・`pause`・`seek`（detail＝移動前の時刻）・`ended`・`rate`・`range`・`option`・`graph_edit`・`pip`・`export`・`undo`・`arm`／`disarm`・`input`／`input_same`（変化点キーなど）・`click`（一時停止中のクリック）・`delete`・`stroke`（detail＝区間・サンプル数・終わった理由）・`graph_draw`／`graph_cells`・`cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（区間の値）・`cell_focus`・`memo`・`rank`（AffectRank）・`pad_connect`／`pad_disconnect`（value＝機器名、detail＝番号・軸とボタンの数）・`pad_assign`（ジョイスティック・スライダーに使う機器が変わった）・`pad_setting`（コントローラーの設定）・`listen_mode`（聴いてから入力の設定）・`listen_pause`（区間の終わりで止まった。detail＝区間）・`listen_record`／`listen_record_end`（区間を再生し直して記録した始めと終わり）・`listen_replay`（R でもう一度聴いた）。
 
-`_session.json` は `{ meta, data, log }`。`meta` は参加者ID・動画名・長さ・開始時刻・ツールの版（`ah-annotator-v0.5`）・方式・方式の設定・評価区間・色の設定（`colors`）・ゲームパッド（`gamepads`：`use`＝使うか、`device`＝選んだ機器か auto、`joystick`・`slider`＝書き出した時点で使っている機器名、`connected`＝つながっている機器、`used`＝書き込みに使った機器 `{ role: joy|slider, id }`）、`data` は変化点（`points`）・書き込み（`strokes`。機器で入れたものは `source: 'gamepad'` と `pad`）・区間の値（`cells`）・相対の変化（`events`）・メモ、`log` は `_events.csv` と同じ内容。
+`_session.json` は `{ meta, data, log }`。`meta` は参加者ID・動画名・長さ・開始時刻・ツールの版（`ah-annotator-v0.5`）・方式・方式の設定・評価区間・色の設定（`colors`）・聴いてから入力で評価したか（`listen`：`on`）・ゲームパッド（`gamepads`：`use`＝使うか、`device`＝選んだ機器か auto、`joystick`・`slider`＝書き出した時点で使っている機器名、`connected`＝つながっている機器、`used`＝書き込みに使った機器 `{ role: joy|slider, id }`）、`data` は変化点（`points`）・書き込み（`strokes`。機器で入れたものは `source: 'gamepad'` と `pad`）・区間の値（`cells`）・相対の変化（`events`）・メモ、`log` は `_events.csv` と同じ内容。
 
 自動保存は localStorage のキー `ahann4:<方式id>:<参加者ID>:<動画名>` に `{ meta, data, log, undo（直近10回分） }` を入れる。「動画の大きさ」の設定は `ahann_vidsize`。
 

@@ -85,7 +85,7 @@
     }
     if (joyMode()) return stk().shown(t);
     if (writeMode() === 'armed') return { ...ctrl };
-    if (pen.down) return { v: pen.v, a: pen.a };
+    if (pen.down || AH.listenLive()) return { v: pen.v, a: pen.a };
     return stored(t);
   }
   function apply(patch) {

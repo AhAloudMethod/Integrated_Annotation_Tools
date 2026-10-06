@@ -22,7 +22,7 @@
     update(t) {
       if (!g) return;
       const w = pad.clientWidth, R = (w - PAD * 2) / 2, cx = PAD + R, cy = PAD + R;
-      const cur = stk.on() ? stk.shown(t) : pen.down ? { v: pen.v, a: pen.a } : (spring() ? { v: 5, a: 5 } : stored(t));
+      const cur = stk.on() ? stk.shown(t) : pen.down || (AH.listenLive() && !spring()) ? { v: pen.v, a: pen.a } : (spring() ? { v: 5, a: 5 } : stored(t));
       g.clearRect(0, 0, w, w);
       const qs = [['hh', -Math.PI / 2, 0], ['hl', Math.PI, 1.5 * Math.PI], ['ll', Math.PI / 2, Math.PI], ['lh', 0, Math.PI / 2]];
       for (const [k, a0, a1] of qs) {

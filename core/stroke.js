@@ -20,7 +20,7 @@
   }
   function strokeSample() {
     if (!_.stroke) return;
-    const t = vt();
+    const t = _.stroke.raw.length ? vt() : _.stroke.t0;   // 最初のサンプルは書き込みの始め（聴いてから入力では区間の始め）
     if (t < _.stroke.lastT) return;
     const vals = _.M.sample();
     if (vals.pad) for (const r of vals.pad.split('+')) _.stroke.pad[r] = _.padRoleId(r);   // 機器（joy・slider）で入れた値
@@ -31,9 +31,9 @@
     if (!last || last[0] !== row[0] || last[1] !== row[1] || last[2] !== row[2]) _.stroke.raw.push(row);
     _.stroke.lastT = t;
   }
-  function startStroke() {
+  function startStroke(t0 = vt()) {
     const axes = _.M.writeAxes(); if (!axes.length) return;
-    _.stroke = { before: snapshot(), axes, t0: vt(), lastT: vt(), raw: [], pad: {} };
+    _.stroke = { before: snapshot(), axes, t0, lastT: t0, raw: [], pad: {} };
     strokeSample();
   }
   // 区間 (tEnd, restoreT) の古い点を掃除し、restoreT に上書き前の値へ戻す点を置く
@@ -67,8 +67,11 @@
   }
   const writeMode = () => (_.M && _.M.writeMode) ? _.M.writeMode() : null;
 
+
   // hold 方式の方式側から呼ぶ
   function penDown(vals) {
+    // 聴いてから入力で止まっている間・記録している間は、クリックで点を置かずにペンだけ動かす（書き込みは記録の仕組みで行う）
+    if (_.listenLive && _.listenLive()) { Object.assign(pen, vals, { down: true, clickEdit: false, listenSet: true }); _.refresh(); return; }
     Object.assign(pen, vals, { down: true, clickEdit: video.paused });
     if (video.paused && writeMode() === 'hold') {
       const before = snapshot(); let ch = false;
@@ -87,13 +90,14 @@
   function penUp() {
     if (!pen.down) return;
     pen.down = false; pen.clickEdit = false;
-    if (writeMode() === 'hold') endStroke('release');
+    if (writeMode() === 'hold' && !(_.listenRecording && _.listenRecording())) endStroke('release');   // 聴いてから入力の記録は区間の終わりまで続ける
     _.autosave(); _.refresh();
   }
 
-  function setArmed(on) {
+  // force：聴いてから入力が記録を始めるとき（core/listen.js）。それ以外では、聴いてから入力の間は手で記録オンにしない
+  function setArmed(on, force = false) {
     if (S.armed === on) return;
-    if (on && writeMode() !== 'armed') return;
+    if (on && !force && (writeMode() !== 'armed' || (_.listenUsable && _.listenUsable()))) return;
     S.armed = on;
     if (!on) endStroke('disarm');
     if (_.M && _.M.onArm) _.M.onArm(on);

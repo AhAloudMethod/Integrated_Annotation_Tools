@@ -10,11 +10,13 @@
     padPoll();   // ゲームパッドを読む（方式の tick より先に）
     if (_.M && S.data) {
       if (_.M.tick) _.M.tick(dt);
-      if (writeMode() === 'armed' && padPressed(0)) setArmed(!S.armed);
+      const listen = _.listenUsable();   // 聴いてから入力：区間の終わりで止め、ボタン0で同じ区間を再生し直して記録（core/listen.js）
+      if (listen) { _.listenTick(); if (padPressed(0)) _.listenRecord(); }
+      else if (writeMode() === 'armed' && padPressed(0)) setArmed(!S.armed);
       const wm = writeMode();
-      const want = wm === 'hold' ? (pen.down && !pen.clickEdit) : wm === 'armed' ? S.armed : false;
+      const want = listen ? _.listenRecording() : wm === 'hold' ? (pen.down && !pen.clickEdit) : wm === 'armed' ? S.armed : false;
       const running = !video.paused && !video.seeking;
-      if (want && !_.stroke && running) startStroke();
+      if (want && !_.stroke && running) startStroke(listen ? (_.listenTakeStart() ?? video.currentTime) : undefined);
       else if (_.stroke && !want) endStroke(wm === 'hold' ? 'release' : 'disarm');
       else if (_.stroke && running) strokeSample();
       if (!video.paused || pen.down || _.stroke || _.M.animate) refresh();

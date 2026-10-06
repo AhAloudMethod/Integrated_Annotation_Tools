@@ -41,6 +41,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visib
 /* 案内は画面上部に重ねて出す（レイアウトを動かさない） */
 .hint.ok{color:var(--ink);border-color:var(--val)}
 .hint{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:30;font-size:13px;color:var(--pen);background:var(--panel);border:1px solid var(--pen);border-radius:4px;padding:4px 14px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.listenBox{font-size:12px;white-space:nowrap;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:3px 8px}
+.listenBox.on{color:var(--ink);border-color:var(--pen)}
+.listenBox.rec{color:#fff;background:var(--pen);border-color:var(--pen)}
 #armBtn.on{background:var(--pen);border-color:var(--pen);color:#fff}
 kbd{font-family:inherit;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 5px;background:var(--panel);color:var(--ink)}
 [hidden]{display:none !important}

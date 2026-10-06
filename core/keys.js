@@ -7,6 +7,8 @@
     const tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;   // 入力欄（Excel方式のセル等）は各自で処理
     if (_.M && _.M.onKey && _.M.onKey(e)) { e.preventDefault(); return; }
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _.listenLive() && _.listenRecord()) { e.preventDefault(); return; }
+    if (e.code === 'KeyR' && _.listenLive() && _.listenReplay()) { e.preventDefault(); return; }
     if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
     else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       e.preventDefault();
