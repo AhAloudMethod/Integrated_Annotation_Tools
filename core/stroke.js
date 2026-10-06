@@ -32,6 +32,7 @@
     _.stroke.lastT = t;
   }
   function startStroke(t0 = vt()) {
+    if (_.reviewing()) return;   // 見返しの間は書き込まない
     const axes = _.M.writeAxes(); if (!axes.length) return;
     _.stroke = { before: snapshot(), axes, t0, lastT: t0, raw: [], pad: {} };
     strokeSample();
@@ -70,6 +71,7 @@
 
   // hold 方式の方式側から呼ぶ
   function penDown(vals) {
+    if (_.reviewing()) return;
     // 聴いてから入力で止まっている間・記録している間は、クリックで点を置かずにペンだけ動かす（書き込みは記録の仕組みで行う）
     if (_.listenLive && _.listenLive()) { Object.assign(pen, vals, { down: true, clickEdit: false, listenSet: true }); _.refresh(); return; }
     Object.assign(pen, vals, { down: true, clickEdit: video.paused });
@@ -97,7 +99,7 @@
   // force：聴いてから入力が記録を始めるとき（core/listen.js）。それ以外では、聴いてから入力の間は手で記録オンにしない
   function setArmed(on, force = false) {
     if (S.armed === on) return;
-    if (on && !force && (writeMode() !== 'armed' || (_.listenUsable && _.listenUsable()))) return;
+    if (on && (_.reviewing() || (!force && (writeMode() !== 'armed' || (_.listenUsable && _.listenUsable()))))) return;
     S.armed = on;
     if (!on) endStroke('disarm');
     if (_.M && _.M.onArm) _.M.onArm(on);

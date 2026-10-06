@@ -11,7 +11,7 @@
   try { on = localStorage.getItem('ahann_listen') === '1'; } catch (_) {}
 
   // この方式で使えるか：時間系列（変化点）モデルで、書き込みのある方式（連続の方式）
-  const usable = () => on && !!_.M && model() === 'series' && !!_.M.writeMode;
+  const usable = () => on && !_.reviewing() && !!_.M && model() === 'series' && !!_.M.writeMode;   // 見返しの間は止めない
   let phase = 'listen';   // listen＝聴く（記録しない）／record＝聴いた区間を再生し直して記録している
   let recStart = null;    // 記録する区間の始め（最初の書き込みだけここから。takeStart で受け取る）
   const recording = () => usable() && phase === 'record';

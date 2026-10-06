@@ -11,7 +11,8 @@
     if (_.M && S.data) {
       if (_.M.tick) _.M.tick(dt);
       const listen = _.listenUsable();   // 聴いてから入力：区間の終わりで止め、ボタン0で同じ区間を再生し直して記録（core/listen.js）
-      if (listen) { _.listenTick(); if (padPressed(0)) _.listenRecord(); }
+      if (_.reviewing()) { if (padPressed(0)) _.togglePlay(); }   // 見返し：ボタン0は再生／停止
+      else if (listen) { _.listenTick(); if (padPressed(0)) _.listenRecord(); }
       else if (writeMode() === 'armed' && padPressed(0)) setArmed(!S.armed);
       const wm = writeMode();
       const want = listen ? _.listenRecording() : wm === 'hold' ? (pen.down && !pen.clickEdit) : wm === 'armed' ? S.armed : false;

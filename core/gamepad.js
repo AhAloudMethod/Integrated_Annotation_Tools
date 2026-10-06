@@ -75,8 +75,9 @@
     if (!$('setPanel').hidden && ++renderN % 6 === 0) renderPanel(gps);
   }
   const padPressed = i => (i === 0 ? edge0 : false);   // 押した瞬間だけ true（ボタン0のみ）
-  const padJoy = () => joy;          // { x, y（−1〜1、上＝＋、遊びの内は0）, active, id } か null
-  const padSliders = () => sl;       // { val: [1本目, 2本目]（1〜9）, moved: [動かしたか, …], id } か null
+  // 見返しの間は方式に機器の値を渡さない（値を変えない・画面は記録済みの値）
+  const padJoy = () => (_.reviewing() ? null : joy);          // { x, y（−1〜1、上＝＋、遊びの内は0）, active, id } か null
+  const padSliders = () => (_.reviewing() ? null : sl);       // { val: [1本目, 2本目]（1〜9）, moved: [動かしたか, …], id } か null
 
   // 接続・切断を操作ログに残す。セッションの始めにも、つながっている機器を残す（core/modes-registry.js の newSession）
   const padDesc = g => `index=${g.index} axes=${g.axes.length} buttons=${g.buttons.length}`;

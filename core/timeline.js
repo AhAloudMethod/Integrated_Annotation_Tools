@@ -117,7 +117,7 @@
 
   // グラフ直接編集：連続方式はなぞった範囲の値を描き換え、区間方式は区間の値を設定する
   let edit = null, seeking = false;
-  const graphEditable = () => $('graphEdit').checked && model() !== 'events' && !!video.src;
+  const graphEditable = () => $('graphEdit').checked && model() !== 'events' && !!video.src && !_.reviewing();
   function editRebuild() {
     const e = edit, ax = e.axis, fs = [...e.samples.keys()].sort((a, b) => a - b);
     const fmin = fs[0], fmax = fs[fs.length - 1], tmin = fmin / FPS, tmax = (fmax + 1) / FPS;

@@ -12,6 +12,7 @@
     let last = NaN, touched = false, wasArmed = false;
     video.addEventListener('seeking', () => { touched = false; last = NaN; });   // 次のフレームで必ず追従させる
     const f = () => {
+      if (AH.reviewing()) { last = NaN; touched = false; return AH.hasVideo(); }   // 見返し：いつも記録済みの値に追従
       if (wasArmed && !S.armed) touched = false;
       wasArmed = S.armed;
       const t = video.currentTime || 0, moved = t !== last; last = t;

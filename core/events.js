@@ -4,6 +4,7 @@
   const { S, vt, addLog, pushUndo } = _;
   // ---------- 相対イベントモデル ----------
   function addEvent(ev) {
+    if (_.reviewing()) return;   // 見返しの間は入れない
     pushUndo();
     const e = { t: vt(), ...ev };
     const ev2 = S.data.events; let i = ev2.length; while (i > 0 && ev2[i - 1].t > e.t) i--;

@@ -4,6 +4,7 @@
   const { S, addLog, pushUndo, secLabel } = _;
   // ---------- 区間表モデル ----------
   function setCell(axis, s, val, how = 'input') {
+    if (_.reviewing()) return false;   // 見返しの間は値を変えない
     const c = S.data.cells[axis];
     if ((c[s] ?? null) === (val ?? null)) return false;   // 未入力（undefined）と空欄（null）は同じ扱い
     pushUndo(); c[s] = val;
@@ -11,6 +12,7 @@
     _.refresh(); return true;
   }
   function setCells(s, vals, how = 'input') {   // 複数軸をまとめて1回の取り消し単位で
+    if (_.reviewing()) return false;
     const c = S.data.cells;
     if (Object.entries(vals).every(([ax, v]) => (c[ax][s] ?? null) === (v ?? null))) return false;
     pushUndo();
