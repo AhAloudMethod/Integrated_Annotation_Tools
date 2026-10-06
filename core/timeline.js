@@ -193,6 +193,7 @@
     if (_.renderF0) _.renderF0();
     $('clock').textContent = fmt(t) + ' / ' + fmt(S.meta.duration) + (S.meta.duration && !inRange(t) ? '（評価区間外）' : '');
     $('playBtn').textContent = video.paused ? '再生' : '停止';
+    $('playBtn').dataset.rate = video.playbackRate !== 1 ? '×' + video.playbackRate : '';   // 1 以外の再生速度はボタンの角に出す
     $('armBox').hidden = writeMode() !== 'armed' || _.listenUsable();
     _.listenStatus();
     $('armBtn').textContent = S.armed ? '● 記録中' : '記録 R';

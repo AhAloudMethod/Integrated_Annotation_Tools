@@ -4,7 +4,12 @@
   const { video, S, undo, writeMode, setArmed, seekTo, togglePlay } = _;
   // ---------- キー操作 ----------
   document.addEventListener('keydown', e => {
-    const tag = e.target.tagName;
+    let tag = e.target.tagName;
+    // 選択欄（方式・再生速度など）にフォーカスが残ったまま矢印・文字・Space を押すと、ブラウザが選択を切り替えてしまう
+    // （↑↓ が入力キーの RankTrace・スロットルなどで、再生速度や方式が勝手に変わった）。選択欄を外して、ツールの操作として扱う
+    if (tag === 'SELECT' && !e.altKey && !e.ctrlKey && !e.metaKey && (e.key.length === 1 || /^(Arrow|Page|Home$|End$)/.test(e.key))) {
+      e.preventDefault(); e.target.blur(); tag = '';
+    }
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;   // 入力欄（Excel方式のセル等）は各自で処理
     if (e.code === 'KeyV' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _.setReview(!_.reviewing()); return; }
     if (_.reviewing()) {   // 見返しの間は再生・移動だけ（方式のキー入力は渡さない）

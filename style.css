@@ -22,6 +22,8 @@ header h1{font-size:14px;font-weight:700;margin:0 4px 0 0;white-space:nowrap}
 header button{padding:4px 10px}
 header .sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
 header .time{min-width:8.6em}
+#playBtn{position:relative}
+#playBtn[data-rate]:not([data-rate=""])::after{content:attr(data-rate);position:absolute;top:-6px;right:-8px;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--pen);color:#fff}
 label.inline{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
 input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);width:110px}
 #pid{width:72px}
