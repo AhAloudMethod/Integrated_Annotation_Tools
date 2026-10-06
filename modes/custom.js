@@ -294,6 +294,7 @@
     },
     resize() { if (c) g = AH.fitCanvas(c); },
     tick(dt) {
+      if (this._rank) { this._rank.tick(); return; }   // 8方向ボタン：スティックを倒した方向を入れる
       if (writeMode() !== 'armed' || joyMode()) return;
       if (follow()) { ctrl = stored(video.currentTime); sl.release(); }   // 追従に戻ったらスライダーを手放す
       const inp = o().input, circ = o().rep === 'circle', sls = o().rep === 'sliders', before = { ...ctrl };

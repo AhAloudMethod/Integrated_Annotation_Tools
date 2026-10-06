@@ -251,7 +251,9 @@
   function rankPad(parent, axes = ['v', 'a']) {
     const dirs = RANK_DIRS.filter(d => (axes.includes('v') || !d[1]) && (axes.includes('a') || !d[2]));
     const btns = {}, box = h('div', { class: 'planeBox' }), pl = h('div', { class: 'arPlane' });
-    const fire = d => { AH.addEvent({ label: d[0], dv: d[1], da: d[2] }); const b = btns[d[0]]; b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 350); };
+    const fire = (d, byPad = false) => { AH.addEvent({ label: d[0], dv: d[1], da: d[2], source: byPad ? 'gamepad' : 'input' }); const b = btns[d[0]]; b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 350); };
+    // ジョイスティック：FIRE まで倒すと、いちばん近い方向を1回入れる。REARM の内側に戻すまで次は入らない（倒したままで連打にならない）
+    const FIRE = 0.7, REARM = 0.3; let ready = true;
     if (axes.includes('v')) pl.appendChild(h('div', { class: 'arAxis h' }));
     if (axes.includes('a')) pl.appendChild(h('div', { class: 'arAxis v' }));
     for (const d of dirs) {
@@ -261,6 +263,16 @@
     const list = h('div', { class: 'arList' });
     box.appendChild(pl); box.appendChild(list); parent.appendChild(box);
     return {
+      tick() {
+        const j = AH.padJoy(), m = j ? Math.hypot(j.x, j.y) : 0;
+        if (m < REARM) { ready = true; return; }
+        if (!ready || m < FIRE) return;
+        ready = false;
+        // 方向の向き（dv・da）との内積が最大のもの。斜めは長さ √2 なので正規化して比べる
+        let best = null, bs = -Infinity;
+        for (const d of dirs) { const s = (d[1] * j.x + d[2] * j.y) / Math.hypot(d[1], d[2]); if (s > bs) { bs = s; best = d; } }
+        if (best) fire(best, true);
+      },
       onKey(e) {
         const d = dirs.find(x => x[3] === e.code); if (d) { fire(d); return true; }
         if (e.code === 'Backspace') { AH.deleteEventBefore(AH.vt()); return true; }

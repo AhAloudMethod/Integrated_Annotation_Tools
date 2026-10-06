@@ -65,7 +65,7 @@
       out('_bins.csv', [...binHead, 'valence', 'arousal', ...(rot ? ['va_valence', 'va_arousal'] : [])],
         [...Array(n).keys()].map(s => { const x = S.data.cells.v[s] ?? '', y = S.data.cells.a[s] ?? ''; return [...binCols(s), x, y, ...(rot ? vaCols(x, y) : [])]; }));
     } else if (model() === 'events') {
-      out('_ranks.csv', ['t', 'label', 'd_valence', 'd_arousal'], S.data.events.map(e => [e.t, e.label, e.dv, e.da]));
+      out('_ranks.csv', ['t', 'label', 'd_valence', 'd_arousal', 'source'], S.data.events.map(e => [e.t, e.label, e.dv, e.da, e.source || 'input']));
       const rows = [];
       for (let s = 0; s < n; s++) {
         const es = S.data.events.filter(e => e.t >= binStart(s) && e.t < binStart(s + 1));

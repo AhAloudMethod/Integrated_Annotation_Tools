@@ -48,7 +48,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)', SLD = 'Test Sliders (V
   }
 
   // ---- ジョイスティック：EMuJoy・RCEA・FEELTRACE・DARMA
-  for (const [mode, x, y, ev, ea] of [['emujoy', 0.5, -0.5, 7, 7], ['rcea', 1, -1, 7.83, 7.83], ['feeltrace', -1, 1, 2.17, 2.17], ['darma', -0.5, 0.5, 3, 3]]) {
+  for (const [mode, x, y, ev, ea] of [['emujoy', 0.5, -0.5, 7, 7], ['rcea', 1, -1, 7.83, 7.83], ['feeltrace', -1, 1, 2.17, 2.17], ['darma', -0.5, 0.5, 3, 3], ['halolight', 0.5, -0.5, 7, 7]]) {
     const p = await open(mode);
     await p.evaluate(id => window.__connect(id, 0), JOY); await p.waitForTimeout(150);
     const s0 = await st(p);
@@ -201,6 +201,52 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)', SLD = 'Test Sliders (V
     const kept = await p.evaluate(() => [document.getElementById('padJoyUse').checked, document.getElementById('padSliderUse').checked]);
     check('再読み込みしても「使う」のオフが残る', kept.join() === 'false,false', JSON.stringify(kept));
     await p.evaluate(() => { localStorage.removeItem('ahann_pad_joy'); localStorage.removeItem('ahann_pad_slider'); localStorage.removeItem('ahann_pad_sliderdev'); });
+    await p.close();
+  }
+
+  // ---- RankTrace：スティックの上下の傾きが速さ（上下限なし）。離すとその値に留まる
+  {
+    const p = await open('ranktrace');
+    await p.evaluate(id => window.__connect(id, 0), JOY); await p.waitForTimeout(150);
+    const rt = () => p.evaluate(() => AH.mode.sample());
+    const r0 = await rt();
+    await axes(p, 0, { 1: -1 }); await p.waitForTimeout(500);   // 上に倒し切る（Gamepad API は上＝−）
+    const r1 = await rt();
+    await axes(p, 0, { 1: 0.03 }); await p.waitForTimeout(150);  // 離す（遊びの中）
+    const r2 = await rt(); await p.waitForTimeout(300); const r3 = await rt();
+    await axes(p, 0, { 1: 0.5 }); await p.waitForTimeout(400);   // 下に半分
+    const r4 = await rt(); await axes(p, 0, { 1: 0 });
+    check('RankTrace：スティックを上に倒すと値が上がり（pad=joy）、離すと留まり、下に倒すと下がる',
+      r1.v > r0.v + 0.5 && r1.pad === 'joy' && r2.v === r3.v && r4.v < r3.v - 0.2, JSON.stringify([r0, r1, r2, r3, r4]));
+    // 記録オン（R）で書き込むと source=gamepad
+    await p.keyboard.press('KeyR'); await axes(p, 0, { 1: -0.6 }); await play(p, 400); await axes(p, 0, { 1: 0 }); await p.keyboard.press('KeyR');
+    const s = await st(p), k = s.strokes[0];
+    check('RankTrace：記録オン＋再生で書き込まれる（source=gamepad・機器名つき）', s.wm === 'armed' && s.strokes.length === 1 && k.src === 'gamepad' && k.pad.joy === JOY, JSON.stringify(s.strokes));
+    // ホイールで動かすと pad は付かない
+    const b = await p.locator('canvas.trace').boundingBox();
+    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await p.mouse.wheel(0, -100); await p.waitForTimeout(100);
+    const w = await rt();
+    check('RankTrace：ホイールで動かすと pad は付かない', !w.pad, JSON.stringify(w));
+    await p.close();
+  }
+
+  // ---- AffectRank：スティックを大きく倒すと、いちばん近い方向が1回入る。中央に戻すまで次は入らない
+  {
+    const p = await open('affectrank');
+    await p.evaluate(id => window.__connect(id, 0), JOY); await p.waitForTimeout(150);
+    const ev = () => p.evaluate(() => AH.S.data.events.map(e => e.label + ':' + e.source).join(','));
+    await axes(p, 0, { 0: 0.45, 1: -0.45 }); await p.waitForTimeout(150);    // 小さく倒す（大きさ 0.64＜0.7）→ 入らない
+    const e0 = await ev();
+    await axes(p, 0, { 0: 0.75, 1: -0.75 }); await p.waitForTimeout(400);    // 右上に倒したまま → 覚醒・快が1回だけ
+    const e1 = await ev();
+    await axes(p, 0, { 0: 0, 1: 0 }); await p.waitForTimeout(100);
+    await axes(p, 0, { 0: -1, 1: 0.2 }); await p.waitForTimeout(150);        // 左（少し下）→ 不快
+    await axes(p, 0, { 0: 0, 1: 0 }); await p.waitForTimeout(100);
+    const e2 = await ev();
+    check('AffectRank：スティックを倒した方向が1回入り（source=gamepad）、中央に戻すまで次は入らない',
+      e0 === '' && e1 === '覚醒・快:gamepad' && e2.split(',').length === 2 && /不快:gamepad/.test(e2), JSON.stringify([e0, e1, e2]));
+    await p.keyboard.press('Numpad8'); await p.waitForTimeout(100);
+    check('AffectRank：キーで入れたものは source=input', /覚醒:input/.test(await ev()), await ev());
     await p.close();
   }
 

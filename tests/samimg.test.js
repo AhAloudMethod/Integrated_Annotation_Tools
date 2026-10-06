@@ -5,6 +5,11 @@ const { URL, VID, BROWSER, out } = require('./_env');
   const p = await (await b.newContext({ viewport: { width: 1400, height: 900 } })).newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto(URL); await p.selectOption('#mode', 'sam');
   await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0); await p.waitForTimeout(500);
-  await p.click('.samRow.v button[data-v="9"]'); await p.screenshot({ path: out('shot_samimg.png'), fullPage: true }); console.log('imgs in SAM rows:', await p.$$eval('.samBtns img', e => e.length), 'errors:', errs.join('|') || 'none');
+  await p.click('.samRow.v button[data-v="9"]'); await p.screenshot({ path: out('shot_samimg.png'), fullPage: true });
+  // 絵のボタンと中間の値のボタンは同じ大きさ（幅・高さの差が 1px 以内）
+  const sz = await p.$$eval('#panel .sam .samBtns button', bs => bs.map(b => [b.offsetWidth, b.offsetHeight]));
+  const same = k => Math.max(...sz.map(s => s[k])) - Math.min(...sz.map(s => s[k])) <= 1;
+  console.log(`${sz.length === 18 && same(0) && same(1) ? 'ok  ' : 'FAIL'} SAM：18個のボタンがすべて同じ大きさ  ${JSON.stringify([...new Set(sz.map(s => s.join('x')))])}`);
+  console.log('imgs in SAM rows:', await p.$$eval('.samBtns img', e => e.length), 'errors:', errs.join('|') || 'none');
   await b.close();
 })();

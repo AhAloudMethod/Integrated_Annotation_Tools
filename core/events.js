@@ -8,7 +8,7 @@
     const e = { t: vt(), ...ev };
     const ev2 = S.data.events; let i = ev2.length; while (i > 0 && ev2[i - 1].t > e.t) i--;
     ev2.splice(i, 0, e);
-    addLog('rank', { value: e.label, detail: `dv=${e.dv} da=${e.da}` }); _.refresh();
+    addLog('rank', { value: e.label, detail: `dv=${e.dv} da=${e.da}` + (e.source ? ` source=${e.source}` : '') }); _.refresh();
   }
   function deleteEventBefore(t) {
     const ev = S.data.events;

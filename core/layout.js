@@ -76,7 +76,10 @@
       document.body.style.setProperty('--samH', '40px');
       const rest = panel.offsetHeight - 40 * panel.querySelectorAll('.sam .samRow').length;
       const rows = Math.max(1, panel.querySelectorAll('.sam .samRow').length);
-      document.body.style.setProperty('--samH', Math.round(Math.max(40, Math.min(130, (side.clientHeight - rest - f0h - 8) / rows))) + 'px');
+      // 9個のボタンは同じ幅なので、絵（ほぼ正方形）の高さはボタンの幅（枠の内側）までにする（縦長のボタンにしない）
+      const btns = panel.querySelector('.sam .samBtns'), b0 = btns && btns.querySelector('button');
+      const bw = b0 ? b0.clientWidth - parseFloat(getComputedStyle(b0).paddingLeft) * 2 : 130;
+      document.body.style.setProperty('--samH', Math.round(Math.max(40, Math.min(130, bw, (side.clientHeight - rest - f0h - 8) / rows))) + 'px');
     }
   }
   $('panel').addEventListener('toggle', () => resize(), true);   // カスタムの設計軸（details）の開閉

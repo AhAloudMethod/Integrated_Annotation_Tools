@@ -189,7 +189,7 @@ table.ref th{color:var(--muted);font-weight:500}
 .samRow{margin-bottom:8px}
 .samHead{font-size:13px;font-weight:600;margin-bottom:2px}
 .samBtns{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;align-items:stretch}
-#panel .sam .samBtns{grid-template-columns:2fr 1fr 2fr 1fr 2fr 1fr 2fr 1fr 2fr;gap:4px}
+#panel .sam .samBtns{grid-template-columns:repeat(9,1fr);gap:4px}
 #panel .sam .samBtns button{min-height:0;padding:3px}
 #panel .sam .samBtns img,#panel .sam .samBtns svg{max-width:100%;width:auto;height:var(--samH,76px);object-fit:contain}
 #panel .sam .samRow{margin-bottom:4px}
