@@ -1,4 +1,4 @@
-// 入力面の表示の設定：目盛りの線（gridShow）と、四角の平面でスティックを角まで届かせるか（padSquare）。
+// 入力面の表示の設定：区切りの線（gridShow）と、四角の平面でスティックを角まで届かせるか（padSquare）。
 // どちらもブラウザに保存し（ahann_grid・ahann_pad_square）、操作ログに grid_display・pad_square、書き出しの meta.display に残す
 (() => {
   const _ = AH._;

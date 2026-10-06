@@ -73,24 +73,25 @@
     const box = h('div', { class: 'planeBox' }), c = h('canvas', { class: 'plane', 'aria-label': aria });
     box.appendChild(c); parent.appendChild(box); return { box, c };
   }
-  // 目盛りの線（「設定」でオンのとき）：1〜9 の整数の位置に薄い線。X・Y は値→座標、範囲 [x0,x1]×[y0,y1]。clip（円）を渡すとその中だけに引く
+  // 区切りの線（「設定」でオンのとき）：整数の境目 1.5〜8.5 に薄い線。四捨五入で同じ整数になる範囲が1マスになり、5 のマスが中心に来る。
+  // X・Y は値→座標、範囲 [x0,x1]×[y0,y1]。clip（円）を渡すとその中だけに引く
   function gridLines(g, X, Y, x0, y0, x1, y1, clip) {
     g.save();
     if (clip) { g.beginPath(); g.arc(clip.cx, clip.cy, clip.R, 0, 7); g.clip(); }
     g.strokeStyle = AH.css('--line'); g.globalAlpha = 0.7; g.lineWidth = 1; g.beginPath();
-    for (let k = 2; k <= 8; k++) { if (k === 5) continue; g.moveTo(X(k), y0); g.lineTo(X(k), y1); g.moveTo(x0, Y(k)); g.lineTo(x1, Y(k)); }
+    for (let k = 1.5; k <= 8.5; k++) { g.moveTo(X(k), y0); g.lineTo(X(k), y1); g.moveTo(x0, Y(k)); g.lineTo(x1, Y(k)); }
     g.stroke(); g.restore();
   }
-  // 円の入力面の目盛りの線（中心 cx・cy、半径 R が値 1〜9 の幅）
+  // 円の入力面の区切りの線（中心 cx・cy、半径 R が値 1〜9 の幅）
   function gridCircle(g, cx, cy, R) {
     if (!AH.gridShown()) return;
     gridLines(g, v => cx + (v - 5) / 4 * R, a => cy - (a - 5) / 4 * R, cx - R, cy - R, cx + R, cy + R, { cx, cy, R });
   }
-  // スライダー・レバーの目盛りの線（x を中心に幅 w。Y は値→座標）
+  // スライダー・レバーの区切りの線（x を中心に幅 w。Y は値→座標）
   function gridBar(g, x, Y, w = 56) {
     if (!AH.gridShown()) return;
     g.save(); g.strokeStyle = AH.css('--line'); g.globalAlpha = 0.9; g.lineWidth = 1; g.beginPath();
-    for (let k = 1; k <= 9; k++) { g.moveTo(x - w / 2, Y(k)); g.lineTo(x + w / 2, Y(k)); }
+    for (let k = 1.5; k <= 8.5; k++) { g.moveTo(x - w / 2, Y(k)); g.lineTo(x + w / 2, Y(k)); }
     g.stroke(); g.restore();
   }
   function drawSquareFrame(g, c, pad, labels = true) {

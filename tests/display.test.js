@@ -1,4 +1,4 @@
-// やり直し（Ctrl+Y）・四角の平面でスティックを角まで届かせる・目盛りの線・RCEA の軸のラベル
+// やり直し（Ctrl+Y）・四角の平面でスティックを角まで届かせる・区切りの線・RCEA の軸のラベル
 const { chromium } = require('playwright-core');
 const { URL, VID, BROWSER, out } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
@@ -26,7 +26,8 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
   {
     const p = await open('throttle');
     const n = () => p.evaluate(() => AH.S.data.points.v.length);
-    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.keyboard.down('KeyW'); await p.waitForTimeout(400); await p.keyboard.up('KeyW');
+    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForFunction(() => !AH.video.paused && AH.video.currentTime > 0.05);
+    await p.keyboard.down('KeyW'); await p.waitForTimeout(400); await p.keyboard.up('KeyW');
     await p.keyboard.press('Space'); await p.keyboard.press('KeyR'); await p.waitForTimeout(100);
     const n1 = await n();
     await p.keyboard.press('Control+z'); const n0 = await n();
@@ -59,7 +60,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.close();
   }
 
-  // ---- 目盛りの線：設定でオンにすると平面・円・レバーの絵が変わる（オフに戻すと元どおり）
+  // ---- 区切りの線：設定でオンにすると平面・円・レバーの絵が変わる（オフに戻すと元どおり）
   {
     const p = await open('emujoy');
     for (const mode of ['emujoy', 'rcea', 'feeltrace', 'throttle', 'carma', 'halolight']) {
@@ -67,10 +68,10 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
       const sel = mode === 'throttle' || mode === 'carma' ? 'canvas.bars' : 'canvas.plane';
       const img = () => p.$eval('#panel ' + sel, c => c.toDataURL());
       const a = await img(); await setChk(p, 'gridShow', true); const b = await img(); await setChk(p, 'gridShow', false); const c = await img();
-      check(`${mode}：目盛りの線のオン・オフで入力面が変わる`, a !== b && a === c);
+      check(`${mode}：区切りの線のオン・オフで入力面が変わる`, a !== b && a === c);
     }
     const log = await p.evaluate(() => AH.S.log.filter(l => l.type === 'grid_display').length);
-    check('目盛りの線の切り替えは操作ログ grid_display に残る（最後の方式のセッションに2回）', log === 2, String(log));
+    check('区切りの線の切り替えは操作ログ grid_display に残る（最後の方式のセッションに2回）', log === 2, String(log));
     await setChk(p, 'gridShow', true);
     await p.selectOption('#mode', 'rcea'); await p.waitForTimeout(200);
     await p.locator('#panel').screenshot({ path: out('shot_rcea_labels.png') });

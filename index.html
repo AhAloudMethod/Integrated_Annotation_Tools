@@ -53,7 +53,7 @@
         <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
         <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
-        <label class="chk" title="平面・円・スライダー・レバーに 1〜9 の整数の位置の薄い線を引く"><input id="gridShow" type="checkbox"> 入力面に目盛りの線（1〜9）を表示する</label>
+        <label class="chk" title="平面・円・スライダー・レバーに、整数の境目（1.5〜8.5）の薄い線を引く。四捨五入で同じ整数になる範囲が1マスになり、5 のマスが中心に来る"><input id="gridShow" type="checkbox"> 入力面に区切りの線（整数の境目）を表示する</label>
         <label class="chk"><input id="f0Show" type="checkbox" checked> 動画の音声の F0（声の高さ）を表示する</label>
         <label class="chk" title="連続の方式で、1区間を再生すると区間の終わりで止まる。Enter／ボタン0 で同じ区間を音声つきで再生し直し、その間の入力を記録する。終わると次の区間を聴く（R でもう一度聴く）"><input id="listenMode" type="checkbox"> 1区間ずつ聴いてから入力する（連続の方式）</label>
         <p class="muted" id="f0Status">F0：動画を開くと計算します</p>
