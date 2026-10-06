@@ -109,6 +109,7 @@ npm run check      # 全 JS に node --check
 ## 全方式に共通する仕様
 
 - **再生制御**：全方式で一時停止、巻き戻し、シークができる。1回の視聴で評価し切ることは想定しない。
+  - 再生速度は「設定」で選ぶ（再読み込みすると 1 に戻る）。1 以外のときは再生ボタンの角に「×0.75」のように出す。選択欄（方式・再生速度など）にフォーカスが残ったまま矢印・文字・Space を押しても選択は変わらず、ツールの操作（再生・入力）として扱う。
 - **連続方式の書き込み**：再生中に「押している間」または「記録オン（R）の間」だけ書き込み、その区間の前の記録を上書きする。書き込みを終えた後の値は「設定」の「書き込みを終えた後」で選ぶ。既定の「その値を保つ」は、離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」は、書き込み区間の直後から上書き前の値に戻す（途中だけを書き直すとき向け）。どちらで書いたかは `_strokes` の `after` に残る。上書きで消えた軌跡も含め、すべての書き込みを `_strokes.csv` と `_session.json` に残す。
 - **聴いてから入力**（連続の方式。「設定」の「1区間ずつ聴いてから入力する」、既定オフ・ブラウザに保存）：Excel のように「聴いて判断してから入れる」手順を、連続の入力のまま行う。
   1. 再生すると、評価区間の1区間の終わりで自動で止まる（聴く。記録しない。止まる位置は区間の終わりの 2 ms 手前で、今の区間＝聴いた区間）。
@@ -117,6 +118,7 @@ npm run check      # 全 JS に node --check
   4. 区間の終わりで記録を終え、そのまま次の区間を聴く（1 に戻る）。最後の区間なら止まる。
   - R で聴いた区間をもう一度聴く（記録しない）。Space は記録せずに次の区間へ。記録中に Space・シークすると、そこで記録を終える。記録オン（R）の記録ボタンは出ない。
   - 書き込みは `_strokes` に `end_reason=listen`（区間の終わりまで記録したとき）で残る。区間方式（Excel など）と相対の方式（AffectRank など）には効かない。
+- **入力をすべて消す**（「設定」の「表示・再生」のボタン）：今の動画・方式の評価の値（連続の値・区間の値・変化の入力）を初期値に戻す。確認のダイアログを出し、Ctrl+Z で戻せる。レバー・スライダーなどの入力の位置も初期値に戻る。書き込みの生データ（`_strokes`）とメモは記録として残す。操作ログに `reset` を残す。見返しの間は効かない。
 - **見返し**（ヘッダーの「見返し」または V キー）：評価し終えた記録を、止まらずに再生しながら追う。画面（平面の点・レバー・スライダーなど）は記録済みの値を映す。
   - 見返しの間は値を変えない：書き込み・記録オン・区間の値・変化の入力・グラフの編集・声の入力を止め、入力面は操作できない（薄く表示）。方式のキー入力とジョイスティック・スライダーの値も渡さない。
   - 聴いてから入力がオンでも、区間の終わりで止まらない。Space・←→・ボタン0（再生／停止）だけが効く。もう一度押すと戻る。操作ログに `review`（on／off）を残す。
@@ -230,7 +232,7 @@ npm run check      # 全 JS に node --check
 | `_ranks.csv` | `t, label, d_valence, d_arousal, source` | 変化の入力の時刻・方向の名前・方向（−1/0/+1）・入れ方（input＝クリック・キー、gamepad＝ジョイスティック） |
 | `_events.csv` | `wall_ms, video_t, type, axis, value, detail` | wall_ms＝セッション開始からの経過ミリ秒（復元したときは続きから）、video_t＝そのときの動画の秒 |
 
-`_events.csv` の `type`：`session_start`・`restore`・`mode_switch`・`play`・`pause`・`seek`（detail＝移動前の時刻）・`ended`・`rate`・`range`・`option`・`graph_edit`・`pip`・`export`・`undo`・`arm`／`disarm`・`input`／`input_same`（変化点キーなど）・`click`（一時停止中のクリック）・`delete`・`stroke`（detail＝区間・サンプル数・終わった理由）・`graph_draw`／`graph_cells`・`cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（区間の値）・`cell_focus`・`memo`・`rank`（AffectRank）・`pad_connect`／`pad_disconnect`（value＝機器名、detail＝番号・軸とボタンの数）・`pad_assign`（ジョイスティック・スライダーに使う機器が変わった）・`pad_setting`（コントローラーの設定）・`listen_mode`（聴いてから入力の設定）・`listen_pause`（区間の終わりで止まった。detail＝区間）・`listen_record`／`listen_record_end`（区間を再生し直して記録した始めと終わり）・`listen_replay`（R でもう一度聴いた）・`review`（見返しの on／off）。
+`_events.csv` の `type`：`session_start`・`restore`・`mode_switch`・`play`・`pause`・`seek`（detail＝移動前の時刻）・`ended`・`rate`・`range`・`option`・`graph_edit`・`pip`・`export`・`undo`・`arm`／`disarm`・`input`／`input_same`（変化点キーなど）・`click`（一時停止中のクリック）・`delete`・`stroke`（detail＝区間・サンプル数・終わった理由）・`graph_draw`／`graph_cells`・`cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（区間の値）・`cell_focus`・`memo`・`rank`（AffectRank）・`pad_connect`／`pad_disconnect`（value＝機器名、detail＝番号・軸とボタンの数）・`pad_assign`（ジョイスティック・スライダーに使う機器が変わった）・`pad_setting`（コントローラーの設定）・`listen_mode`（聴いてから入力の設定）・`listen_pause`（区間の終わりで止まった。detail＝区間）・`listen_record`／`listen_record_end`（区間を再生し直して記録した始めと終わり）・`listen_replay`（R でもう一度聴いた）・`review`（見返しの on／off）・`reset`（入力をすべて消した）。
 
 `_session.json` は `{ meta, data, log }`。`meta` は参加者ID・動画名・長さ・開始時刻・ツールの版（`ah-annotator-v0.5`）・方式・方式の設定・評価区間・色の設定（`colors`）・聴いてから入力で評価したか（`listen`：`on`）・ゲームパッド（`gamepads`：`use`＝使うか、`device`＝選んだ機器か auto、`joystick`・`slider`＝書き出した時点で使っている機器名、`connected`＝つながっている機器、`used`＝書き込みに使った機器 `{ role: joy|slider, id }`）、`data` は変化点（`points`）・書き込み（`strokes`。機器で入れたものは `source: 'gamepad'` と `pad`）・区間の値（`cells`）・相対の変化（`events`）・メモ、`log` は `_events.csv` と同じ内容。
 

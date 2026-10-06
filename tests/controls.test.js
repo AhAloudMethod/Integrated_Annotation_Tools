@@ -71,6 +71,47 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // 選択欄にフォーカスが残っていても、キーで再生速度・方式が変わらない（キーはツールの操作になる）
+  {
+    const p = await open('ranktrace');
+    await p.click('#setBtn'); await p.focus('#rate');
+    const v0 = (await peek(p)).v;
+    await p.keyboard.down('ArrowUp'); await p.waitForTimeout(300); await p.keyboard.up('ArrowUp');
+    const r = await p.evaluate(() => ({ rate: AH.video.playbackRate, sel: document.getElementById('rate').value, focus: document.activeElement.id, v: AH.mode.peek().v }));
+    check('再生速度の欄にフォーカスがあっても ↑ で速度は変わらず、RankTrace の入力になる', r.rate === 1 && r.sel === '1' && r.focus !== 'rate' && r.v > v0, JSON.stringify(r));
+    await p.focus('#mode'); await p.keyboard.press('KeyW'); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(100);
+    const m = await p.evaluate(() => ({ mode: AH.S.meta.mode, sel: document.getElementById('mode').value }));
+    check('方式の欄にフォーカスがあっても、文字や矢印で方式は変わらない', m.mode === 'ranktrace' && m.sel === 'ranktrace', JSON.stringify(m));
+    await p.selectOption('#rate', '0.75'); await p.waitForTimeout(100);
+    const badge = await p.evaluate(() => ({ rate: AH.video.playbackRate, tag: document.getElementById('playBtn').dataset.rate }));
+    await p.selectOption('#rate', '1'); await p.waitForTimeout(100);
+    const back = await p.evaluate(() => document.getElementById('playBtn').dataset.rate);
+    check('再生速度が 1 以外のときは再生ボタンの角に出る（1 に戻すと消える）', badge.rate === 0.75 && badge.tag === '×0.75' && back === '', JSON.stringify([badge, back]));
+    const ac = await p.evaluate(() => document.getElementById('rate').getAttribute('autocomplete'));
+    check('再生速度の欄は再読み込みで前の値を戻さない（autocomplete=off）', ac === 'off', String(ac));
+    await p.close();
+  }
+
+  // 「設定」の「入力をすべて消す」：値を初期値に戻し、レバーも戻る。書き込みの記録は残り、Ctrl+Z で戻せる。取り消すと何もしない
+  {
+    const p = await open('throttle');
+    await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.keyboard.down('KeyW'); await p.waitForTimeout(500); await p.keyboard.up('KeyW');
+    await p.keyboard.press('Space'); await p.keyboard.press('KeyR');
+    await p.evaluate(() => { AH.S.data.memo = 'めも'; });
+    const st = () => p.evaluate(() => ({ n: AH.S.data.points.v.length, v0: AH.S.data.points.v[0].val, strokes: AH.S.data.strokes.length, memo: AH.S.data.memo, lever: AH.mode.peek().v }));
+    const before = await st();
+    await p.click('#setBtn'); await p.click('#resetBtn'); await p.waitForTimeout(100);   // ダイアログは取り消し（open の dismiss）
+    const kept = await st();
+    p.removeAllListeners('dialog'); p.on('dialog', d => d.accept());
+    await p.click('#resetBtn'); await p.waitForTimeout(200);
+    const after = await st(), log = await p.evaluate(() => AH.S.log.some(l => l.type === 'reset'));
+    check('確認で取り消すと何も消さない', JSON.stringify(kept) === JSON.stringify(before), JSON.stringify(kept));
+    check('入力をすべて消す：値とレバーが初期値に戻り、書き込みの記録とメモは残る（操作ログ reset）', before.n > 1 && after.n === 1 && after.v0 === 5 && after.lever === 5 && after.strokes === before.strokes && after.memo === 'めも' && log, JSON.stringify({ before, after }));
+    await p.keyboard.press('Escape'); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('Ctrl+Z で消す前に戻る', (await st()).n === before.n, JSON.stringify(await st()));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

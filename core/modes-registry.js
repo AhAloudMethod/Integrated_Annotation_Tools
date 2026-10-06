@@ -36,7 +36,20 @@
     addLog('session_start', { detail });
     if (_.padLogAll) _.padLogAll();   // つながっているゲームパッドを残す
   }
+  // 入力をすべて消す（「設定」のボタン）：今の動画・方式の値（変化点・区間の値・変化の入力）を初期値に戻す。
+  // 書き込みの生データ（strokes）とメモは記録として残す。Ctrl+Z で戻せる。レバー・スライダーなどの入力の位置も初期値に戻す
+  function resetData() {
+    if (!S.data || _.reviewing()) return false;
+    endStroke('reset'); setArmed(false); pen.down = false;
+    _.pushUndo();
+    const e = emptyData();
+    Object.assign(S.data, { points: e.points, cells: e.cells, events: e.events });
+    Object.assign(pen, { v: e.points.v[0].val, a: e.points.a[0].val });
+    addLog('reset');
+    if (video.src) _.seekTo(video.currentTime);   // シークで方式の操作面を記録済みの値（初期値）に追従させる
+    refresh(); return true;
+  }
   function setOption(k, v) { S.meta.options[k] = v; addLog('option', { detail: `${k}=${v}` }); refresh(); }
 
-  Object.assign(_, { register, remount, selectMode, switchMode, newSession, setOption });
+  Object.assign(_, { register, remount, selectMode, switchMode, newSession, setOption, resetData });
 })();
