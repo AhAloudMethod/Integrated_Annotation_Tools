@@ -23,8 +23,8 @@ const int FADER_CH[2] = { 0, 1 };
 const int FADER_MIN = 80;
 const int FADER_MAX = 4000;
 
-// スティックの押し込みもボタン0（記録）にするか。押し込むと値が揺れるので、本体の画面ボタンだけにするなら false
-const bool STICK_PRESS_RECORDS = true;
+// スティックの押し込みもボタン0（記録）にするか。強く倒すと押し込みが入りやすく、押し込むと値も揺れるので既定は本体の画面ボタンだけ
+const bool STICK_PRESS_RECORDS = false;
 
 // ---------- ピンと定数 ----------
 const int PIN_SDA = 2, PIN_SCL = 1;     // 本体の Grove
@@ -39,6 +39,7 @@ const uint8_t HUB_REG_ANALOG = 0x06;    // チャネルの番地（(ch + 4) << 4
 const uint32_t LOOP_MS = 5;             // 200 Hz で読む
 const uint32_t RETRY_MS = 1000;         // 見つからない機器を探し直す間隔（抜き差ししても戻る）
 const uint32_t LOG_MS = 200;            // シリアルモニタへの表示の間隔
+const uint32_t DEBOUNCE_MS = 20;        // ボタンの状態がこの間続いたら切り替える（チャタリングで記録がオン・オフを繰り返さないように）
 
 USBHIDGamepad gamepad;
 bool joyFound = false, hubFound = false;
@@ -48,6 +49,18 @@ int8_t faderOut[2] = { 0, 0 };
 int8_t lastX = 0, lastY = 0, lastZ = 0, lastRx = 0;
 uint32_t lastButtons = 0;
 bool sentOnce = false;
+
+// チャタリング除け：生の状態が DEBOUNCE_MS 続いたときだけ state を変える
+struct Debounce {
+  bool state = false, raw = false;
+  uint32_t since = 0;
+  bool update(bool now, uint32_t t) {
+    if (now != raw) { raw = now; since = t; }
+    else if (raw != state && t - since >= DEBOUNCE_MS) state = raw;
+    return state;
+  }
+};
+Debounce bodyBtn, stickBtn;
 
 int8_t toAxis(long v, long lo, long hi) {
   v = constrain(v, lo, hi);
@@ -153,7 +166,8 @@ void loop() {
   int raw[2];
   int8_t z = readFader(0, raw[0]), rx = readFader(1, raw[1]);
 
-  bool bodyPressed = digitalRead(PIN_BUTTON) == LOW;
+  bool bodyPressed = bodyBtn.update(digitalRead(PIN_BUTTON) == LOW, now);
+  stickPressed = stickBtn.update(stickPressed, now);
   // ボタン0＝記録（本体の画面ボタン、設定によりスティックの押し込みも）。ボタン1＝本体、ボタン2＝スティック（表示用）
   uint32_t buttons = 0;
   if (bodyPressed || (STICK_PRESS_RECORDS && stickPressed)) buttons |= 1u << 0;
