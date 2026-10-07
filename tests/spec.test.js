@@ -46,7 +46,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     // 終了が区切りに合わないとき：最後は短い区間（11〜11.5）で、書き出しの _bins の終わりも 11.5
     await setField(p, 'rgBin', 1); await setField(p, 'rgEnd', 11.5);
     const g = await range(p), btn = await p.textContent('#rgBtn'), last = await p.evaluate(() => [AH.binStart(AH.nSec() - 1), AH._.binEnd(AH.nSec() - 1), AH._.binEnd(0)]);
-    check('最後の1秒未満を捨てず、短い最後の区間（11〜11.5）にする', g.count === 12 && JSON.stringify(last) === '[11,11.5,1]' && /最後 0\.5秒/.test(btn), JSON.stringify({ g, last, btn }));
+    check('最後の1秒未満を捨てず、短い最後の区間（11〜11.5）にする', g.count === 12 && JSON.stringify(last) === '[11,11.5,1]' && btn === '0秒〜11.5秒', JSON.stringify({ g, last, btn }));
     check('区間の長さを行き来しても終了は 12 秒のまま（端数は短い最後の区間）', JSON.stringify(ends) === '[12,12,12,12,12,12]', JSON.stringify(ends));
     await p.close();
   }
@@ -220,7 +220,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.click('#rgBtn');
     await p.evaluate(() => AH.seekTo(1.5)); await p.waitForTimeout(150); await p.click('#cutAdd'); await p.waitForTimeout(100);
     const a = await geo(), ab = await p.evaluate(() => [AH.binStart(2), AH._.binEnd(1), AH._.binAt(1.4), AH._.binAt(1.6)]);
-    check('今の時刻で区切ると区間 1 が 1〜1.5・1.5〜2 に割れ、区間方式の値は両方に引き継ぐ', a.n === 13 && JSON.stringify(ab) === '[1.5,1.5,1,2]' && JSON.stringify(a.cells) === '[1,2,2,3,4,null]' && /不揃い/.test(a.btn) && a.dis, JSON.stringify({ a, ab }));
+    check('今の時刻で区切ると区間 1 が 1〜1.5・1.5〜2 に割れ、区間方式の値は両方に引き継ぐ', a.n === 13 && JSON.stringify(ab) === '[1.5,1.5,1,2]' && JSON.stringify(a.cells) === '[1,2,2,3,4,null]' && a.btn === '0秒〜12秒' && a.dis, JSON.stringify({ a, ab }));
     await p.evaluate(() => AH.seekTo(1.45)); await p.waitForTimeout(150); await p.click('#cutDel'); await p.waitForTimeout(100);
     const b = await geo();
     check('近くの区切り（1.5）を消すと元に戻り、前の区間の値を残す', b.n === 12 && JSON.stringify(b.cells) === '[1,2,3,4,null,null]', JSON.stringify(b));
@@ -315,6 +315,17 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const back = await p.evaluate(() => [AH.binStart(0), document.getElementById('rgStart').value]);
     check('評価区間の開始の変更も Ctrl+Z で戻り、設定欄も戻る', st === 0.5 && back[0] === 0 && back[1] === '0', JSON.stringify({ st, back }));
     await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    await p.close();
+  }
+
+  // ---- Excel のセル移動：Enter は下（覚醒度の下は次の秒の快度）、Tab は右、Shift で逆向き ----
+  {
+    const p = await open('excel');
+    const at = () => p.evaluate(() => { const a = document.activeElement; return a.dataset.ax + a.dataset.s; });
+    await p.click('input[data-ax=v][data-s="0"]');
+    const seq = [];
+    for (const k of ['Enter', 'Enter', 'Shift+Enter', 'Shift+Enter', 'Tab', 'Tab', 'Shift+Tab', 'Enter', 'Shift+Tab']) { await p.keyboard.press(k); seq.push(await at()); }
+    check('Excel：Enter で下・Tab で右へ移り、Shift で逆向き（覚醒度で Enter は次の秒の快度）', seq.join(' ') === 'a0 v1 a0 v0 v1 v2 v1 a1 a0', seq.join(' '));
     await p.close();
   }
 

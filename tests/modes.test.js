@@ -44,7 +44,7 @@ const only = process.argv[2];
           await page.waitForTimeout(300); await page.keyboard.press('Space'); await page.keyboard.press('KeyR');
         }
       }
-      if (m === 'excel') { await page.click('input[data-ax=v][data-s="0"]'); await page.keyboard.type('7'); await page.keyboard.press('Enter'); await page.keyboard.type('x'); await page.keyboard.type('3'); await page.keyboard.press('ArrowDown'); await page.keyboard.type('8'); await page.keyboard.press('Escape'); await play(1200); await page.fill('textarea', 'メモてすと'); await page.locator('textarea').blur(); }
+      if (m === 'excel') { await page.click('input[data-ax=v][data-s="0"]'); await page.keyboard.type('7'); await page.keyboard.press('Enter'); await page.keyboard.type('x'); await page.keyboard.type('3'); await page.keyboard.press('Tab'); await page.keyboard.type('8'); await page.keyboard.press('Escape'); await play(1200); await page.fill('textarea', 'メモてすと'); await page.locator('textarea').blur(); }
       if (m === 'affectgrid') { const b = await box('canvas.plane'); await page.check('text=入力後に次の区間へ'); await page.mouse.click(b.x + b.width * 0.85, b.y + b.height * 0.15); await page.waitForTimeout(200); await page.mouse.click(b.x + b.width * 0.2, b.y + b.height * 0.7); }
       if (m === 'sam') { await page.click('.samRow.v button[data-v="9"]'); await page.click('.samRow.a button[data-v="3"]'); await page.keyboard.press('ArrowRight'); await page.click('.samRow.v button[data-v="2"]'); }
       if (m === 'affectrank') { await page.keyboard.press('Space'); await page.waitForTimeout(400); await page.click('.arBtn[title="覚醒・快"]'); await page.waitForTimeout(400); await page.keyboard.press('Numpad4'); await page.keyboard.press('Space'); await page.keyboard.press('Backspace'); }

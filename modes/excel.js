@@ -3,7 +3,7 @@
   const { S, video } = AH;
   const { h } = AH.ui;
   let grid, memo, sig = '';
-  const LABELS = [['ストレス', 9, 1], ['覚醒', 9, 5], ['興奮', 9, 9], ['快', 5, 9], ['不快', 5, 1], ['憂鬱', 1, 1], ['眠気', 1, 5], ['安堵', 1, 9]];
+  const LABELS = [['ストレス', 1, 9], ['覚醒', 5, 9], ['興奮', 9, 9], ['快', 9, 5], ['不快', 1, 5], ['憂鬱', 1, 1], ['眠気', 5, 1], ['安堵', 9, 1]];   // [ラベル, 快度, 覚醒度]
   function build() {
     sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
     const tb = h('table', { class: 'xl' });
@@ -20,11 +20,15 @@
           else { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); }
         });
         inp.addEventListener('keydown', e => {
-          const move = { ArrowLeft: [0, -1], ArrowRight: [0, 1], Enter: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
+          // Enter は下（覚醒度の下は次の秒の快度）、Tab は右。Shift を押すと逆向き
+          const back = e.shiftKey ? -1 : 1, r = ax === 'v' ? 0 : 1;
+          const move = e.key === 'Enter' ? (r + back >= 0 && r + back <= 1 ? [back, 0] : [-back, back])
+            : e.key === 'Tab' ? [0, back]
+            : { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
           if (e.key === 'Escape') { inp.blur(); return; }
           if (!move) return;
           e.preventDefault();
-          const r2 = (ax === 'v' ? 0 : 1) + move[0], s2 = s + move[1];
+          const r2 = r + move[0], s2 = s + move[1];
           const nx = grid.querySelector(`input[data-ax="${r2 ? 'a' : 'v'}"][data-s="${s2}"]`);
           if (r2 >= 0 && r2 <= 1 && nx) { nx.focus(); nx.select(); }
         });
@@ -36,12 +40,12 @@
     grid.appendChild(tb);
   }
   AH.register({
-    id: 'excel', group: '離散（区間ごと）', label: 'Excel（現行シートの再現）', model: 'table', side: 'normal', init: { v: 5, a: 5 },
-    help: '<p>現行の Excel 評価シートと同じ並び（快度・覚醒度、列は評価区間（ヘッダーで設定））です。セルに 1〜9 を入力します。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動、<kbd>Esc</kbd> でセルから抜けると <kbd>Space</kbd> で再生／停止できます。再生中の区間の列が強調されます。</p>',
+    id: 'excel', group: '離散', label: 'Excel', model: 'table', side: 'normal', init: { v: 5, a: 5 },
+    help: '<p>現行の Excel 評価シートと同じ並びです。セルに 1〜9 を入力します。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。再生中の区間の列が強調されます。</p>',
     mount({ panel, under }) {
       grid = h('div', { class: 'xlWrap' }); under.appendChild(grid); sig = '';
       const ref = h('div', { class: 'planeBox' }, '<div class="refTitle">ラベル・プロット表</div>');
-      const t = h('table', { class: 'ref' }, '<tr><th>感情ラベル</th><th>覚醒度</th><th>快度</th></tr>' + LABELS.map(([l, a, v]) => `<tr><td>${l}</td><td>${a}</td><td>${v}</td></tr>`).join(''));
+      const t = h('table', { class: 'ref' }, '<tr><th>感情ラベル</th><th>快度</th><th>覚醒度</th></tr>' + LABELS.map(([l, v, a]) => `<tr><td>${l}</td><td>${v}</td><td>${a}</td></tr>`).join(''));
       ref.appendChild(t);
       if (AH._.axesCurrent() !== 'va') t.hidden = true;   // 感情ラベルの表は VA のときだけ
       memo = h('textarea', { rows: '3', placeholder: '判断に迷ったなど何かあればメモ' });
