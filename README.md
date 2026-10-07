@@ -103,7 +103,7 @@ tests/                自動テスト（Playwright で Edge を動かす）
 ```
 npm install        # 初回のみ（playwright-core）
 npm test           # 全テストを順に実行する（tests/run-all.js）
-npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom export）
 npm run check      # 全 JS に node --check をかける
 ```
 
@@ -112,6 +112,7 @@ npm run check      # 全 JS に node --check をかける
 - テスト動画は `tests/fixtures/test.mp4`（12 秒）である．消えたら `npm run fixture` で ffmpeg から作り直す．`npm test` も，無ければ自動で作る．
 - `samimg` は，`sam/` に原典画像があることを前提にする．
 - Vosk のテスト（vosk）は，本物のモデルと合成音声を偽のマイク入力として使う．モデルは `npm run vosk-model` で `models/*.tar.gz` に作る．合成音声は `npm run voice-fixture` で `tests/fixtures/voice.wav` に作る（Windows の音声合成 Haruka を使う）．どちらかが無ければテストを飛ばす．
+- 書き出しのテスト（export）は，変化点・区間の値・変化の入力を直接与えて書き出し，手で計算した期待値と CSV・JSON の中身を照合する．
 - ゲームパッドのテスト（pad）は実機を使わない．`navigator.getGamepads` を偽の機器（`window.__pads`，複数台）に差し替え，軸とボタンの値を書き換えて確かめる．
 - 再生しながら操作するテストでは，フレームの間隔によって変化点の時刻やサンプル数が少し揺れる．これは正常である．
 
@@ -247,7 +248,7 @@ npm run check      # 全 JS に node --check をかける
   - PANA（Watson & Tellegen：横がポジティブ〔PA〕，縦がネガティブ〔NA〕）
   - Thayer（横がエネルギー，縦が緊張）
 - 値の持ち方（横軸・縦軸それぞれ 1〜9，5 が中立）は変わらない．変わるのは，軸の名前，両端のラベル，方式の説明文，色の欄のラベル，書き出しの列名（`pa`・`na`，`energy`・`tension`），音声入力の語（「ポジティブ7」「負の感情3」「エネルギー6」「緊張4」など）である．色と象限の対応は変えない．
-- PANA と Thayer は VA の円環を 45° 回した軸である．そこで `_60hz.csv` と `_bins.csv` には，VA に直した値 `va_valence = 5 + (x−y)/√2`，`va_arousal = 5 + (x+y)/√2` も付ける（x, y は横軸・縦軸の中立 5 からのずれ）．この値は 1〜9 を少しはみ出すことがある（例：ポジティブ 9・ネガティブ 1 → 快度 10.66）．
+- PANA と Thayer は VA の円環を 45° 回した軸である．そこで `_60hz.csv` と `_bins.csv` には，VA に直した値 `va_valence = 5 + (x−y)/√2`，`va_arousal = 5 + (x+y)/√2` も付ける（x, y は横軸・縦軸の中立 5 からのずれ）．上下限のない方式（RankTrace など）では，`_bins.csv` に VA に直した値を付けない（`_60hz.csv` には付ける）．この値は 1〜9 を少しはみ出すことがある（例：ポジティブ 9・ネガティブ 1 → 快度 10.66）．
 - SAM，Affect Grid，FEELTRACE，AffectRank は，絵や感情語が VA を前提にしているので VA のままにする．Excel は，感情ラベルの表を VA のときだけ出す．
 - 選んだ軸の組は，操作ログの `axes` と書き出しの `meta.axes` に残る．評価の途中で変えるときは確認を出す．
 
