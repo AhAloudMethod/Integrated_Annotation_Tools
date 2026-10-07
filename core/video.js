@@ -26,7 +26,8 @@
       S.meta.range = null;
       S.videoSig = `${f.size}:${video.duration.toFixed(2)}`;
       if (!_.tryRestore()) newSession(`${f.name} dur=${video.duration.toFixed(3)} mode=${S.meta.mode}`);
-      const saved = _.loadRange(f.name, S.videoSig);   // この動画に覚えてある評価区間を使う（ファイル名を変えていても）
+      // この動画に覚えてある評価区間を使う（ファイル名を変えていても）。実験モードでは使わない（区間は setup.json か、再開した試行の区間）
+      const saved = _.expOn && _.expOn() ? null : _.loadRange(f.name, S.videoSig);
       if (saved) {
         if (JSON.stringify(saved) !== JSON.stringify(S.meta.range)) { S.meta.range = saved; addLog('range_restore', { detail: JSON.stringify(saved) }); }
         _.saveRange();   // 今の名前でも覚え直す

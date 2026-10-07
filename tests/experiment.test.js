@@ -188,6 +188,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForLoadState('load'); await p.waitForTimeout(300);
   const after = await p.evaluate(() => ({ axes: localStorage.getItem('ahann_axes'), f0: localStorage.getItem('ahann_f0'), exp: document.body.classList.contains('exp'), pid: !!document.getElementById('pid').offsetParent }));
   check('Ctrl+Shift+E で抜けると、ブラウザの設定が実験前に戻る', after.axes === 'pana' && after.f0 === '1' && !after.exp && after.pid, JSON.stringify(after));
+  const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('ahann_range:a.mp4') || 'null'));
+  check('実験モードで当てた評価区間は、通常の画面で覚えた区間（a.mp4 は 2〜10 秒）を上書きしない', !!kept && kept.start === 2 && kept.target === 10 && kept.bin === 1, JSON.stringify(kept));
 
   // ---- 試行の途中で抜ける：_partial の zip を書き出し、次に開いたとき（途中）と出て、ブラウザから書き出し直せる
   await p.setInputFiles('#expDir', GOOD);
@@ -210,6 +212,17 @@ const BAD = makeFolder('exp_bad', {
   const again = await p.$$eval('#expFrom option', os => os.map(o => o.textContent));
   const zl = await p.$$eval('#expZips li', ls => ls.map(l => l.textContent));
   check('途中の試行に（途中）が付き、ブラウザに残った zip が並ぶ', again[0].includes('（途中）') && zl.some(t => t.includes('P02_t01_a_sam_partial.zip')), JSON.stringify([again, zl]));
+  // 途中の試行を再開する：通常の画面で覚えた区間（2〜10 秒）ではなく、実験の区間（1〜11 秒、2 秒ごと）のまま続ける
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'running');
+  const rs = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), end: AH._.rangeEnd() }));
+  check('途中の試行を再開すると、実験の評価区間のまま続ける', rs.n === 5 && rs.s0 === 1 && Math.abs(rs.end - 11) < 1e-6, JSON.stringify(rs));
+  await p.keyboard.press('Control+Shift+KeyE');
+  await p.waitForLoadState('load'); await p.waitForTimeout(1500);
+  await p.setInputFiles('#expDir', GOOD);
+  await p.waitForSelector('#expGo');
+  await p.selectOption('#expPid', 'P02');
+  await p.waitForSelector('#expZips li');
   const n0 = downloads.length;
   await p.click('#expZips button[data-k="0"]'); await p.waitForTimeout(300);
   check('「書き出す」でブラウザに残った zip をもう一度書き出せる', downloads.length === n0 + 1 && downloads[n0].suggestedFilename() === 'P02_t01_a_sam_partial.zip');

@@ -54,8 +54,9 @@
     const get = k => { try { const r = JSON.parse(localStorage.getItem(k) || 'null'); return r && r.count > 0 && r.bin > 0 ? r : null; } catch (_) { return null; } };
     return get(rangeKey(file)) || (sig ? get(sigKey(sig)) : null);
   }
+  // 実験モードでは覚えない（setup.json の区間で、通常の画面で合わせた区間を上書きしない）
   function saveRange() {
-    if (!S.meta.video_file) return;
+    if (!S.meta.video_file || (_.expOn && _.expOn())) return;
     try {
       localStorage.setItem(rangeKey(S.meta.video_file), JSON.stringify(RG()));
       if (S.videoSig) localStorage.setItem(sigKey(S.videoSig), JSON.stringify(RG()));
