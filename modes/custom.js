@@ -102,7 +102,7 @@
 
   // ---- 設定欄 ----
   function config(panel) {
-    const box = h('details', { class: 'planeBox cfg', open: '' }, '<summary>設計</summary>');
+    const box = h('details', { class: 'planeBox cfg optCtl', open: '' }, '<summary>設計</summary>');
     const grid = h('div', { class: 'cfgGrid' });
     const sel = (label, key, choices) => {
       const s = h('select', { 'aria-label': label });

@@ -9,6 +9,11 @@
   $('openBtn').addEventListener('click', () => $('file').click());
   $('file').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
+    openVideoFile(f);
+    e.target.value = '';
+  });
+  // 動画のファイルを開く。onReady は読み込み（復元・評価区間の設定）を終えた後に呼ぶ（実験モードが使う）
+  function openVideoFile(f, onReady) {
     setArmed(false); pen.down = false;   // 練習中の記録オンも解除
     if (video.src) { endStroke('reload'); _.autosave(); URL.revokeObjectURL(video.src); }
     video.src = URL.createObjectURL(f);
@@ -28,9 +33,9 @@
       }
       video.playbackRate = +$('rate').value;
       selectMode(S.meta.mode, true); syncRangeUI(); refresh();
+      if (onReady) onReady();
     }, { once: true });
-    e.target.value = '';
-  });
+  }
   video.addEventListener('play', () => { pen.clickEdit = false; addLog('play'); refresh(); });
   video.addEventListener('pause', () => { endStroke('pause'); addLog('pause'); refresh(); });
   video.addEventListener('seeking', () => endStroke('seek'));
@@ -53,5 +58,5 @@
   });
   $('graphEdit').addEventListener('change', e => { addLog('graph_edit', { value: e.target.checked }); e.target.blur(); });
 
-  Object.assign(_, { seekTo, togglePlay });
+  Object.assign(_, { seekTo, togglePlay, openVideoFile });
 })();

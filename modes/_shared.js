@@ -41,7 +41,7 @@
     return c => { const b = r.querySelectorAll('b'); b[0].textContent = f(c.v); b[1].textContent = f(c.a); };
   }
   function toggle(parent, key, label) {
-    const l = h('label', {}, `<input type="checkbox"> ${label}`), cb = l.querySelector('input');
+    const l = h('label', { class: 'optCtl' }, `<input type="checkbox"> ${label}`), cb = l.querySelector('input');   // optCtl：実験モードでは隠す方式の設定
     cb.checked = !!opts()[key];
     cb.addEventListener('change', () => { AH.setOption(key, cb.checked); cb.blur(); });
     parent.appendChild(l); return cb;
@@ -264,7 +264,7 @@
 
   // 1軸ずつ2回に分けて評価する方式（CARMA・RankTrace）の「評価する軸」の切り替え
   function passSelector(parent) {
-    const box = h('div', { class: 'opts pass' }, '評価する軸：');
+    const box = h('div', { class: 'opts pass optCtl' }, '評価する軸：');
     for (const ax of ['v', 'a']) {
       const l = h('label', {}, `<input type="radio" name="pass" value="${ax}"> ${AH.ax(ax).name}`), r = l.querySelector('input');
       r.checked = opts().axis === ax;

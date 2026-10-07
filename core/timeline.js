@@ -156,7 +156,7 @@
   // 1回の操作を取り消し（Ctrl+Z）の1件にする。左クリックはグラフ編集・シークのまま
   let cut = null;
   const CUT_HIT = 6;   // 区切りの線に乗ったとみなす距離（px）
-  const cutsEditable = () => model() === 'series' && !!video.src && !_.reviewing();
+  const cutsEditable = () => model() === 'series' && !!video.src && !_.reviewing() && !(_.expOn && _.expOn());   // 実験モードでは評価区間を変えさせない
   const frameT = t => { const f = (_.fps && _.fps()) || FPS; return +(Math.round(t * f) / f).toFixed(4); };   // いちばん近いフレームの始まり
   function cutHit(x) {
     const G = geom(), e = _.cutEdges(); let hit = -1, best = CUT_HIT;

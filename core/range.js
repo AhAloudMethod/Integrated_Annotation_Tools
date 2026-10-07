@@ -191,5 +191,5 @@
     setEdges([e0[0], ...inner, e0[e0.length - 1]]); addLog('range_cut', { value: 'list', detail: inner.join(' ') }); e.target.blur();
   }));
 
-  Object.assign(_, { addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { countFor, addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();

@@ -11,11 +11,14 @@
     a.download = name; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
-  $('exportBtn').addEventListener('click', () => {
+  $('exportBtn').addEventListener('click', () => exportAll());
+  // 今の評価を全部書き出す（「書き出す」と、実験モードの完了）
+  function exportAll() {
     if (!video.src) return;
     endStroke('export'); addLog('export');
     if (_.colorSnapshot) S.meta.colors = _.colorSnapshot();   // 書き出し時点の色の設定を記録する
-    const base = `${S.meta.participant || 'noid'}_${S.meta.video_file.replace(/\.[^.]+$/, '')}_${_.M.id}`;
+    const X = S.meta.experiment, tag = X ? `_t${String(X.trial + 1).padStart(2, '0')}${X.practice ? 'p' : ''}` : '';   // 実験モードでは試行の番号（p は練習）を入れる
+    const base = `${S.meta.participant || 'noid'}${tag}_${S.meta.video_file.replace(/\.[^.]+$/, '')}_${_.M.id}`;
     const D = S.meta.duration, N = Math.floor(D * FPS), n = nSec();
     const files = [];
     // 列名は評価の軸に合わせる（VA 以外は valence→pa・energy など）。回した軸（PANA・Thayer）は VA に直した値の列も付ける
@@ -85,5 +88,7 @@
     out('_events.csv', ['wall_ms', 'video_t', 'type', 'axis', 'value', 'detail'], S.log.map(e => [e.wall_ms, e.video_t, e.type, e.axis, e.value, e.detail]));
     download(base + '_session.json', JSON.stringify({ meta: S.meta, data: S.data, log: S.log }, null, 1), 'application/json');
     $('status').textContent = `書き出しました（${files.length + 1}ファイル）`;
-  });
+  }
+
+  Object.assign(_, { exportAll, download, toCSV });
 })();

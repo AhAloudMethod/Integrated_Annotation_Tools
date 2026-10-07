@@ -42,6 +42,7 @@ core/                 共通部分（読み込み順に依存するので，inde
   axes.js             評価軸の組（VA，PANA，Thayer）
   f0.js               動画の音声の F0
   voice.js            音声入力
+  experiment.js       実験モード（実験フォルダの読み込み，試行の進行，開始・完了，参加者から隠す要素，要約）
   init.js             起動処理 AH.init() と公開 API
 modes/                入力方式（読み込み順が「入力方式」の選択肢の並び順になる）
   _shared.js          方式に共通のヘルパ（AH.ui）
@@ -103,7 +104,7 @@ tests/                自動テスト（Playwright で Edge を動かす）
 ```
 npm install        # 初回のみ（playwright-core）
 npm test           # 全テストを順に実行する（tests/run-all.js）
-npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom export）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom export experiment）
 npm run check      # 全 JS に node --check をかける
 ```
 
@@ -113,6 +114,7 @@ npm run check      # 全 JS に node --check をかける
 - `samimg` は，`sam/` に原典画像があることを前提にする．
 - Vosk のテスト（vosk）は，本物のモデルと合成音声を偽のマイク入力として使う．モデルは `npm run vosk-model` で `models/*.tar.gz` に作る．合成音声は `npm run voice-fixture` で `tests/fixtures/voice.wav` に作る（Windows の音声合成 Haruka を使う）．どちらかが無ければテストを飛ばす．
 - 書き出しのテスト（export）は，変化点・区間の値・変化の入力を直接与えて書き出し，手で計算した期待値と CSV・JSON の中身を照合する．
+- 実験モードのテスト（experiment）は，`tests/out/exp_good/` と `tests/out/exp_bad/` に実験フォルダ（テスト動画の複製と `experiment.json`）を作って読み込む．
 - ゲームパッドのテスト（pad）は実機を使わない．`navigator.getGamepads` を偽の機器（`window.__pads`，複数台）に差し替え，軸とボタンの値を書き換えて確かめる．
 - 再生しながら操作するテストでは，フレームの間隔によって変化点の時刻やサンプル数が少し揺れる．これは正常である．
 
@@ -370,6 +372,111 @@ npm run check      # 全 JS に node --check をかける
   - 「設定」に，聞き取りの履歴（最新 10 件．聞き取った文と解釈）を表示する．
 - 操作ログに `voice`（オン／オフ），`voice_heard`（聞き取った文と解釈，時刻），`voice_input`（入った値）を残す．Ctrl+Z で取り消せる．
 
+## 実験モード
+
+参加者内で複数の方式を比べる実験に使う．実験者が「実験フォルダ」を選ぶと，参加者ごとに決めた順で試行（方式×動画）が進む．参加者が選べる要素を減らし，各試行のタスク遂行時間を測る．
+
+### 実験フォルダ
+
+`experiment.json` と動画を 1 つのフォルダに入れる．「設定」の「実験フォルダを開く」でフォルダを選ぶ（Chrome，Edge，Firefox 系で動く）．`file://` のまま動き，サーバーは要らない．
+
+```
+exp2/
+  experiment.json
+  practice.mp4
+  a.mp4
+  b.mp4
+```
+
+```json
+{
+  "name": "exp2",
+  "settings": { "f0": false, "graphEdit": false },
+  "range": { "start": 0, "bin": 1 },
+  "survey": "https://docs.google.com/forms/d/e/XXXX/viewform?entry.111={pid}&entry.222={mode}",
+  "participants": {
+    "P01": [
+      { "mode": "excel",     "video": "practice.mp4", "practice": true },
+      { "mode": "excel",     "video": "a.mp4" },
+      { "mode": "feeltrace", "video": "practice.mp4", "practice": true },
+      { "mode": "feeltrace", "video": "b.mp4", "settings": { "review": true } }
+    ],
+    "P02": [
+      { "mode": "feeltrace", "video": "practice.mp4", "practice": true },
+      { "mode": "feeltrace", "video": "a.mp4" },
+      { "mode": "excel",     "video": "practice.mp4", "practice": true },
+      { "mode": "excel",     "video": "b.mp4" }
+    ]
+  }
+}
+```
+
+- `name`：実験名．書き出しの要約のファイル名と，進行の保存に使う．
+- `participants`：参加者 ID ごとの試行の配列．カウンターバランスはここで組む．
+  - `mode`：方式の id（`modes/` のファイル名）．`video`：フォルダからの相対パス．
+  - `practice`：練習の試行なら `true`．本番と同じ画面で評価し，記録も残す．
+  - `options`：方式の設定（`S.meta.options`．EMuJoy の `face`，CARMA の `axis`，カスタムの設計軸など）．方式の既定値に重ねる．
+  - `settings`・`range`：この試行だけの設定と評価区間．全体の値を上書きする．
+- `survey`：各試行の後に開くアンケートの URL．`{pid}`，`{trial}`（1 始まり），`{mode}`，`{video}`，`{practice}`（練習なら 1），`{name}` を，その試行の値（URL エンコードしたもの）に置き換える．Google フォームの事前入力の URL に使える．
+  - 全体の `survey` は本番の試行だけに使う．試行に `survey` を書くとそれを使い（練習でも），`false` ならその試行ではアンケートを出さない．
+- `settings`：全試行の設定．書いていない項目は下の既定値になる．参加者のブラウザに残った値は使わない．
+
+| 項目 | 既定値 | 内容 |
+|---|---|---|
+| `axes` | `"va"` | 評価軸の組（`va`，`pana`，`thayer`） |
+| `rate` | `1` | 再生速度（`0.5`，`0.75`，`1`） |
+| `afterWrite` | `"hold"` | 上書きした後ろ（`hold`，`restore`） |
+| `graphEdit` | `true` | グラフをなぞって値を編集する（`timeline` が `true` のときだけ効く） |
+| `grid` | `false` | グリッド線を表示する |
+| `f0` | `true` | 音声の F0 を表示する |
+| `listen` | `false` | 1 区間ずつ聴いてから入力する |
+| `timeline` | `false` | 評価グラフを出す |
+| `videoSize` | `55` | 動画の大きさ（％） |
+| `padJoy`・`padSlider`・`padSquare` | `true` | コントローラーの設定 |
+| `review`・`voice`・`videoWindow` | `false` | 見返し・音声入力・別ウィンドウのボタンを出すか |
+
+- `range`：評価区間．`start`（秒，既定 0），`end`（秒，省くと動画の最後），`bin`（1 区間の長さ，既定 1），`label`（`countdown` か `elapsed`）を持つ．
+- フォルダを選ぶと検査する．JSON の形，方式 id，動画がフォルダにあるか，設定の値，同じ参加者の中で方式と動画の組が重複しないか（自動保存のキーが衝突するため）を確かめ，誤りがあれば一覧で出して始めない．
+- 色の設定は固定しない（ブラウザに保存した値を使う）．
+
+### 進め方
+
+1. 実験者が「設定」の「実験フォルダを開く」でフォルダを選び，参加者と始める試行を選んで「実験を始める」を押す．終えた試行には「（済）」が付き，既定では終えていない最初の試行から始まる．
+2. 試行ごとに，全画面の覆いに「開始」が出る．この間はキー，マウス，ゲームパッドのボタン 0 が効かない．「開始」にはフォーカスを置かないので，Space などで誤って始まることはない．
+3. 参加者が「開始」を押すと評価できる．操作ログに `task_start` を残す．
+4. 参加者がヘッダーの「完了」を押すと確認を出し，書き込みを確定して止め，操作ログに `task_end` を残して書き出す．以後この試行の値は変えられない．
+5. アンケートがある試行では，完了の後に「アンケートを開く」を出す．押すとアンケートを別のタブで開き，操作ログに `survey_open`（value は試行の番号，detail は URL）を残す．押すまで「次へ」は出ない．
+6. 「次へ」で次の試行に移る．最後の試行を終えると，全試行の要約 `<ID>_<name>_trials.csv` を書き出す．
+
+- 実験中，ヘッダーには再生の操作（−1 秒，再生，＋1 秒），時刻，記録ボタン，進行（「2 / 4　練習」など），「完了」だけを出す．参加者 ID，方式，動画を開く，評価区間，設定，説明，グラフ，書き出しは隠す．見返し，音声入力，別ウィンドウは，`settings` で許したときだけ出す．
+- 方式のパネル内の設定（顔・軌跡などの切り替え，評価する軸，カスタムの設計）も隠す．値は `options` で決める．
+- 見返しを許していない試行では V キーも効かない．評価グラフの右クリックで区切りを編集することもできない．
+- 完了のたびに複数のファイルを書き出すので，ブラウザが複数のダウンロードの許可を求めたら許可する．本番の前に一度通しておくとよい．
+- **抜け方**：Ctrl+Shift+E で確認を出し，ページを読み込み直して通常の画面に戻る．実験で当てた設定はブラウザに保存されるが，抜けるとき（とページを閉じるとき）に実験前の値へ戻す．
+- **中断したとき**：再読み込みなどで止まったら，フォルダを選び直す．終えていない最初の試行から始まる．途中だった試行は，自動保存から再開するかを尋ねる．再開すると `task_start` の後なので，覆いを出さずに続きから評価する．止まっていた間の時間はタスク時間に入らない（操作ログの経過時間が続きから数えるため）．要約の `n_restore` に再開の回数が残る．
+
+### 記録
+
+- 書き出しのファイル名に試行の番号を入れる：`<ID>_t01p_<動画名>_<方式id><接尾辞>`．番号は 1 始まりで，`p` は練習である．
+- `_session.json` の `meta.experiment` に，実験名，参加者，試行の番号（`trial`，0 始まり），試行の数，練習か，当てた設定（`settings`），方式の設定（`options`），開始・完了の時刻（`start_iso`，`end_iso`），要約（`task`）を残す．
+- 要約（`meta.experiment.task` と `_trials.csv` の 1 行）の列は次のとおりである．時間は，最後の `task_start` から `task_end` までの操作ログの経過時間（`wall_ms`）で数える．
+
+| 列 | 内容 |
+|---|---|
+| `trial` | 試行の番号（1 始まり．ファイル名の `t01` と同じ） |
+| `practice` | 練習なら 1 |
+| `mode`・`video` | 方式 id と動画 |
+| `start_iso`・`end_iso` | 「開始」と「完了」を押した時刻（ISO 8601） |
+| `task_ms` | タスク遂行時間（ミリ秒） |
+| `play_ms` | そのうち再生していた時間（`play` から `pause`・`ended` まで） |
+| `review_ms` | そのうち見返しをしていた時間 |
+| `n_play`・`n_seek`・`n_undo`・`n_redo` | 再生，シーク，取り消し，やり直しの回数 |
+| `n_strokes`・`n_events` | 連続方式の書き込みの数と，相対の変化の入力の数 |
+| `bins`・`filled_v`・`filled_a` | 評価区間の区間の数と，区間方式で値を入れた区間の数（未入力の区間を見つけるため） |
+| `n_restore` | 自動保存から再開した回数 |
+
+- 進行（終えた試行とその要約）は，localStorage のキー `ahann_exp:<name>:<ID>` に残す．最後の画面の「要約をもう一度書き出す」で，`_trials.csv` を書き出し直せる．
+
 ## 書き出しファイル
 
 | ファイル | 対象 | 内容 |
@@ -385,7 +492,7 @@ npm run check      # 全 JS に node --check をかける
 
 ### 書き出し形式（CSV の列）
 
-- ファイル名は `<参加者ID>_<動画名（拡張子なし）>_<方式id><接尾辞>` である．参加者 ID が空なら `noid` にする．
+- ファイル名は `<参加者ID>_<動画名（拡張子なし）>_<方式id><接尾辞>` である．参加者 ID が空なら `noid` にする．実験モードでは参加者 ID の後に試行の番号（`_t01`，練習は `_t01p`）が入る．
 - 文字コードは UTF-8（BOM つき），改行は LF である．`"`，`,`，改行を含む値は `"` で囲み，中の `"` は `""` にする．
 - 軸の値は 1〜9 である（上下限のない方式は任意の実数）．未入力は空欄にする．
 - 「区間」は評価区間の区間を指す．どのファイルも，`bin`（0 始まりの番号），`label`（列の表記．カウントダウンかカウントアップ），`t_start`，`t_end`（動画の秒，小数 3 桁）で始まる．
@@ -408,6 +515,7 @@ npm run check      # 全 JS に node --check をかける
 | 分類 | type |
 |---|---|
 | セッション | `session_start`，`restore`，`mode_switch`，`export` |
+| 実験モード | `exp_trial`（試行を読み込んだ．value は試行の番号，detail は実験名・方式・動画・練習か），`task_start`（開始），`task_end`（完了），`survey_open`（アンケートを開いた） |
 | 再生 | `play`，`pause`，`seek`（detail は移動前の時刻），`ended`，`rate`，`fps`（フレームレートの推定・手入力） |
 | 評価区間 | `range`，`range_cut`（区切りを置いた・動かした・消した） |
 | 入力 | `input`／`input_same`（テンキーなど），`click`（一時停止中のクリック），`delete`，`stroke`（detail は区間，サンプル数，終わった理由），`arm`／`disarm` |
@@ -421,7 +529,7 @@ npm run check      # 全 JS に node --check をかける
 
 `_session.json` は `{ meta, data, log }` である．
 
-- `meta`：参加者 ID，動画名，長さ，開始時刻，ツールの版（`ah-annotator-v0.5`），方式，方式の設定，評価区間，色の設定（`colors`），聴いてから入力で評価したか（`listen`：`on`），ゲームパッド（`gamepads`）を持つ．
+- `meta`：参加者 ID，動画名，長さ，開始時刻，ツールの版（`ah-annotator-v0.5`），方式，方式の設定，評価区間，色の設定（`colors`），聴いてから入力で評価したか（`listen`：`on`），ゲームパッド（`gamepads`）を持つ．実験モードでは `experiment` も持つ（「実験モード」の節）．
   - `gamepads` の中身は，`use`（使うか），`device`（選んだ機器か auto），`joystick`・`slider`（書き出した時点で使っている機器名），`connected`（つながっている機器），`used`（書き込みに使った機器 `{ role: joy|slider, id }`）である．
 - `data`：変化点（`points`），書き込み（`strokes`．機器で入れたものは `source: 'gamepad'` と `pad` を持つ），区間の値（`cells`），相対の変化（`events`），メモを持つ．
 - `log`：`_events.csv` と同じ内容である．

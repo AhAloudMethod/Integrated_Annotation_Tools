@@ -13,6 +13,7 @@
   <label class="inline"><span class="lbl">方式</span> <select id="mode"></select></label>
   <button id="openBtn">動画を開く</button>
   <input id="file" type="file" accept="video/*" hidden>
+  <span id="expInfo" class="expInfo" hidden></span>
   <span class="sep"></span>
   <button id="backBtn" title="1秒戻る（←）">−1秒</button>
   <button id="playBtn" title="再生／停止（Space）">再生</button>
@@ -100,6 +101,12 @@
           <div id="colorGrid" class="colorGrid"></div>
           <p class="muted">四隅が象限、上下左右が軸方向の色です。軸は自動選択できます。</p>
         </div>
+        <div class="refTitle">実験</div>
+        <div class="sub">
+          <button id="expBtn" type="button" title="実験フォルダ（experiment.json と動画）を選んで実験モードにする">実験フォルダを開く</button>
+          <input id="expDir" type="file" webkitdirectory hidden>
+          <p class="muted">参加者ごとに決めた順で方式と動画を進め、選べる要素を隠します。使い方は README の「実験モード」。</p>
+        </div>
       </section>
     </div>
   </span>
@@ -118,7 +125,9 @@
     </div>
   </span>
   <button id="exportBtn">書き出す</button>
+  <button id="expDoneBtn" class="expDone" hidden>完了</button>
 </header>
+<div id="expCover" class="expCover" hidden><div id="expCard" class="expCard"></div></div>
 <div class="hint" id="hint" hidden></div>
 
 <main>
@@ -163,6 +172,7 @@
 <script src="core/colors.js"></script>
 <script src="core/f0.js"></script>
 <script src="core/voice.js"></script>
+<script src="core/experiment.js"></script>
 <script src="core/init.js"></script>
 <!-- 入力方式（modes/）：_shared.js のあと、登録順＝入力方式の選択肢の並び順 -->
 <script src="modes/_shared.js"></script>
