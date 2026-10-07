@@ -1,7 +1,7 @@
 // Vosk の日本語モデルを用意する：公式の zip をダウンロードし、ツールが読める .tar.gz に作り直す
 //   npm run vosk-model            … models/vosk-model-small-ja-0.22.tar.gz を作る
 //   npm run vosk-model -- <zip>   … ダウンロード済みの zip から作る
-// できた .tar.gz を、ツールの「設定」→ 声の認識「Vosk」→「モデルを選ぶ」で選ぶ（初回だけ。以降はブラウザに保存される）
+// できた .tar.gz を、ツールの「設定」→ 音声認識モデル「Vosk」→「モデルを選ぶ」で選ぶ（初回だけ。以降はブラウザに保存される）
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -37,7 +37,7 @@ function run(cmd, args, cwd) {
     console.log('作成中:', OUT);
     run(TAR, ['-czf', OUT, dir], work);
     console.log('できました:', OUT, `（${(fs.statSync(OUT).size / 1e6).toFixed(0)}MB）`);
-    console.log('ツールの「設定」→ 声の認識「Vosk」→「モデルを選ぶ」でこのファイルを選んでください。');
+    console.log('ツールの「設定」→ 音声認識モデル「Vosk」→「モデルを選ぶ」でこのファイルを選んでください。');
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }

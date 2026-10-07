@@ -83,7 +83,7 @@ const FAKE = () => {
     await say(p, '2 2', true);
     const out = await p.evaluate(() => ({ n: AH.S.data.cells.v.filter(x => x != null).length, hint: document.getElementById('hint').textContent }));
     check('区間の方式：その区間の値になる', cells.join() === '8,3', cells.join());
-    check('区間の外では入らない', out.n === 1 && /評価区間の外/.test(out.hint), JSON.stringify(out));
+    check('区間の外では入らない', out.n === 1 && /評価区間外/.test(out.hint), JSON.stringify(out));
     await p.close();
   }
 
@@ -151,7 +151,7 @@ const FAKE = () => {
     const out = await p.evaluate(() => ({ n: AH.S.data.points.v.length, hint: document.getElementById('hint').textContent }));
     check('カウントダウン表記：残り3秒 → 動画の8秒', JSON.stringify(cd) === '[[0,5],[8,7]]', JSON.stringify(cd));
     check('経過表記：開始2秒＋3秒 → 動画の5秒', JSON.stringify(el) === '[[0,5],[5,2]]', JSON.stringify(el));
-    check('言った時刻が評価区間の外なら入らない', out.n === 2 && /評価区間の外/.test(out.hint), JSON.stringify(out));
+    check('言った時刻が評価区間の外なら入らない', out.n === 2 && /評価区間外/.test(out.hint), JSON.stringify(out));
     // 時刻だけを言って区切っても、続けて言った値をその時刻に入れる（次の値には持ち越さない）
     await say(p, '4秒', true); await say(p, '快度6', true); await say(p, '快度3', true);
     const carry = await p.evaluate(() => AH.S.data.points.v.map(x => [x.t, x.val]));

@@ -6,7 +6,7 @@
   AH.register({
     id: 'darma', group: '時間連続・2次元', label: 'DARMA（ジョイスティック・四角平面）', model: 'series', init: { v: 5, a: 5 }, side: 'wide', animate: true,
     writeMode: () => 'armed', writeAxes: () => ['v', 'a'], sample: () => stk.val(),
-    help: '<p>スティックの位置がそのまま値です。マウス入力も出来ます。</p>',
+    help: '<p>スティックの位置がそのまま値です。マウス入力もできます。</p>',
     mount({ panel }) {
       ({ c } = planeCanvas(panel, 'DARMA の平面')); now = nowRow(c.parentNode);
       stat = h('div', { class: 'opts' }); c.parentNode.appendChild(stat);

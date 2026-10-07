@@ -29,7 +29,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     };
     const cells = () => p.evaluate(() => ({ v: AH.S.data.cells.v.slice(), n: AH.S.undo.length }));
     await p.evaluate(() => AH.seekTo(0.5)); await p.waitForTimeout(150); await hit();
-    const before = await cells(), hint = await p.$eval('#hint', e => !e.hidden && e.textContent.includes('評価区間の外'));
+    const before = await cells(), hint = await p.$eval('#hint', e => !e.hidden && e.textContent.includes('評価区間外'));
     await p.evaluate(() => AH.seekTo(11)); await p.waitForTimeout(150); await hit();
     const after = await cells();
     await p.evaluate(() => AH.seekTo(4.5)); await p.waitForTimeout(150); await hit();

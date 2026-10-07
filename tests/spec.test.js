@@ -299,7 +299,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => { AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.S.undo = []; for (const [s, v] of [[0, 1], [1, 2], [2, 3]]) AH.setCell('v', s, v); });
     const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
     await p.mouse.click(box.x + 44 + 2.5 / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100);
-    check('離散（区間ごと）では右クリックで区切りを置かない', await p.evaluate(() => !AH.S.meta.range.edges && AH.nSec() === 12));
+    check('離散では右クリックで区切りを置かない', await p.evaluate(() => !AH.S.meta.range.edges && AH.nSec() === 12));
     const geo = () => p.evaluate(() => JSON.stringify({ n: AH.nSec(), e: AH.S.meta.range.edges || null, c: [0, 1, 2, 3].map(i => AH.S.data.cells.v[i] ?? null), cl: document.getElementById('cutList').value }));
     const before = await geo();
     await p.evaluate(() => AH.seekTo(1.5)); await p.waitForTimeout(150); await p.click('#rgBtn'); await p.click('#cutAdd'); await p.waitForTimeout(100);

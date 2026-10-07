@@ -6,6 +6,7 @@
   const _ = AH._;
   const { $, video, addLog } = _;
   let win = null, poll = null;
+  const vwinLabel = $('vwinBtn').textContent;   // 閉じたときのボタンの文言は index.html のもの
 
   function open() {
     if (win && !win.closed) { win.focus(); return; }
@@ -53,13 +54,11 @@
     if (win && !win.closed) win.close();
     win = null;
     if (!document.body.classList.contains('vwin')) return;
-    document.body.classList.remove('pip', 'vwin'); $('vwinBtn').textContent = '動画を別窓へ'; $('vwinBtn').classList.remove('on');
+    document.body.classList.remove('pip', 'vwin'); $('vwinBtn').textContent = vwinLabel; $('vwinBtn').classList.remove('on');
     addLog('video_window', { value: 'off' }); _.resize();
   }
 
   $('vwinBtn').addEventListener('click', e => { e.currentTarget.blur(); if (document.body.classList.contains('vwin')) back(); else open(); });
-  // 「元に戻す」は別ウィンドウにも効かせる（小窓の戻し方は layout.js 側）
-  $('pipBack').addEventListener('click', () => { if (document.body.classList.contains('vwin')) back(); }, true);
   window.addEventListener('pagehide', () => { if (win && !win.closed) win.close(); });
 
   Object.assign(_, { openVideoWindow: open, closeVideoWindow: back });

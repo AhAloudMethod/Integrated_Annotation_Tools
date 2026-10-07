@@ -109,7 +109,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => AH.seekTo(3)); await p.waitForTimeout(150);
     await p.click('.arBtn[title="覚醒・快"]'); await p.keyboard.press('Numpad4');
     const ev = await p.evaluate(() => AH.S.data.events.map(e => [e.label, e.dv, e.da]));
-    check('プリセット「AffectRank 相当」', has.includes('affectrank') && st.rep === 'rank8' && st.model === 'events' && /AffectRank/.test(st.note) && st.btns === 8, JSON.stringify(st));
+    check('プリセット「AffectRank」', has.includes('affectrank') && st.rep === 'rank8' && st.model === 'events' && /AffectRank/.test(st.note) && st.btns === 8, JSON.stringify(st));
     check('8方向ボタンとテンキーで変化の方向が入る', JSON.stringify(ev) === '[["覚醒・快",1,1],["不快",-1,0]]', JSON.stringify(ev));
     await pick(p, '次元', 'v');
     const n1 = await p.evaluate(() => [...document.querySelectorAll('.arBtn')].map(b => b.title));

@@ -42,7 +42,7 @@
       g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(x, y, 12, 0, 7); g.fill();
       g.strokeStyle = AH.isWriting() ? AH.css('--pen') : 'rgba(0,0,0,.55)'; g.lineWidth = 2; g.stroke();
       const it = AH.intensity(cur.v, cur.a);
-      // 画面枠の色：動画の枠（別窓・小窓のときはジョイスティックの枠）
+      // 画面枠の色：動画の枠（別ウィンドウのときはジョイスティックの枠）
       const ring = it > 0.02 ? `0 0 0 8px ${AH.rgba(AH.quadColor(cur.v, cur.a), 0.25 + 0.75 * it)}` : '0 0 0 8px transparent';
       const away = document.body.classList.contains('pip');
       document.getElementById('stage').style.boxShadow = away ? '' : ring;

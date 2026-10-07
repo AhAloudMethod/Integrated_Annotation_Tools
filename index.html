@@ -35,7 +35,7 @@
       <label>1区間の長さ（秒） <input id="rgBin" type="number" min="0.1" step="0.1"></label>
       <div class="sub">
         <div class="refTitle">自分で区切る</div>
-        <span class="rgBtns"><button id="cutAdd" type="button" title="今の時間で区間を区切る">今の時刻で区切る</button><button id="cutDel" type="button" title="今の時刻に最も近い区切りを消す">近くの区切りを消す</button></span>
+        <span class="rgBtns"><button id="cutAdd" type="button" title="今の時間で区間を区切る">今の時間で区切る</button><button id="cutDel" type="button" title="今の時間に最も近い区切りを消す">近くの区切りを消す</button></span>
         <label>区切り（秒） <input id="cutList" type="text" placeholder="例：1.2, 2, 3.5" title="開始と終了の間の区切りの時間。カンマ区切りで書き換えられる"></label>
         <button id="cutReset" type="button">等間隔に戻す</button>
       </div>
@@ -45,8 +45,7 @@
   </span>
   <span class="spacer"></span>
   <span class="status" id="status"></span>
-  <span id="pipNote">動画は別の場所で表示中 <button id="pipBack" type="button">元に戻す</button></span>
-  <button id="vwinBtn" title="ダブルクリックで全画面">PIP</button>
+  <button id="vwinBtn" title="動画だけを別ウィンドウに出す。ダブルクリックで全画面">別ウィンドウ</button>
   <button id="tlBtn" title="評価グラフの表示／非表示">グラフ</button>
   <span class="rgWrap">
     <button id="setBtn" title="表示と再生の設定">設定</button>
@@ -59,21 +58,14 @@
         <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
         <label>再生速度 <select id="rate" autocomplete="off"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
         <label>上書きした後ろ <select id="afterWrite"><option value="hold">最後の値のまま続ける</option><option value="restore">上書き前の値に戻す</option></select></label>
-        <p class="muted">すでに記録がある所に上書きしたとき、上書きを終えた後ろの値をどうするかを選ぶ。「最後の値のまま続ける」：次に値が変わる所まで上書きを終えた時点の値に変更されます（最初から通しで付け直すとき向け）。「上書き前の値に戻す」：上書きした所だけが変わり、その後ろは変更しません（一部だけを直すとき向け）。</p>
+        <p class="muted">すでに記録がある所に上書きしたとき、上書きを終えた後ろの値をどうするかを選びます。「最後の値のまま続ける」：次に値が変わる所まで上書きを終えた時点の値に変更されます（最初から通しで付け直すとき向け）。「上書き前の値に戻す」：上書きした所だけが変わり、その後ろは変更しません（一部だけを直すとき向け）。</p>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
         <label class="chk" title="平面・円・スライダー・レバーにグリッド線を引く"><input id="gridShow" type="checkbox"> グリッド線を表示する</label>
         <label class="chk"><input id="f0Show" type="checkbox" checked> 音声の F0（声の高さ）を表示する</label>
         <label class="chk" title="連続の方式で、1区間を再生すると区間の終わりで止まる。Enter／ボタン0 で同じ区間を音声つきで再生し直し、その間の入力を記録する。終わると次の区間を聴く（R でもう一度聴く）"><input id="listenMode" type="checkbox"> 1区間ずつ聴いてから入力する</label>
         <p class="muted" id="f0Status">F0：動画を開くと計算します</p>
         <div class="sub">
-          <button id="pipBtn" type="button" title="動画を小窓（PIP：ピクチャーインピクチャー）表示する">動画をPIP表示</button>
           <button id="resetBtn" type="button" title="この動画・方式の評価の値をすべて消して初期値に戻す（Ctrl+Z で戻せる）">入力をリセットする</button>
-          <div id="pipHelp" hidden>
-            <p>このブラウザでは、小窓はブラウザの機能で開きます。</p>
-            <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
-            <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
-            <button id="pipCollapse" type="button">動画欄をたたむ</button>
-          </div>
         </div>
       </section>
       <section class="setCol">
@@ -116,12 +108,12 @@
     <div id="helpPanel" class="rgPanel right help" hidden>
       <div id="modeHelp"></div>
       <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</p>
-      <p>見返し（見返しボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更は出来ません。</p>
+      <p>見返し（見返しボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更はできません。</p>
       <p>聴いてから入力：1区間を再生すると区間の終わりで止まります。<kbd>Enter</kbd>またはボタン0で同じ区間を始めから再生し直し、その間の入力を記録します。区間の終わりで記録を終え、そのまま次の区間に移ります。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
-      <p>PIP：動画だけを別のウィンドウに出します。ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作できます。</p>
+      <p>別ウィンドウ：動画だけを別のウィンドウに出します。ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作できます。</p>
       <p>音声入力：音声で値を入力します。Chromeの方はネット接続が必要です。「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも認識します。「再生」「停止」でも操作できます。値は話し始めた時刻に入力されます。「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入ります。</p>
       <p>コントローラー：ジョイスティックやスライダーをつなぐことができます。AffectRankは、スティックを大きく倒した方向が1回入ります。RankTrace ではスティックの上下で、倒した量に応じた速さで値が動きます。スライダーはスロットル位置がそのまま値になります。</p>
-      <p>グラフ：評価グラフを表示します。設定の「グラフをなぞって値を編集する」がオンなら、左クリックで値を直接描き換えられます。</p>
+      <p>グラフ：評価グラフを表示します。設定の「グラフをなぞって値を編集する」がオンなら、左クリックで値を直接描き換えられます。連続の方式では、右クリックで区間の区切りを置く・動かす（右ドラッグ）・消す（区切りの上で右クリック）ことができます。</p>
       <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。</p>
     </div>
   </span>

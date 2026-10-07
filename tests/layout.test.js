@@ -50,12 +50,11 @@ const { URL, VID, BROWSER, out } = require('./_env');
     await p.screenshot({ path: out(`shot5_size${v}.png`) });
     console.log('size', v, JSON.stringify(w));
   }
-  // 小窓レイアウト（headless では PiP が使えないのでクラスで再現）
+  // 動画を別ウィンドウに出したときの配置（クラスで再現）
   await p.evaluate(() => { document.body.classList.add('pip'); window.dispatchEvent(new Event('resize')); });
   await p.waitForTimeout(200); await p.screenshot({ path: out('shot5_pip.png') });
-  console.log('pipEnabled', await p.evaluate(() => document.pictureInPictureEnabled), 'pipBtn hidden', await p.$eval('#pipBtn', e => e.hidden));
   await p.close();
-  // 小窓レイアウト：RCEA（動画上のジョイスティック）
+  // 別ウィンドウのときの配置：RCEA（動画上のジョイスティック）
   p = await page(); await p.selectOption('#mode', 'rcea'); await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0);
   await p.evaluate(() => { document.body.classList.add('pip'); window.dispatchEvent(new Event('resize')); }); await p.waitForTimeout(200);
   await p.screenshot({ path: out('shot5_pip_rcea.png') }); await p.close();

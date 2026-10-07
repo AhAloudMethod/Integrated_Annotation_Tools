@@ -138,7 +138,7 @@
       addLog('voice_time_missing', { detail: text }); return false;
     }
     if (p.time != null && (t < _.RG().start - 1e-6 || t >= _.rangeEnd() - 1e-6)) {
-      toast(`「${p.time}秒」は評価区間の外です`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
+      toast(`「${p.time}秒」は評価区間外です`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
     }
     if (p.cmd === 'play' && video.src && video.paused) video.play();
     if (p.cmd === 'pause' && !video.paused) video.pause();
@@ -147,7 +147,7 @@
     if (M.model === 'events' || M.unbounded) { toast('この方式では声による値の入力は使えません', 'warn'); return false; }
     if (M.model === 'table') {
       let s = binAt(t); if (s === nSec() && t >= (S.meta.duration || 0) - 0.05) s = nSec() - 1;
-      if (s < 0 || s >= nSec()) { toast('評価区間の外です', 'warn'); addLog('input_out_of_range', { detail: 'voice t=' + t.toFixed(3) }); return false; }
+      if (s < 0 || s >= nSec()) { toast('評価区間外です', 'warn'); addLog('input_out_of_range', { detail: 'voice t=' + t.toFixed(3) }); return false; }
       _.setCells(s, vals, 'voice');
     } else {
       const before = snapshot(); let ch = false;

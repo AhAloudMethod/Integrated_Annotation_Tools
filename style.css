@@ -79,15 +79,13 @@ body.f0 #tl{height:206px}
 .f0Meter span{display:block;height:100%;width:0;background:var(--f0);border-radius:4px}
 .time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
 
-/* 動画を別の場所（別ウィンドウ・小窓）で表示中：動画欄を外し、ツールに画面を使う */
+/* 動画を別ウィンドウで表示中：動画欄を外し、ツールに画面を使う */
 body.pip main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"side" "under" "tl"}
 body.pip .stage{position:fixed;right:16px;bottom:16px;width:0;height:0;background:none;z-index:20}
 body.pip .stage video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 body.pip .stage .empty{display:none}
 body.pip #panel{flex-direction:row;flex-wrap:wrap;align-items:flex-start;justify-content:center}
 body.pip #panel>*{flex:1 1 320px;max-width:640px}
-#pipNote{display:none;font-size:13px;color:var(--muted);gap:6px;align-items:center;white-space:nowrap}
-body.pip #pipNote{display:inline-flex}
 body.pip #overlay:not(:empty){position:fixed;left:auto;top:auto;right:16px;bottom:16px;width:320px;height:180px;background:rgba(0,0,0,.55);border-radius:6px;z-index:20}
 
 /* 共通パーツ */
@@ -237,4 +235,3 @@ table.ref th{color:var(--muted);font-weight:500}
 .chgBtn small{font-size:11px;font-weight:400;color:var(--muted);margin-top:4px}
 .chgBtn.hit{background:var(--hit);border-color:var(--hit);color:#fff}
 .chgBtn.hit small{color:#fff}
-body.vwin #pipNote{display:none !important}
