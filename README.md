@@ -42,6 +42,7 @@ core/                 共通部分（読み込み順に依存するので，inde
   axes.js             評価軸の組（VA，PANA，Thayer）
   f0.js               動画の音声の F0
   voice.js            音声入力
+  exp-check.js        実験の設定ファイルの検査（ブラウザと tools/exp-check.js で共通）
   experiment.js       実験モード（実験フォルダの読み込み，試行の進行，開始・完了，参加者から隠す要素，要約）
   init.js             起動処理 AH.init() と公開 API
 modes/                入力方式（読み込み順が「入力方式」の選択肢の並び順になる）
@@ -50,7 +51,8 @@ modes/                入力方式（読み込み順が「入力方式」の選�
   carma.js ranktrace.js excel.js affectgrid.js sam.js affectrank.js custom.js
 sam/                  SAM の原典画像
 vendor/               同梱した外部ライブラリ（vosk.js）
-tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する）
+tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する）
+.claude/skills/       Claude Code の skill（experiment-config：experiment.json を作る）
 models/               Vosk のモデル（npm run vosk-model で作る．git には入れない）
 tests/                自動テスト（Playwright で Edge を動かす）
 ```
@@ -104,7 +106,7 @@ tests/                自動テスト（Playwright で Edge を動かす）
 ```
 npm install        # 初回のみ（playwright-core）
 npm test           # 全テストを順に実行する（tests/run-all.js）
-npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom export experiment）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom export experiment expcheck）
 npm run check      # 全 JS に node --check をかける
 ```
 
@@ -114,6 +116,7 @@ npm run check      # 全 JS に node --check をかける
 - `samimg` は，`sam/` に原典画像があることを前提にする．
 - Vosk のテスト（vosk）は，本物のモデルと合成音声を偽のマイク入力として使う．モデルは `npm run vosk-model` で `models/*.tar.gz` に作る．合成音声は `npm run voice-fixture` で `tests/fixtures/voice.wav` に作る（Windows の音声合成 Haruka を使う）．どちらかが無ければテストを飛ばす．
 - 書き出しのテスト（export）は，変化点・区間の値・変化の入力を直接与えて書き出し，手で計算した期待値と CSV・JSON の中身を照合する．
+- 実験フォルダの検査のテスト（expcheck）はブラウザを使わず，`npm run exp-check` を実行して出力と終了コードを確かめる．
 - 実験モードのテスト（experiment）は，`tests/out/exp_good/` と `tests/out/exp_bad/` に実験フォルダ（テスト動画の複製と `experiment.json`）を作って読み込む．
 - ゲームパッドのテスト（pad）は実機を使わない．`navigator.getGamepads` を偽の機器（`window.__pads`，複数台）に差し替え，軸とボタンの値を書き換えて確かめる．
 - 再生しながら操作するテストでは，フレームの間隔によって変化点の時刻やサンプル数が少し揺れる．これは正常である．
@@ -438,6 +441,16 @@ exp2/
 - `range`：評価区間．`start`（秒，既定 0），`end`（秒，省くと動画の最後），`bin`（1 区間の長さ，既定 1），`label`（`countdown` か `elapsed`）を持つ．
 - フォルダを選ぶと検査する．JSON の形，方式 id，動画がフォルダにあるか，設定の値，同じ参加者の中で方式と動画の組が重複しないか（自動保存のキーが衝突するため）を確かめ，誤りがあれば一覧で出して始めない．
 - 色の設定は固定しない（ブラウザに保存した値を使う）．
+
+### 設定ファイルの作り方と検査
+
+- **Claude Code で作る**：このリポジトリで「実験の設定を作って」と頼むと，skill `experiment-config`（`.claude/skills/experiment-config/SKILL.md`）が働く．方式，動画，参加者の数などを聞き取り，カウンターバランス（既定はラテン方格）を組んで `experiment.json` を書き，下の検査で誤りが無くなるまで直す．
+- **検査する**：`npm run exp-check -- <実験フォルダ>` で，ブラウザでフォルダを開いたときと同じ規則で検査する．参加者ごとの順と，誤り・警告を出す．誤りがあれば終了コードは 1 になる．
+- **警告**は，実験を始められるが確かめたほうがよいことである．ブラウザでフォルダを開いたときも，参加者を選ぶ画面に出す．
+  - 本番の試行（練習を除く）の各位置に現れる方式・動画の偏り（参加者の数が割り切れないときの差 1 は許す）
+  - 方式と組む動画の偏り（方式と動画の交絡）
+  - 参加者による本番の試行の数や，方式・動画の組の違い
+  - 本番の前に練習が無い方式（練習を 1 つでも使う実験のとき）
 
 ### 進め方
 

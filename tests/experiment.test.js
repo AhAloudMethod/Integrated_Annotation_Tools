@@ -68,6 +68,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForSelector('#expGo');
   const from = await p.$$eval('#expFrom option', os => os.map(o => o.textContent));
   check('始める試行の一覧に練習と方式・動画が出る', from.length === 2 && from[0].includes('練習') && from[1].includes('a.mp4'), JSON.stringify(from));
+  const warns = await p.$$eval('.expWarn li', ls => ls.map(l => l.textContent));
+  check('警告（練習の抜けなど）を出すが、始められる', warns.some(w => w.includes('P01：本番の前に練習が無い方式があります（excel）')) && await vis('#expGo'), JSON.stringify(warns));
   await p.click('#expGo');
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const hidden = {};

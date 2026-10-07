@@ -8,7 +8,8 @@
     "check": "node tests/check-syntax.js",
     "fixture": "node tests/make-fixture.js",
     "vosk-model": "node tools/vosk-model.js",
-    "voice-fixture": "node tests/make-voice-fixture.js"
+    "voice-fixture": "node tests/make-voice-fixture.js",
+    "exp-check": "node tools/exp-check.js"
   },
   "devDependencies": {
     "playwright-core": "^1.63.0"

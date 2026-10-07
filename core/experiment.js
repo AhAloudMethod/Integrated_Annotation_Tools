@@ -6,10 +6,8 @@
 (() => {
   const _ = AH._;
   const { $, video, S, modes, addLog, endStroke, setArmed, pen } = _;
-  // 設定の既定値（書いていない項目はこれ。参加者のブラウザに残った値は使わない）。review・voice・videoWindow はボタンを出すか
-  const DEF = { axes: 'va', rate: 1, afterWrite: 'hold', graphEdit: true, grid: false, f0: true, listen: false, timeline: false, videoSize: 55,
-    padJoy: true, padSlider: true, padSquare: true, review: false, voice: false, videoWindow: false };
-  const RATES = ['0.5', '0.75', '1'];
+  // 設定の既定値（書いていない項目はこれ。参加者のブラウザに残った値は使わない）と検査は core/exp-check.js
+  const { DEF } = _.expCheck;
   const LS_KEYS = ['ahann_axes', 'ahann_after', 'ahann_grid', 'ahann_pad_square', 'ahann_f0', 'ahann_listen', 'ahann_tl', 'ahann_vidsize', 'ahann_pad_joy', 'ahann_pad_slider'];
   const SUM_COLS = ['trial', 'practice', 'mode', 'video', 'start_iso', 'end_iso', 'task_ms', 'play_ms', 'review_ms', 'n_play', 'n_seek', 'n_undo', 'n_redo',
     'n_strokes', 'n_events', 'bins', 'filled_v', 'filled_a', 'n_restore'];
@@ -30,41 +28,7 @@
     return { cfgFile, get };
   }
   function validate(cfg, get) {
-    const errs = [];
-    if (!cfg || typeof cfg !== 'object') return ['experiment.json が JSON のオブジェクトではありません'];
-    if (!cfg.name) errs.push('name（実験名）がありません');
-    const chkSet = (s, where) => {
-      if (s == null) return;
-      for (const k of Object.keys(s)) if (!(k in DEF)) errs.push(`${where}：settings の「${k}」は使えない項目です`);
-      if (s.axes != null && !_.AXES[s.axes]) errs.push(`${where}：axes は ${Object.keys(_.AXES).join('・')} のどれかです`);
-      if (s.rate != null && !RATES.includes(String(s.rate))) errs.push(`${where}：rate は ${RATES.join('・')} のどれかです`);
-      if (s.afterWrite != null && !['hold', 'restore'].includes(s.afterWrite)) errs.push(`${where}：afterWrite は hold か restore です`);
-    };
-    const chkRange = (r, where) => {
-      if (r == null) return;
-      if (r.bin != null && !(r.bin > 0)) errs.push(`${where}：range.bin は正の数です`);
-      if (r.start != null && !(r.start >= 0)) errs.push(`${where}：range.start は 0 以上です`);
-      if (r.end != null && !(r.end > (r.start || 0))) errs.push(`${where}：range.end は start より後です`);
-      if (r.label != null && !['countdown', 'elapsed'].includes(r.label)) errs.push(`${where}：range.label は countdown か elapsed です`);
-    };
-    const chkSurvey = (v, where) => { if (v != null && v !== false && typeof v !== 'string') errs.push(`${where}：survey は URL の文字列か false です`); };
-    chkSet(cfg.settings, '全体'); chkRange(cfg.range, '全体'); chkSurvey(cfg.survey, '全体');
-    const ps = cfg.participants;
-    if (!ps || typeof ps !== 'object' || !Object.keys(ps).length) errs.push('participants（参加者ごとの試行）がありません');
-    else for (const [pid, ts] of Object.entries(ps)) {
-      if (!Array.isArray(ts) || !ts.length) { errs.push(`${pid}：試行の配列がありません`); continue; }
-      const seen = new Set();
-      ts.forEach((t, k) => {
-        const where = `${pid} の ${k + 1} 番目`;
-        if (!t || !modes[t.mode]) errs.push(`${where}：方式「${t && t.mode}」はありません`);
-        if (!t || !t.video || !get(t.video)) errs.push(`${where}：動画「${t && t.video}」がフォルダにありません`);
-        // 自動保存のキー（方式＋参加者ID＋動画名）が衝突するので、同じ組は 1 回だけ
-        const key = t && `${t.mode}|${t.video}`;
-        if (seen.has(key)) errs.push(`${where}：方式と動画の組（${t.mode}・${t.video}）が重複しています`); seen.add(key);
-        if (t) { chkSet(t.settings, where); chkRange(t.range, where); chkSurvey(t.survey, where); }
-      });
-    }
-    return errs;
+    return _.expCheck.check(cfg, { modes: Object.keys(modes), axes: Object.keys(_.AXES), has: p => !!get(p) });
   }
 
   // ---------- 進行（終えた試行と要約）はブラウザに残す ----------
@@ -84,7 +48,7 @@
     if (html) $('expCard').innerHTML = html;
   }
   const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}　${t.video}`;
-  function setup(cfg, get, errs) {
+  function setup(cfg, get, { errors: errs, warnings = [] }) {
     X = { cfg, get, state: 'setup', backup: null };
     if (errs.length) {
       cover(`<h2>実験フォルダの誤り</h2><ul class="expErr">${errs.map(e => `<li>${esc(e)}</li>`).join('')}</ul><button id="expCancel" type="button">閉じる</button>`);
@@ -93,6 +57,7 @@
     }
     const pids = Object.keys(cfg.participants);
     cover(`<h2>実験：${esc(cfg.name)}</h2>
+      ${warnings.length ? `<p>確かめてください（このままでも始められます）：</p><ul class="expWarn">${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
       <label>参加者 <select id="expPid">${pids.map(p => `<option>${esc(p)}</option>`).join('')}</select></label>
       <label>始める試行 <select id="expFrom"></select></label>
       <div class="expBtns"><button id="expGo" type="button">実験を始める</button><button id="expCancel" type="button">やめる</button></div>
@@ -296,9 +261,9 @@
     const list = [...e.target.files]; e.target.value = '';
     if (!list.length) return;
     const { cfgFile, get } = readFolder(list);
-    if (!cfgFile) { setup(null, get, ['選んだフォルダに experiment.json がありません']); return; }
+    if (!cfgFile) { setup(null, get, { errors: ['選んだフォルダに experiment.json がありません'] }); return; }
     let cfg = null;
-    try { cfg = JSON.parse(await cfgFile.text()); } catch (err) { setup(null, get, ['experiment.json を JSON として読めません：' + err.message]); return; }
+    try { cfg = JSON.parse(await cfgFile.text()); } catch (err) { setup(null, get, { errors: ['experiment.json を JSON として読めません：' + err.message] }); return; }
     setup(cfg, get, validate(cfg, get));
   });
   $('expDoneBtn').addEventListener('click', e => { e.currentTarget.blur(); complete(); });
