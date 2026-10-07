@@ -10,7 +10,7 @@
   }
   AH.register({
     id: 'change', group: '変化の時点', label: '変化ボタン（変化を感じたら押す）', model: 'events', side: 'narrow', init: { v: 5, a: 5 },
-    help: '<p>感情が変わったと感じた瞬間に「変化」ボタンを押します（<kbd>Enter</kbd> でも可）。値や方向は入力しません。押した時刻は書き出しの <code>_ranks.csv</code>（label＝change）に、評価区間ごとの回数は <code>_bins.csv</code> の n_changes に残ります。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>',
+    help: '<p>感情が変わったと感じた瞬間にボタンを押します（<kbd>Enter</kbd> でも可）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>',
     mount({ panel }) {
       const box = h('div', { class: 'planeBox chgBox' });
       btn = h('button', { class: 'chgBtn', onclick: e => { fire(); e.currentTarget.blur(); } }, '変化<small>Enter</small>');

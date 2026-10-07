@@ -10,7 +10,7 @@
     options: { spring: false },
     writeMode: () => (spring() || stk.on() ? 'armed' : 'hold'), writeAxes: () => ['v', 'a'],
     sample: () => (stk.on() ? stk.val() : spring() && !pen.down ? { v: 5, a: 5 } : pen),
-    help: '<p>右の円を押して動かします。画面の枠の色が今の象限（黄＝高覚醒・快、赤＝高覚醒・不快、青＝低覚醒・不快、緑＝低覚醒・快）を示し、濃さが強度です。「離すと中心へ」をオンにすると、記録オン（R）の間は押していなければ中性が記録されます。</p><p>ジョイスティック（ゲームパッド）をつなぐと、スティックの位置がそのまま値になり（離すと中性）、記録オン（<kbd>R</kbd> またはボタン0）の間だけ記録します。マウスもそのまま使えます（スティックを倒している間はスティックが優先）。</p>',
+    help: '<p>右の円を押して動かします。画面の枠の色が今の象限を示し、濃さが強度です。</p>',
     mount({ panel }) {
       const box = h('div', { class: 'planeBox rceaBox' });
       pad = h('canvas', { class: 'plane rceaPad', 'aria-label': 'RCEA 仮想ジョイスティック' }); box.appendChild(pad); panel.appendChild(box);

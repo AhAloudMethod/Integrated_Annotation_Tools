@@ -5,9 +5,9 @@
   let c, g, strip; const PAD = 34;
   AH.register({
     vaOnly: true,   // 絵・感情語が VA 前提なので、評価の軸の組にかかわらず VA（core/axes.js）
-    id: 'affectgrid', group: '離散（区間ごと）', label: 'Affect Grid（9×9・クリック）', model: 'table', side: 'wide', init: { v: 5, a: 5 },
+    id: 'affectgrid', group: '離散', label: 'Affect Grid（9×9・クリック）', model: 'table', side: 'wide', init: { v: 5, a: 5 },
     options: { autoNext: false },
-    help: '<p>今の区間（下の帯で強調）について、グリッドのマスを1つクリックします（横＝快度、縦＝覚醒度）。帯のマスを押すとその秒へ移動します。「入力後に次の秒へ」をオンにすると自動で次の区間へ進みます。</p>',
+    help: '<p>今の区間について、グリッドのマスを1つクリックします。帯のマスを押すとその秒へ移動します。</p>',
     mount({ panel, under }) {
       ({ c } = planeCanvas(panel, 'Affect Grid'));
       const o = h('div', { class: 'opts' }); toggle(o, 'autoNext', '入力後に次の区間へ'); c.parentNode.appendChild(o);

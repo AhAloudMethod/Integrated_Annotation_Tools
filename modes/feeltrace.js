@@ -11,7 +11,7 @@
     vaOnly: true,   // 絵・感情語が VA 前提なので、評価の軸の組にかかわらず VA（core/axes.js）
     id: 'feeltrace', group: '時間連続・2次元', label: 'FEELTRACE（マウス・円形）', model: 'series', init: { v: 5, a: 5 }, side: 'wide', get animate() { return stk.on(); },
     writeMode: () => (stk.on() ? 'armed' : 'hold'), writeAxes: () => ['v', 'a'], sample: () => (stk.on() ? stk.val() : pen),
-    help: '<p>中央が中性、円周が最大強度です。再生中に円の中でボタンを押している間だけ記録・上書きします。円の外に出たカーソルは円周に吸着します。</p><p>ジョイスティック（ゲームパッド）をつなぐと、スティックの位置がそのまま値になり（離すと中性）、記録オン（<kbd>R</kbd> またはボタン0）の間だけ記録します。マウスもそのまま使えます（スティックを倒している間はスティックが優先）。スティックも円の外は円周に吸着します。</p>',
+    help: '<p>中央が中性、円周が最大強度です。</p>',
     mount({ panel }) {
       ({ c } = planeCanvas(panel, 'FEELTRACE の円')); now = nowRow(c.parentNode);
       bindHold(c, e => circleVal(c, e, PAD));

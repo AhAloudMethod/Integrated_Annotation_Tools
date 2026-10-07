@@ -55,7 +55,7 @@
     const hasData = S.data && (S.undo.length || S.data.strokes.length || (_.M && (S.data.points.v[0].val !== _.M.init.v || S.data.points.a[0].val !== _.M.init.a)) ||   // 冒頭（t=0）の値を変えただけの入力も数える
       S.data.points.v.length > 1 || S.data.points.a.length > 1 ||
       S.data.cells.v.some(x => x != null) || S.data.cells.a.some(x => x != null) || S.data.events.length);
-    if (hasData && !confirm(`評価の途中で軸を変えると、ここまでの記録の意味が変わります（値はそのまま、軸の名前だけが変わります）。\n「${SETS[id].label}」に変えますか？`)) { $('axesSel').value = setId; return; }
+    if (hasData && !confirm(`評価の途中で軸を変えると、ここまでの記録の意味が変わります。\n「${SETS[id].label}」に変えますか？`)) { $('axesSel').value = setId; return; }
     setId = id; S.meta.axes = id;
     try { localStorage.setItem('ahann_axes', id); } catch (_e) {}
     addLog('axes', { value: id });

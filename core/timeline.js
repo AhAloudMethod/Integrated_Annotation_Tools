@@ -226,20 +226,16 @@
   function refresh() {
     const t = video.currentTime || 0;
     if (_.renderF0) _.renderF0();
-    $('clock').textContent = fmt(t) + ' / ' + fmt(S.meta.duration) + (S.meta.duration && !inRange(t) ? '（評価区間外）' : '');
+    $('clock').textContent = fmt(t) + ' / ' + fmt(S.meta.duration) + (S.meta.duration && !inRange(t) ? '（区間外）' : '');
     $('playBtn').textContent = video.paused ? '再生' : '停止';
     $('playBtn').dataset.rate = video.playbackRate !== 1 ? '×' + video.playbackRate : '';   // 1 以外の再生速度はボタンの角に出す
     $('armBox').hidden = writeMode() !== 'armed' || _.listenUsable();
     _.listenStatus();
     if (!$('rgPanel').hidden) _.frameSync();
-    $('armBtn').textContent = S.armed ? '● 記録中' : '記録 R';
+    $('armBtn').textContent = S.armed ? '● 記録オン' : '記録オフ R';
     $('armBtn').classList.toggle('on', S.armed);
     if (_.M && S.data) {
-      let st = '';
-      if (model() === 'series') st = `書き込み ${S.data.strokes.length} 回`;
-      if (model() === 'table') st = `入力済み ${_.ax('v').short} ${S.data.cells.v.filter(x => x != null).length}/${nSec()}・${_.ax('a').short} ${S.data.cells.a.filter(x => x != null).length}/${nSec()}`;
-      if (model() === 'events') st = `変化 ${S.data.events.length} 回`;
-      $('status').textContent = video.src ? st + (_.stroke ? '（記録中）' : '') : '練習中（動画を開くと、練習の入力は消えて記録が始まります）';
+      $('status').textContent = video.src ? (_.stroke ? '書き込み中' : '') : '練習中';
       if (_.M.update) _.M.update(t);
     }
     drawTimeline();

@@ -12,7 +12,7 @@
     id: 'carma', group: '時間連続・1次元', label: 'CARMA（1次元スライダー・2回）', model: 'series', init: { v: 5, a: 5 }, side: 'normal', animate: true,
     options: { axis: 'v' },
     writeMode: () => 'armed', writeAxes: () => [ax()], sample: () => ({ [ax()]: ctrl, ...(sl.owned(0) ? { pad: 'slider' } : {}) }), peek: () => ({ [ax()]: ctrl }),
-    help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します（右の「評価する軸」で切り替え）。スライダーをマウスでドラッグするか <kbd>↑</kbd>/<kbd>↓</kbd> で動かします。スライダーの機器（ゲームパッドの軸2）をつなぐと、1本目の位置がそのまま値になります（最後に動かしたものが優先）。記録オン（<kbd>R</kbd> またはボタン0）の間、再生中の値を記録・上書きします。</p>',
+    help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します。マウスか <kbd>↑</kbd>/<kbd>↓</kbd> で動かします。</p>',
     mount({ panel }) {
       const box = h('div', { class: 'planeBox' }); passSelector(box);
       c = h('canvas', { class: 'bars', 'aria-label': 'CARMA スライダー' }); box.appendChild(c); panel.appendChild(box);

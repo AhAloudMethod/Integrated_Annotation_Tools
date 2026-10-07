@@ -8,10 +8,10 @@
   const sl = sliders();   // 1本目＝横軸、2本目＝縦軸（位置がそのまま値）
   const withPad = () => ({ ...ctrl, ...(sl.owned() ? { pad: 'slider' } : {}) });
   AH.register({
-    id: 'throttle', group: '時間連続・2次元', label: 'スロットル操作（両手・1軸ずつ）', model: 'series', init: { v: 5, a: 5 }, side: 'normal', animate: true,
+    id: 'throttle', group: '時間連続・2次元', label: 'FullThrottle（両手・1軸ずつ）', model: 'series', init: { v: 5, a: 5 }, side: 'normal', animate: true,
     writeMode: () => 'armed', writeAxes: () => ['v', 'a'], sample: withPad, peek: () => ({ ...ctrl }),
     // 記録オンにした瞬間は、記録オフで動かした位置から始める
-    help: '<p>左手 <kbd>W</kbd>/<kbd>S</kbd> で快度、右手 <kbd>↑</kbd>/<kbd>↓</kbd> で覚醒度のレバーを上下します（押している間動き、離すとその位置に留まります）。スライダーの機器（ゲームパッドの軸2・3）をつなぐと、1本目＝快度、2本目＝覚醒度の位置がそのまま値になります（最後に動かしたほうが優先：スライダーを動かすとスライダーの位置、キーを押すとキーで動かせます）。記録オン（<kbd>R</kbd> またはボタン0）の間、再生中の値を記録・上書きします。</p>',
+    help: '<p>左手 <kbd>W</kbd>/<kbd>S</kbd> で快度、右手 <kbd>↑</kbd>/<kbd>↓</kbd> で覚醒度のレバーを上下します。</p>',
     mount({ panel }) { const box = h('div', { class: 'planeBox' }); c = h('canvas', { class: 'bars', 'aria-label': 'スロットル' }); box.appendChild(c); panel.appendChild(box); },
     resize() { g = AH.fitCanvas(c); },
     tick(dt) {

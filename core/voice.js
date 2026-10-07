@@ -11,9 +11,11 @@
   // ---------- 聞き取った文の解釈（テストから直接呼べるよう純粋関数） ----------
   const KANJI = { '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
   // 数字の読み。軸の語の直後に来たときだけ数字として読む（聞き間違えやすい同音の漢字も含める）
-  const READ = { いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9,
+  const READ = {
+    いち: 1, に: 2, さん: 3, よん: 4, し: 4, ご: 5, ろく: 6, なな: 7, しち: 7, はち: 8, きゅう: 9, く: 9,
     位置: 1, 市: 1, 壱: 1, 荷: 2, 参: 3, 酸: 3, 算: 3, 産: 3, 語: 5, 後: 5, 碁: 5, 誤: 5, 録: 6, 碌: 6,
-    菜々: 7, 奈々: 7, 鉢: 8, 蜂: 8, 急: 9, 球: 9, 旧: 9, 級: 9, 救: 9 };
+    菜々: 7, 奈々: 7, 鉢: 8, 蜂: 8, 急: 9, 球: 9, 旧: 9, 級: 9, 救: 9
+  };
   // 聞き間違い辞書：Chrome の認識が化けやすい語を軸の語に読み替える（長いものから当てる）
   const ALIAS = [
     ['快度', ['街道', '海道', '開度', '会度', '回度', '解度', '改度', '界度', '階度', '海度', '甲斐度', '買い度', '貝度', '快ど', 'かいど', 'カイド', 'カイドー', '快適度']],
@@ -132,11 +134,11 @@
     // t_heard＝話し始めた動画時刻、t_target＝値を入れる動画時刻（時刻を言ったときはその時刻）
     addLog('voice_heard', { value: text, detail: JSON.stringify({ ...p, t_heard: +tHeard.toFixed(4), t_target: +t.toFixed(4), alts }) });
     if (p.timeMissing && Object.keys(vals).length) {   // 時刻を言ったのに数字が落ちた：話し始めの時刻に入れると間違った位置に入るので入れない
-      toast(`「${text.trim()}」：時刻が聞き取れませんでした。もう一度言ってください（値は入れていません）`, 'warn');
+      toast(`「${text.trim()}」：時刻が聞き取れませんでした。もう一度言ってください`, 'warn');
       addLog('voice_time_missing', { detail: text }); return false;
     }
     if (p.time != null && (t < _.RG().start - 1e-6 || t >= _.rangeEnd() - 1e-6)) {
-      toast(`「${p.time}秒」は評価区間の外です（声の入力）`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
+      toast(`「${p.time}秒」は評価区間の外です`, 'warn'); addLog('input_out_of_range', { detail: 'voice spoken=' + p.time }); return false;
     }
     if (p.cmd === 'play' && video.src && video.paused) video.play();
     if (p.cmd === 'pause' && !video.paused) video.pause();
@@ -145,7 +147,7 @@
     if (M.model === 'events' || M.unbounded) { toast('この方式では声による値の入力は使えません', 'warn'); return false; }
     if (M.model === 'table') {
       let s = binAt(t); if (s === nSec() && t >= (S.meta.duration || 0) - 0.05) s = nSec() - 1;
-      if (s < 0 || s >= nSec()) { toast('評価区間の外です（声の入力）', 'warn'); addLog('input_out_of_range', { detail: 'voice t=' + t.toFixed(3) }); return false; }
+      if (s < 0 || s >= nSec()) { toast('評価区間の外です', 'warn'); addLog('input_out_of_range', { detail: 'voice t=' + t.toFixed(3) }); return false; }
       _.setCells(s, vals, 'voice');
     } else {
       const before = snapshot(); let ch = false;
@@ -162,10 +164,10 @@
   // どちらも「話し始め」（partial）と「確定」（final：候補の配列）を知らせ、解釈と反映は共通（parseVoice・applyVoice）。
   let on = false, eng = null;
   let engineId = 'webspeech';
-  try { engineId = localStorage.getItem('ahann_voice_engine') || (Rec ? 'webspeech' : 'vosk'); } catch (_) {}
+  try { engineId = localStorage.getItem('ahann_voice_engine') || (Rec ? 'webspeech' : 'vosk'); } catch (_) { }
   if (!Rec && engineId === 'webspeech') engineId = 'vosk';
   let restrict = true;   // Vosk：聞き取る語を限定する
-  try { restrict = localStorage.getItem('ahann_voice_restrict') !== '0'; } catch (_) {}
+  try { restrict = localStorage.getItem('ahann_voice_restrict') !== '0'; } catch (_) { }
   let heardT = null;     // 話し始めの動画時刻（確定したら消す）
   let lastTime = null;   // 時刻だけを言った発話 { time, at }（続く値に付ける）
   const nowT = () => clamp(video.currentTime || 0, 0, S.meta.duration || 0);
@@ -197,7 +199,7 @@
 
   // ---- Chrome の音声認識（Web Speech API） ----
   function webspeech() {
-    if (!Rec) { toast('このブラウザは Chrome の音声認識に対応していません（「設定」で Vosk を選んでください）', 'warn'); return null; }
+    if (!Rec) { toast('このブラウザは Chrome の音声認識に対応していません（設定で Vosk を選んでください）', 'warn'); return null; }
     let alive = true, rec = null;
     function make() {
       const r0 = new Rec(); r0.lang = 'ja-JP'; r0.continuous = true; r0.interimResults = true; r0.maxAlternatives = 5;
@@ -216,18 +218,18 @@
         if (r0 !== rec || e.error === 'no-speech' || e.error === 'aborted') return;
         if (e.error === 'phrases-not-supported') {
           usePhrases = false; addLog('voice_error', { value: e.error, detail: 'retry without phrases' });
-          try { r0.abort(); } catch (_) {}
-          rec = make(); try { rec.start(); } catch (_) {}
+          try { r0.abort(); } catch (_) { }
+          rec = make(); try { rec.start(); } catch (_) { }
           return;
         }
         fail('音声認識のエラー：' + e.error + (e.error === 'not-allowed' ? '（マイクの使用を許可してください）' : e.error === 'network' ? '（ネット接続が必要です）' : ''), e.error,
           e.error === 'not-allowed' || e.error === 'service-not-allowed');
       };
-      r0.onend = () => { if (alive && r0 === rec) setTimeout(() => { if (alive && r0 === rec) try { r0.start(); } catch (_) {} }, 200); };   // 無音で止まったら再開
+      r0.onend = () => { if (alive && r0 === rec) setTimeout(() => { if (alive && r0 === rec) try { r0.start(); } catch (_) { } }, 200); };   // 無音で止まったら再開
       return r0;
     }
-    rec = make(); try { rec.start(); } catch (_) {}
-    return { stop() { alive = false; try { rec.stop(); } catch (_) {} } };
+    rec = make(); try { rec.start(); } catch (_) { }
+    return { stop() { alive = false; try { rec.stop(); } catch (_) { } } };
   }
   let usePhrases = true;   // 優先語を使うか（phrases-not-supported が出たらこのページでは使わない）
 
@@ -278,7 +280,7 @@
     catch (_) { return false; }
   }
   async function idbDel() {
-    try { const db = await idb(); await new Promise(r => { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete('model'); tx.oncomplete = r; tx.onerror = r; }); } catch (_) {}
+    try { const db = await idb(); await new Promise(r => { const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete('model'); tx.oncomplete = r; tx.onerror = r; }); } catch (_) { }
   }
   let modelFile = null;   // { name, size, blob }
   let voskModel = null, voskModelFor = null, voskLoading = null;
@@ -288,7 +290,7 @@
     if (!modelFile) modelFile = await idbGet();
     modelStatus(modelFile ? `モデル：${modelFile.name}（${mb(modelFile.size)}、ブラウザに保存済み）` : 'モデル：未設定（「モデルを選ぶ」から .tar.gz を選んでください）');
   }
-  function dropModel() { if (voskModel) { try { voskModel.terminate(); } catch (_) {} } voskModel = null; voskModelFor = null; voskLoading = null; }
+  function dropModel() { if (voskModel) { try { voskModel.terminate(); } catch (_) { } } voskModel = null; voskModelFor = null; voskLoading = null; }
   async function setModelFile(f) {
     modelFile = { name: f.name, size: f.size, blob: f };
     const saved = await idbPut({ name: f.name, size: f.size, blob: f });
@@ -321,7 +323,7 @@
     let alive = true, ctx = null, stream = null, node = null, recog = null, fixer = null, fixWait = null;
     (async () => {
       if (!modelFile) modelFile = await idbGet();
-      if (!modelFile) { fail('Vosk のモデルが未設定です。「設定」の「モデルを選ぶ」で .tar.gz を選んでください', 'no-model', true); return; }
+      if (!modelFile) { fail('Vosk のモデルが未設定です。設定の「モデルを選ぶ」で .tar.gz を選んでください', 'no-model', true); return; }
       let model;
       try { model = await getVoskModel(); } catch (e) { fail('Vosk のモデルを読み込めませんでした：' + (e && e.message || e), 'model-load', true); return; }
       if (!alive) return;
@@ -332,7 +334,7 @@
       // モデルの標準（16kHz）で処理する。対応しないブラウザ（異なる標本化周波数をつなげない Firefox など）は機器の周波数のまま
       let src;
       try { ctx = new AudioContext({ sampleRate: 16000 }); src = ctx.createMediaStreamSource(stream); }
-      catch (_) { try { ctx && ctx.close(); } catch (_e) {} ctx = new AudioContext(); src = ctx.createMediaStreamSource(stream); }
+      catch (_) { try { ctx && ctx.close(); } catch (_e) { } ctx = new AudioContext(); src = ctx.createMediaStreamSource(stream); }
       const sr = ctx.sampleRate;
       recog = restrict ? new model.KaldiRecognizer(sr, grammar()) : new model.KaldiRecognizer(sr);
       recog.setWords(true);   // 語ごとの時刻（「秒」の前の数を聞き直すため）
@@ -385,24 +387,24 @@
       recog.on('result', async m => {
         const r = (m && m.result) || {}, t = heardT; heardT = null;
         let text = r.text || '';
-        if (restrict && Array.isArray(r.result)) try { text = (await fixWords(r.result)) || text; } catch (_) {}
+        if (restrict && Array.isArray(r.result)) try { text = (await fixWords(r.result)) || text; } catch (_) { }
         text = text.replace(/\[unk\]/g, ' ');
         if (alive && text.trim()) final([text], t ?? undefined);
       });
       node = ctx.createScriptProcessor(4096, 1, 1);
-      node.onaudioprocess = e => { if (alive) try { keep(e.inputBuffer.getChannelData(0)); recog.acceptWaveform(e.inputBuffer); } catch (_) {} };
+      node.onaudioprocess = e => { if (alive) try { keep(e.inputBuffer.getChannelData(0)); recog.acceptWaveform(e.inputBuffer); } catch (_) { } };
       src.connect(node); node.connect(ctx.destination);
       addLog('voice_ready', { detail: `vosk sr=${ctx.sampleRate} ${restrict ? 'restrict' : 'free'}` });
-      toast('Vosk：聞き取りを始めました' + (restrict ? '（語を限定）' : ''));
+      toast('Vosk：聞き取りを始めました');
     })();
     return {
       stop() {
         alive = false;
-        try { node && node.disconnect(); } catch (_) {}
-        try { stream && stream.getTracks().forEach(t => t.stop()); } catch (_) {}
-        try { ctx && ctx.close(); } catch (_) {}
-        try { recog && recog.remove && recog.remove(); } catch (_) {}
-        try { fixer && fixer.remove && fixer.remove(); } catch (_) {}
+        try { node && node.disconnect(); } catch (_) { }
+        try { stream && stream.getTracks().forEach(t => t.stop()); } catch (_) { }
+        try { ctx && ctx.close(); } catch (_) { }
+        try { recog && recog.remove && recog.remove(); } catch (_) { }
+        try { fixer && fixer.remove && fixer.remove(); } catch (_) { }
       },
     };
   }
@@ -419,7 +421,7 @@
   function setEngine(id) {
     if (id === engineId) return;
     const was = on; if (was) setOn(false);
-    engineId = id; try { localStorage.setItem('ahann_voice_engine', id); } catch (_) {}
+    engineId = id; try { localStorage.setItem('ahann_voice_engine', id); } catch (_) { }
     addLog('voice_engine', { value: id }); syncVoiceUI();
     if (was) setOn(true);
   }
@@ -433,7 +435,7 @@
   $('voiceBtn').addEventListener('click', e => { e.currentTarget.blur(); setOn(!on); });
   $('voiceEngine').addEventListener('change', e => { setEngine(e.target.value); e.target.blur(); });
   $('voiceRestrict').addEventListener('change', e => {
-    restrict = e.target.checked; try { localStorage.setItem('ahann_voice_restrict', restrict ? '1' : '0'); } catch (_) {}
+    restrict = e.target.checked; try { localStorage.setItem('ahann_voice_restrict', restrict ? '1' : '0'); } catch (_) { }
     addLog('voice_restrict', { value: restrict }); e.target.blur();
     if (on && engineId === 'vosk') { setOn(false); setOn(true); }
   });

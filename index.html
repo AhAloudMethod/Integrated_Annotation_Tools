@@ -18,58 +18,58 @@
   <button id="playBtn" title="再生／停止（Space）">再生</button>
   <button id="fwdBtn" title="1秒進む（→）">＋1秒</button>
   <span class="time" id="clock">0:00.00 / 0:00.00</span>
-  <button id="reviewBtn" title="見返し（V キー）：止まらずに再生して記録を追う。値は変えない">見返し</button>
+  <button id="reviewBtn" title="見返し（V キー）：止まらずに再生して記録を見返す。値は変えられない。">見返し</button>
   <span id="listenBox" class="listenBox" hidden></span>
-  <span id="armBox" hidden><button id="armBtn" title="記録のオン／オフ（R キー）">記録 R</button></span>
-  <button id="voiceBtn" title="声で値を入力する（「快度7」「覚醒度3」「7 3」など。Chrome・Edge）">音声</button>
+  <span id="armBox" hidden><button id="armBtn" title="記録のオン／オフ（R キー）">記録オフ R</button></span>
+  <button id="voiceBtn" title="音声入力：「15秒快度7」「覚醒度3」「7 3」など">音声入力</button>
   <span class="rgWrap">
-    <button id="rgBtn" title="評価する範囲と区間の長さ">評価区間</button>
+    <button id="rgBtn" title="評価する範囲">評価区間</button>
     <div id="rgPanel" class="rgPanel" hidden>
       <span class="rgBtns frRow"><button id="frBack" type="button" title="1フレーム戻る（, キー）">◀ 前</button><button id="frFwd" type="button" title="1フレーム進む（. キー）">次 ▶</button><span id="frInfo" class="muted"></span></span>
-      <label>フレームレート <input id="rgFps" type="number" min="1" max="240" step="any" title="再生中に表示されたフレームから推定する。推定できないブラウザでは 30。手で直せる（動画ごとに覚える）"></label>
-      <label>開始（動画の秒） <input id="rgStart" type="number" min="0" step="any"></label>
-      <button id="rgNow" type="button">今の時刻を開始にする</button>
-      <label>終了（動画の秒） <input id="rgEnd" type="number" min="0" step="any"></label>
-      <span class="rgBtns"><button id="rgEndNow" type="button">今の時刻を終了にする</button><button id="rgFit" type="button">動画の終わりまで</button></span>
+      <label>フレームレート <input id="rgFps" type="number" min="1" max="240" step="any" title="動画のfps"></label>
+      <label>開始秒 <input id="rgStart" type="number" min="0" step="any"></label>
+      <button id="rgNow" type="button">今の時間を開始にする</button>
+      <label>終了秒 <input id="rgEnd" type="number" min="0" step="any"></label>
+      <span class="rgBtns"><button id="rgEndNow" type="button">今の時間を終了にする</button><button id="rgFit" type="button">動画の最後まで</button></span>
       <label>区間の数 <input id="rgCount" type="number" min="1" step="1"></label>
       <label>1区間の長さ（秒） <input id="rgBin" type="number" min="0.1" step="0.1"></label>
       <div class="sub">
-        <div class="refTitle">区切りを自分で置く（不揃いの区間）</div>
-        <span class="rgBtns"><button id="cutAdd" type="button" title="今表示しているフレームの始まりで区間を割る（区間方式の値は両方に引き継ぐ）">今の時刻で区切る</button><button id="cutDel" type="button" title="今の時刻に最も近い区切りを消す（前の区間の値を残す）">近くの区切りを消す</button></span>
-        <label>区切り（秒） <input id="cutList" type="text" placeholder="例：1.2, 2, 3.5" title="開始と終了の間の区切りの時刻（秒）。カンマで区切って書き換えられる"></label>
+        <div class="refTitle">自分で区切る</div>
+        <span class="rgBtns"><button id="cutAdd" type="button" title="今の時間で区間を区切る">今の時刻で区切る</button><button id="cutDel" type="button" title="今の時刻に最も近い区切りを消す">近くの区切りを消す</button></span>
+        <label>区切り（秒） <input id="cutList" type="text" placeholder="例：1.2, 2, 3.5" title="開始と終了の間の区切りの時間。カンマ区切りで書き換えられる"></label>
         <button id="cutReset" type="button">等間隔に戻す</button>
       </div>
-      <label>列の表記 <select id="rgLabel"><option value="countdown">カウントダウン（残り）</option><option value="elapsed">経過</option></select></label>
-      <p class="muted">開始・終了・1区間の長さを変えると区間の数を、区間の数を変えると終了を合わせ直します。終了が区間の区切りに合わないときは、最後の区間を終了までの短い区間にします（端数を捨てない）。区間方式（Excel・Affect Grid・SAM・カスタムの区間ごと）の入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
+      <label>列の表記 <select id="rgLabel"><option value="countdown">カウントダウン</option><option value="elapsed">カウントアップ</option></select></label>
+      <p class="muted">Excel・Affect Grid・SAMの入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
     </div>
   </span>
   <span class="spacer"></span>
   <span class="status" id="status"></span>
   <span id="pipNote">動画は別の場所で表示中 <button id="pipBack" type="button">元に戻す</button></span>
-  <button id="vwinBtn" title="動画だけを別ウィンドウに出す。モニターへドラッグし、ダブルクリックで全画面">動画を別窓へ</button>
+  <button id="vwinBtn" title="ダブルクリックで全画面">PIP</button>
   <button id="tlBtn" title="評価グラフの表示／非表示">グラフ</button>
   <span class="rgWrap">
     <button id="setBtn" title="表示と再生の設定">設定</button>
     <div id="setPanel" class="rgPanel right setPanel" hidden>
       <section class="setCol">
-        <div class="refTitle">評価の軸</div>
+        <div class="refTitle">評価軸のラベル</div>
         <select id="axesSel" aria-label="評価の軸"></select>
-        <p class="muted">軸の名前・両端のラベル・書き出しの列名・声の語が変わります（値の持ち方は同じ）。SAM・Affect Grid・FEELTRACE・AffectRank は VA のまま。</p>
+        <p class="muted">軸の名前・ラベル・書き出しの列名が変わります。SAM・Affect Grid・FEELTRACE・AffectRank は VA のまま。</p>
         <div class="refTitle">表示・再生</div>
         <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
         <label>再生速度 <select id="rate" autocomplete="off"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
-        <label>書き込みを終えた後 <select id="afterWrite"><option value="hold">その値を保つ</option><option value="restore">元の値に戻す</option></select></label>
-        <p class="muted">「その値を保つ」：離した（記録オフにした）時点の値が、元の記録が次に変わる点まで続く。「元の値に戻す」：書き込んだ区間の直後から、書き込む前の値に戻る（途中だけを書き直すとき向け）。</p>
+        <label>上書きした後ろ <select id="afterWrite"><option value="hold">最後の値のまま続ける</option><option value="restore">上書き前の値に戻す</option></select></label>
+        <p class="muted">すでに記録がある所に上書きしたとき、上書きを終えた後ろの値をどうするかを選ぶ。「最後の値のまま続ける」：次に値が変わる所まで上書きを終えた時点の値に変更されます（最初から通しで付け直すとき向け）。「上書き前の値に戻す」：上書きした所だけが変わり、その後ろは変更しません（一部だけを直すとき向け）。</p>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
-        <label class="chk" title="平面・円・スライダー・レバーに、整数の境目（1.5〜8.5）の薄い線を引く。四捨五入で同じ整数になる範囲が1マスになり、5 のマスが中心に来る"><input id="gridShow" type="checkbox"> 入力面に区切りの線（整数の境目）を表示する</label>
-        <label class="chk"><input id="f0Show" type="checkbox" checked> 動画の音声の F0（声の高さ）を表示する</label>
-        <label class="chk" title="連続の方式で、1区間を再生すると区間の終わりで止まる。Enter／ボタン0 で同じ区間を音声つきで再生し直し、その間の入力を記録する。終わると次の区間を聴く（R でもう一度聴く）"><input id="listenMode" type="checkbox"> 1区間ずつ聴いてから入力する（連続の方式）</label>
+        <label class="chk" title="平面・円・スライダー・レバーにグリッド線を引く"><input id="gridShow" type="checkbox"> グリッド線を表示する</label>
+        <label class="chk"><input id="f0Show" type="checkbox" checked> 音声の F0（声の高さ）を表示する</label>
+        <label class="chk" title="連続の方式で、1区間を再生すると区間の終わりで止まる。Enter／ボタン0 で同じ区間を音声つきで再生し直し、その間の入力を記録する。終わると次の区間を聴く（R でもう一度聴く）"><input id="listenMode" type="checkbox"> 1区間ずつ聴いてから入力する</label>
         <p class="muted" id="f0Status">F0：動画を開くと計算します</p>
         <div class="sub">
-          <button id="pipBtn" type="button" title="動画をブラウザの小窓（ピクチャーインピクチャー）に出す">小窓で再生</button>
-          <button id="resetBtn" type="button" title="この動画・方式の評価の値をすべて消して初期値に戻す（Ctrl+Z で戻せる。書き込みの記録とメモは残る）">入力をすべて消す</button>
+          <button id="pipBtn" type="button" title="動画を小窓（PIP：ピクチャーインピクチャー）表示する">動画をPIP表示</button>
+          <button id="resetBtn" type="button" title="この動画・方式の評価の値をすべて消して初期値に戻す（Ctrl+Z で戻せる）">入力をリセットする</button>
           <div id="pipHelp" hidden>
-            <p>このブラウザ（Firefox 系）では、小窓はブラウザの機能で開きます。</p>
+            <p>このブラウザでは、小窓はブラウザの機能で開きます。</p>
             <p>1. 動画を<b>右クリック →「ピクチャーインピクチャー」</b>（または動画を表示した状態で <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>）</p>
             <p>2. 小窓が開いたら、下のボタンで動画欄をたたむ</p>
             <button id="pipCollapse" type="button">動画欄をたたむ</button>
@@ -77,36 +77,36 @@
         </div>
       </section>
       <section class="setCol">
-        <div class="refTitle">声の入力</div>
+        <div class="refTitle">音声入力</div>
         <div class="sub">
-          <label>声の認識 <select id="voiceEngine"><option value="webspeech">Chrome の認識</option><option value="vosk">Vosk（PC 内）</option></select></label>
+          <label>音声認識モデル <select id="voiceEngine"><option value="webspeech">Chrome の認識</option><option value="vosk">Vosk（PC 内）</option></select></label>
           <div id="voskBox" class="voskBox" hidden>
             <label class="chk"><input id="voiceRestrict" type="checkbox" checked> 聞き取る語を限定する（快度・覚醒度・数字・秒・再生・停止）</label>
-            <div class="rgBtns"><button id="voskModelBtn" type="button">モデルを選ぶ</button><button id="voskModelDel" type="button">保存したモデルを消す</button></div>
+            <div class="rgBtns"><button id="voskModelBtn" type="button">モデルを選ぶ</button><button id="voskModelDel" type="button">モデルのリセット</button></div>
             <input id="voskModelFile" type="file" accept=".tar.gz,.tgz,application/gzip" hidden>
             <p class="muted" id="voskModelStatus"></p>
-            <p class="muted">Chrome・Firefox で使えます。音声は PC の外に出ません。モデル（.tar.gz）は初回に選ぶとブラウザに保存されます。作り方は README の「声による入力」。</p>
+            <p class="muted">Chrome・Firefox で使えます。モデル（.tar.gz）は一度選ぶとブラウザに保存されます。作り方は README の「音声入力」。</p>
           </div>
         </div>
         <div class="sub">
-          <div class="refTitle">声の聞き取り（最新10件）</div>
+          <div class="refTitle">音声の聞き取り履歴（最新10件）</div>
           <ul id="voiceHist" class="voiceHist"></ul>
         </div>
         <div class="sub padBox">
-          <div class="refTitle">コントローラー（ゲームパッド）</div>
+          <div class="refTitle">コントローラー</div>
           <label class="chk"><input id="padJoyUse" type="checkbox" checked> ジョイスティックを使う <select id="padJoyDev" aria-label="ジョイスティックに使う機器"><option value="">自動</option></select></label>
-          <label class="chk" title="スティックの可動域は円なので、斜めに倒し切っても角（9・9 など）に届かない。四角の平面では、方向はそのままに倒し切ると四角の縁に届くよう広げる（円の方式には効かない）"><input id="padSquare" type="checkbox" checked> 四角の平面ではスティックを角まで届かせる</label>
+          <label class="chk" title="四角の平面で、角に届くよう可動域を広げる"><input id="padSquare" type="checkbox" checked> 四角平面でスティックを角まで届かせる</label>
           <label class="chk"><input id="padSliderUse" type="checkbox" checked> スライダーを使う <select id="padSliderDev" aria-label="スライダーに使う機器"><option value="">自動</option></select></label>
           <div id="padList" class="padList"><p class="muted">接続されていません（機器のボタンを押すと認識されます）</p></div>
-          <p class="muted">軸0・1＝スティック横・縦、軸2・3＝スライダー1・2（上＝＋）、ボタン0＝記録オン／オフ（？ と README）</p>
+          <p class="muted"></p>
         </div>
       </section>
       <section class="setCol">
         <div class="refTitle">色</div>
         <div class="sub">
-          <p class="muted">RCEA・HaloLight・FEELTRACE・カスタムの色表示で使います。</p>
+          <p class="muted">RCEA・HaloLight・FEELTRACEの色表示で使います。</p>
           <div id="colorGrid" class="colorGrid"></div>
-          <p class="muted">四隅が象限、上下左右が軸方向の色です。軸方向は「自動」（両隣の象限の中間）にもできます。グラデーションはこの8色の間を補間します。</p>
+          <p class="muted">四隅が象限、上下左右が軸方向の色です。軸は自動選択できます。</p>
         </div>
       </section>
     </div>
@@ -115,14 +115,14 @@
     <button id="helpBtn" title="操作の説明">？</button>
     <div id="helpPanel" class="rgPanel right help" hidden>
       <div id="modeHelp"></div>
-      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Y</kbd> やり直し</p>
-      <p>見返し（ヘッダーの「見返し」または <kbd>V</kbd>）：止まらずに再生して、記録済みの値を追います。見返しの間は値を変えません（入力面は操作できず、ボタン0は再生／停止）。もう一度押すと戻ります。</p>
-      <p>聴いてから入力（「設定」でオン。連続の方式）：1区間を再生すると区間の終わりで止まります（聴く）。<kbd>Enter</kbd>（またはボタン0）で同じ区間を始めから音声つきで再生し直し、その間の入力（スティック・スライダー・キー・マウス）を記録します。区間の終わりで記録を終え、そのまま次の区間を聴きます。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
-      <p>「動画を別窓へ」：動画だけを別のウィンドウに出します。モニターへドラッグし、ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作はそのまま効きます。閉じると動画はこの画面に戻ります。</p>
-      <p>「音声」：声で値を入力します（マイクの許可が必要）。認識は「設定」で選べます：Chrome の音声認識（Chrome・Edge。ネット接続が必要）か、Vosk（Chrome・Firefox。PC の中で認識。初回にモデルを選ぶ）。「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも入ります。「再生」「停止」でも操作できます。値は話し始めた時刻に入ります（連続の方式は変化点、区間の方式はその区間の値）。「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入ります（時刻の読み方は評価区間の「列の表記」と同じ。カウントダウンなら残り秒）。</p>
-      <p>コントローラー（ゲームパッド）：ジョイスティック・スライダーの機器をつなぐと（機器のボタンを押すと認識されます）、軸0・1＝スティックの横・縦（右・上＝値が高い）、軸2・3＝スライダー1・2（上＝値が高い。−1→1、+1→9）、ボタン0＝記録のオン／オフで使えます。スティックは EMuJoy・RCEA・FEELTRACE・DARMA・HaloLight・カスタム（平面・円）で位置がそのまま値（離すと中性）になり、記録オン（<kbd>R</kbd>／ボタン0）の間だけ記録します。HaloLight もスティックの位置がそのまま値です。AffectRank（カスタムの8方向ボタンも）は、スティックを大きく倒した方向が1回入ります（中央に戻してから次）。RankTrace ではスティックの上下で、倒した量に応じた速さで値が動きます（離すとその値に留まる）。スライダーはスロットル（1本目＝快度、2本目＝覚醒度）・CARMA（1本目）・カスタム（スライダー）で位置がそのまま値です（キーで動かすとキーが優先、またスライダーを動かすとスライダー）。機器の様子と使うかどうかは「設定」の「コントローラー」。</p>
-      <p>「グラフ」：評価グラフを開閉します。下端の目盛りの帯をクリック・ドラッグで移動。「設定」の「グラフをなぞって値を編集する」がオンなら、快度・覚醒度の欄をなぞると値を直接描き換えられます。</p>
-      <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。動画を開く前でもツールを試せます（練習中の入力は、動画を開いた時点で消えます）。</p>
+      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 1秒移動　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</p>
+      <p>見返し（見返しボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更は出来ません。</p>
+      <p>聴いてから入力：1区間を再生すると区間の終わりで止まります。<kbd>Enter</kbd>またはボタン0で同じ区間を始めから再生し直し、その間の入力を記録します。区間の終わりで記録を終え、そのまま次の区間に移ります。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
+      <p>PIP：動画だけを別のウィンドウに出します。ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作できます。</p>
+      <p>音声入力：音声で値を入力します。Chromeの方はネット接続が必要です。「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも認識します。「再生」「停止」でも操作できます。値は話し始めた時刻に入力されます。「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入ります。</p>
+      <p>コントローラー：ジョイスティックやスライダーをつなぐことができます。AffectRankは、スティックを大きく倒した方向が1回入ります。RankTrace ではスティックの上下で、倒した量に応じた速さで値が動きます。スライダーはスロットル位置がそのまま値になります。</p>
+      <p>グラフ：評価グラフを表示します。設定の「グラフをなぞって値を編集する」がオンなら、左クリックで値を直接描き換えられます。</p>
+      <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。</p>
     </div>
   </span>
   <button id="exportBtn">書き出す</button>
@@ -131,13 +131,13 @@
 
 <main>
   <div class="stage" id="stage">
-    <div class="empty" id="empty">入力方式を選んでから「動画を開く」で評価する動画を選んでください。<br>動画はこのPCの中だけで読み込まれます。</div>
+    <div class="empty" id="empty">「動画を開く」で評価する動画を選んでください。<br>動画はPC内でのみ処理されます</div>
     <video id="video" hidden playsinline></video>
     <div id="overlay"></div>
   </div>
   <div id="under"></div>
   <div class="side">
-    <div id="f0Now" class="f0Now" hidden title="動画の音声の F0（声の高さ）。メーターは この動画の F0 の範囲の中での位置">
+    <div id="f0Now" class="f0Now" hidden title="動画の音声の F0（声の高さ）">
       <span class="f0Lab">F0</span><b id="f0Val">—</b><span class="f0Meter"><span id="f0Bar"></span></span>
     </div>
     <div id="panel"></div>

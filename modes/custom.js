@@ -11,17 +11,17 @@
   const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false };
   const P = (t, r, i, extra = {}) => ({ ...DEF, time: t, rep: r, input: i, ...extra });
   const PRESETS = {
-    emujoy: ['EMuJoy 相当', P('cont', 'plane', 'mouse', { face: true })],
-    feeltrace: ['FEELTRACE 相当', P('cont', 'circle', 'mouse', { color: true })],
-    rcea: ['RCEA 相当（位置＝値）', P('cont', 'circle', 'mouse', { color: true, border: true, trail: false })],
-    darma: ['DARMA 相当', P('cont', 'plane', 'gamepad', { trail: false })],
-    throttle: ['スロットル操作 相当', P('cont', 'sliders', 'keyboard', { trail: false })],
-    carma: ['CARMA 相当（快度の回）', P('cont', 'sliders', 'mouse', { dims: 'v', trail: false })],
-    ranktrace: ['RankTrace 相当（快度の回）', P('cont', 'sliders', 'mouse', { dims: 'v', scale: 'rel', trail: false })],
-    key: ['変化点キー 相当', P('cont', 'buttons', 'keyboard', { trail: false })],
-    affectgrid: ['Affect Grid 相当', P('disc', 'grid', 'mouse', { trail: false })],
-    sam: ['SAM 相当', P('disc', 'sam', 'mouse', { trail: false })],
-    affectrank: ['AffectRank 相当', P('cont', 'rank8', 'mouse', { trail: false })],
+    emujoy: ['EMuJoy', P('cont', 'plane', 'mouse', { face: true })],
+    feeltrace: ['FEELTRACE', P('cont', 'circle', 'mouse', { color: true })],
+    rcea: ['RCEA', P('cont', 'circle', 'mouse', { color: true, border: true, trail: false })],
+    darma: ['DARMA', P('cont', 'plane', 'gamepad', { trail: false })],
+    throttle: ['FullThrottle', P('cont', 'sliders', 'keyboard', { trail: false })],
+    carma: ['CARMA', P('cont', 'sliders', 'mouse', { dims: 'v', trail: false })],
+    ranktrace: ['RankTrace', P('cont', 'sliders', 'mouse', { dims: 'v', scale: 'rel', trail: false })],
+    key: ['テンキー', P('cont', 'buttons', 'keyboard', { trail: false })],
+    affectgrid: ['Affect Grid', P('disc', 'grid', 'mouse', { trail: false })],
+    sam: ['SAM', P('disc', 'sam', 'mouse', { trail: false })],
+    affectrank: ['AffectRank', P('cont', 'rank8', 'mouse', { trail: false })],
   };
   const KEYS = Object.keys(DEF).filter(k => k !== 'autoNext');
   function normalize(x) {
@@ -102,7 +102,7 @@
 
   // ---- 設定欄 ----
   function config(panel) {
-    const box = h('details', { class: 'planeBox cfg', open: '' }, '<summary>設計軸</summary>');
+    const box = h('details', { class: 'planeBox cfg', open: '' }, '<summary>設計</summary>');
     const grid = h('div', { class: 'cfgGrid' });
     const sel = (label, key, choices) => {
       const s = h('select', { 'aria-label': label });
@@ -114,11 +114,11 @@
     ps.addEventListener('change', () => { if (ps.value) apply({ ...PRESETS[ps.value][1] }); });
     box.appendChild(ps);
     sel('インタフェース', 'rep', Object.entries(REPS));
-    if (!rank()) sel('時間', 'time', [['cont', '連続（時刻に書き込む）'], ['disc', '区間ごと（評価区間に従う）']]);
-    if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '連続（1〜9 の小数）'], ['int', '離散（1〜9 の整数）']]);
-    const inputs = rank() ? [['mouse', 'マウス'], ['keyboard', 'キーボード（テンキー）']] : nine(o().rep) || o().time === 'disc' ? [['mouse', 'マウス'], ['keyboard', 'キーボード（数字）']] : [['mouse', 'マウス'], ['keyboard', 'キーボード'], ['gamepad', 'ゲームパッド']];
+    if (!rank()) sel('時間', 'time', [['cont', '連続'], ['disc', '区間ごと']]);
+    if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '連続値'], ['int', '9段階']]);
+    const inputs = rank() ? [['mouse', 'マウス'], ['keyboard', 'テンキー']] : nine(o().rep) || o().time === 'disc' ? [['mouse', 'マウス'], ['keyboard', 'キーボード（数字）']] : [['mouse', 'マウス'], ['keyboard', 'キーボード'], ['gamepad', 'ゲームパッド']];
     sel('入力', 'input', inputs);
-    sel('次元', 'dims', [['both', '2軸同時'], ['v', AH.ax('v').name + 'のみ（1軸ずつの回）'], ['a', AH.ax('a').name + 'のみ（1軸ずつの回）']]);
+    sel('次元', 'dims', [['both', '2軸同時'], ['v', AH.ax('v').name + 'のみ'], ['a', AH.ax('a').name + 'のみ']]);
     if (o().rep === 'sliders' && o().time === 'cont') sel('尺度', 'scale', [['abs', '絶対（1〜9）'], ['rel', '相対（上下限なし）']]);
     box.appendChild(grid);
     if (rank()) { note = h('div', { class: 'cfgNote' }, presetName()); box.appendChild(note); panel.appendChild(box); return; }   // 変化の方向にはフィードバックの欄がない
@@ -242,7 +242,7 @@
   }
 
   AH.register({
-    id: 'custom', group: 'カスタム', label: 'カスタム（設計軸を組み合わせる）', init: { v: 5, a: 5 }, side: 'wide', animate: true,
+    id: 'custom', group: 'カスタム', label: 'カスタム', init: { v: 5, a: 5 }, side: 'wide', animate: true,
     options: { ...DEF },
     get model() { return rank() ? 'events' : o().time === 'disc' ? 'table' : 'series'; },
     get unbounded() { return o().time === 'cont' && rel(); },

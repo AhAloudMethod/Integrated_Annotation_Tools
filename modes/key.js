@@ -9,7 +9,7 @@
     AH.pushUndo(before); AH.addLog('input', { axis, value: val }); AH.refresh();
   }
   AH.register({
-    id: 'key', group: '時間連続・2次元', label: '変化点キー（試作）', model: 'series', init: { v: 5, a: 5 }, side: 'narrow', integer: true,
+    id: 'key', group: '時間連続・2次元', label: 'テンキー', model: 'series', init: { v: 5, a: 5 }, side: 'narrow', integer: true,
     help: '<p>値が変わったと思った瞬間に数字を押すと、その時刻から次の変化点までその値が続きます。<kbd>1</kbd>〜<kbd>9</kbd> 快度、<kbd>Shift</kbd>+数字またはテンキーで覚醒度。<kbd>Backspace</kbd> 直前の変化点を削除（枠が濃いほうの軸）。</p>',
     mount({ panel }) {
       for (const [ax, keys] of [['v', 'キー 1〜9'], ['a', 'Shift+1〜9']]) {

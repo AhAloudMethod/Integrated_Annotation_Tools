@@ -8,7 +8,7 @@
     id: 'emujoy', group: '時間連続・2次元', label: 'EMuJoy（マウス・四角平面）', model: 'series', init: { v: 5, a: 5 }, side: 'wide', get animate() { return stk.on(); },
     options: { face: true, tail: true },
     writeMode: () => (stk.on() ? 'armed' : 'hold'), writeAxes: () => ['v', 'a'], sample: () => (stk.on() ? stk.val() : pen),
-    help: '<p>再生中に平面上でボタンを押している間だけ記録され、その区間は前の記録を上書きします。押さずに再生すれば見直すだけです。一時停止中のクリックはその時刻に変化点を1つ置きます。</p><p>ジョイスティック（ゲームパッド）をつなぐと、スティックの位置がそのまま値になり（離すと中性）、記録オン（<kbd>R</kbd> またはボタン0）の間だけ記録します。マウスもそのまま使えます（スティックを倒している間はスティックが優先）。</p>',
+    help: '<p>マウスドラッグで入力します</p>',
     mount({ panel }) {
       ({ c } = planeCanvas(panel, AH.ax('v').name + '・' + AH.ax('a').name + 'の平面')); now = nowRow(c.parentNode);
       const o = h('div', { class: 'opts' }); toggle(o, 'face', '顔'); toggle(o, 'tail', '軌跡'); c.parentNode.appendChild(o);

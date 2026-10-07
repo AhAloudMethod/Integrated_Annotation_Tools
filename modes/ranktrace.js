@@ -9,13 +9,13 @@
   const k = heldRate(['ArrowUp'], ['ArrowDown']);
   const ax = () => opts().axis || 'v';
   AH.register({
-    id: 'ranktrace', group: '時間連続・1次元', label: 'RankTrace（ホイール・上下限なし・2回）', model: 'series', init: { v: 0, a: 0 }, unbounded: true, side: 'wide', animate: true,
+    id: 'ranktrace', group: '時間連続・1次元', label: 'RankTrace（上下限なし）', model: 'series', init: { v: 0, a: 0 }, unbounded: true, side: 'wide', animate: true,
     options: { axis: 'v' },
     writeMode: () => 'armed', writeAxes: () => [ax()], sample: () => ({ [ax()]: ctrl, ...(byPad ? { pad: 'joy' } : {}) }), peek: () => ({ [ax()]: ctrl }),
-    help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します。マウスホイール（または <kbd>↑</kbd>/<kbd>↓</kbd>、ジョイスティックの上下）で「さっきより上がった／下がった」を入力します。ジョイスティックは倒した量に応じた速さで値が動き、離すとその値に留まります。上限・下限はなく、数値は表示しません。これまでの軌跡全体を見ながら相対的に判断してください。記録オン（<kbd>R</kbd>）の間、再生中の値を記録・上書きします。</p>',
+    help: '<p>快度と覚醒度を1軸ずつ、2回に分けて評価します。マウスホイールや <kbd>↑</kbd>/<kbd>↓</kbd>で「さっきより上がった／下がった」を入力します。ジョイスティックは倒した量に応じた速さで値が動きます。上限・下限はなく、数値は表示しません。これまでの軌跡全体を見ながら相対的に判断してください。</p>',
     mount({ panel }) {
       const box = h('div', { class: 'planeBox' }); passSelector(box);
-      c = h('canvas', { class: 'trace', 'aria-label': 'RankTrace の軌跡。ホイールで入力' }); box.appendChild(c); panel.appendChild(box);
+      c = h('canvas', { class: 'trace', 'aria-label': 'RankTrace の軌跡' }); box.appendChild(c); panel.appendChild(box);
       c.addEventListener('wheel', e => {
         e.preventDefault();
         follow.touch(); byPad = false;

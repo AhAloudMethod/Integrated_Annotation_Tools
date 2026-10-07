@@ -1,7 +1,7 @@
 // 評価区間（動画の時刻とは独立）とその設定欄
 (() => {
   const _ = AH._;
-  const { $, video, S, clamp, addLog, fmt } = _;
+  const { $, video, S, clamp, addLog } = _;
   // ---------- 評価区間（動画の時刻とは独立） ----------
   // start: 区間0が始まる動画時刻、count: 区間の数、bin: 1区間の長さ（秒）、label: 列の表記、
   // target: 決めた終了。開始・区間の長さを変えたら、いつもここから区間の数を決め直す（揃えた終了から決め直すと終了が手前へ縮んでいった）。
@@ -36,7 +36,7 @@
     if (s === n && t >= (S.meta.duration || 0) - 0.05) s = n - 1;
     if (s >= 0 && s < n && (s < n - 1 || t < rangeEnd() + 0.05)) return s;   // 最後の区間は決めた終了まで
     const el = $('hint');
-    el.classList.remove('ok'); el.textContent = '評価区間の外です。評価区間の中に移動してから入力してください'; el.hidden = false;
+    el.classList.remove('ok'); el.textContent = '評価区間外です'; el.hidden = false;
     clearTimeout(inputSec.tm); inputSec.tm = setTimeout(() => { el.hidden = true; }, 2500);
     addLog('input_out_of_range', { detail: 't=' + t.toFixed(3) });
     return null;
@@ -78,9 +78,7 @@
     $('rgCount').disabled = $('rgBin').disabled = !!E();
     if (document.activeElement !== $('cutList')) $('cutList').value = E() ? E().slice(1, -1).join(', ') : '';
     $('cutReset').disabled = !E();
-    if (E()) { $('rgBtn').textContent = `区間 ${fmt(binStart(0)).slice(0, -3)}〜 ${nSec()}区間（不揃い）`; return; }
-    const last = rangeEnd() - binStart(r.count - 1);
-    $('rgBtn').textContent = `区間 ${fmt(r.start).slice(0, -3)}〜 ${r.count}×${r.bin}秒` + (last < r.bin - 1e-3 ? `（最後 ${+last.toFixed(2)}秒）` : '');
+    $('rgBtn').textContent = `${+binStart(0).toFixed(2)}秒〜${+rangeEnd().toFixed(2)}秒`;
   }
   $('rgBtn').addEventListener('click', e => { const open = $('rgPanel').hidden; if (_.closePops) _.closePops(); $('rgPanel').hidden = !open; e.target.blur(); });
   function onRangeInput(changed) {
@@ -135,7 +133,7 @@
     const e = edgesNow(), tol = tailTol();
     t = r4(t);
     if (t <= e[0] + tol || t >= e[e.length - 1] - tol) { hintMsg('評価区間の中で区切ってください'); return false; }
-    if (e.some(x => Math.abs(x - t) < tol)) { hintMsg('すでにここに区切りがあります'); return false; }
+    if (e.some(x => Math.abs(x - t) < tol)) { hintMsg('すでに区切りがあります'); return false; }
     const s = e.findIndex(x => x > t) - 1;
     e.splice(s + 1, 0, t); cellsSplit(s);
     setEdges(e); addLog('range_cut', { value: 'add', detail: `t=${t} split=${s}` });
@@ -187,7 +185,7 @@
   }));
   $('cutList').addEventListener('change', undoable(e => {
     const e0 = edgesNow(), xs = e.target.value.split(/[,、，\s]+/).filter(Boolean).map(Number);
-    if (xs.some(x => !isFinite(x))) { hintMsg('区切りは秒の数をカンマで区切って入れてください'); syncRangeUI(); return; }
+    if (xs.some(x => !isFinite(x))) { hintMsg('秒数をカンマで区切りで入力してください'); syncRangeUI(); return; }
     const inner = xs.filter(x => x > e0[0] + tailTol() && x < e0[e0.length - 1] - tailTol());
     if (!inner.length) { $('cutReset').click(); e.target.blur(); return; }
     setEdges([e0[0], ...inner, e0[e0.length - 1]]); addLog('range_cut', { value: 'list', detail: inner.join(' ') }); e.target.blur();
