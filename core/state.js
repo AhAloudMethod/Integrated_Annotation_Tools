@@ -46,21 +46,27 @@ const AH = { _: {} };
   }
   const snapshot = () => JSON.parse(JSON.stringify(S.data));
   // 取り消し（Ctrl+Z）とやり直し（Ctrl+Y／Ctrl+Shift+Z）。新しく値を変えると、やり直しの履歴は消える
-  const pushUndo = s => { S.undo.push(s || snapshot()); if (S.undo.length > 200) S.undo.shift(); S.redo = []; };
+  // 履歴の1件には、そのときの評価区間（区切り）も添える（区間の値と区切りがずれずに戻る）
+  const entry = s => (s && '_range' in s ? s : { ...(s || snapshot()), _range: S.meta.range ? JSON.parse(JSON.stringify(S.meta.range)) : null });
+  const pushUndo = s => { S.undo.push(entry(s)); if (S.undo.length > 200) S.undo.shift(); S.redo = []; };
+  function restore(e) {
+    const { _range, ...data } = e; S.data = data;
+    if (_range !== undefined && JSON.stringify(_range) !== JSON.stringify(S.meta.range)) { S.meta.range = _range; _.saveRange(); _.syncRangeUI(); }   // 前の版で保存した履歴には区間が無い
+  }
   function undo() {
     if (!S.undo.length) return;
     _.endStroke('undo');
-    S.redo.push(snapshot());
-    S.data = S.undo.pop();
+    S.redo.push(entry());
+    restore(S.undo.pop());
     addLog('undo'); _.refresh();
   }
   function redo() {
     if (!S.redo.length) return;
     _.endStroke('redo');
-    S.undo.push(snapshot());
-    S.data = S.redo.pop();
+    S.undo.push(entry());
+    restore(S.redo.pop());
     addLog('redo'); _.refresh();
   }
 
-  Object.assign(_, { FPS, SNAP, $, video, tl, tctx, modes, S, emptyData, model, isInt, wall, vt, r2, clamp, addLog, snapshot, pushUndo, undo, redo });
+  Object.assign(_, { FPS, SNAP, $, video, tl, tctx, modes, S, emptyData, model, isInt, wall, vt, r2, clamp, addLog, snapshot, undoPoint: () => entry(), pushUndo, undo, redo });
 })();

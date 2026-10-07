@@ -241,6 +241,83 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- タイムラインの右クリックで区切りを置く・動かす・消す（連続評価のみ）と、区切りの取り消し ----
+  {
+    const clearRange = p => p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    const p = await open('feeltrace'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+    await clearRange(p);
+    await p.evaluate(() => AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }));
+    const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
+    const X = t => box.x + 44 + t / box.D * (box.w - 52), yV = box.y + box.h * 0.2;
+    const edges = () => p.evaluate(() => AH.S.meta.range.edges || null);
+    const near = (es, t) => (es || []).some(x => Math.abs(x - t) < 0.05);
+    const undoKey = async k => { await blur(p); await p.keyboard.press(k); await p.waitForTimeout(100); };
+    await p.mouse.click(X(2.5), yV, { button: 'right' }); await p.waitForTimeout(100);
+    const a = await edges();
+    check('右クリックで区切りを置く（2.5 秒付近）', a && a.length === 14 && near(a, 2.5), JSON.stringify(a));
+    const put = a.find(x => Math.abs(x - 2.5) < 0.05);
+    await p.mouse.move(X(put), yV); await p.mouse.down({ button: 'right' }); await p.mouse.move(X(2.8), yV, { steps: 4 }); await p.mouse.up({ button: 'right' }); await p.waitForTimeout(100);
+    const b = await edges();
+    check('区切りを右ドラッグで動かす（2.8 秒付近）', b.length === 14 && near(b, 2.8) && !near(b, 2.5), JSON.stringify(b));
+    const moved = b.find(x => Math.abs(x - 2.8) < 0.05);
+    await p.mouse.move(X(moved), yV); await p.mouse.down({ button: 'right' }); await p.mouse.move(X(3.8), yV, { steps: 4 }); await p.mouse.up({ button: 'right' }); await p.waitForTimeout(100);
+    const c = await edges(), cm = c.find(x => x > 2 && x < 3);
+    check('隣の区切り（3 秒）は越えない', c.length === 14 && cm > 2.9 && cm < 3, JSON.stringify(c));
+    await p.mouse.click(X(cm), yV, { button: 'right' }); await p.waitForTimeout(100);
+    const d = await edges();
+    check('区切りの上で右クリックすると消す', d.length === 13 && !d.some(x => x > 2 && x < 3), JSON.stringify(d));
+    await undoKey('Control+z');
+    const e = await edges();
+    check('Ctrl+Z で消した区切りが戻る', e.length === 14 && near(e, cm), JSON.stringify(e));
+    await undoKey('Control+z');
+    const f = await edges();
+    check('もう一度 Ctrl+Z で動かす前の位置に戻る', near(f, 2.8) && f.length === 14, JSON.stringify(f));
+    await undoKey('Control+y');
+    const g = await edges();
+    check('Ctrl+Y でやり直せる', near(g, cm) && !near(g, 2.8), JSON.stringify(g));
+    const cmDefault = await p.evaluate(() => { const ev = new MouseEvent('contextmenu', { cancelable: true, bubbles: true }); document.getElementById('tl').dispatchEvent(ev); return ev.defaultPrevented; });
+    check('連続評価ではタイムラインで右クリックのメニューを出さない', cmDefault === true);
+    // 左ドラッグはグラフ編集のまま。グラフ編集 → 区切りを動かす → Ctrl+Z 2 回で、区切り・グラフの順に戻る
+    const pts = () => p.evaluate(() => JSON.stringify(AH.S.data.points.v));
+    const p0 = await pts(), s0 = await p.evaluate(() => AH.S.data.strokes.length);
+    await p.mouse.move(X(5.2), box.y + box.h * 0.1); await p.mouse.down(); await p.mouse.move(X(6.5), box.y + box.h * 0.1, { steps: 6 }); await p.mouse.up(); await p.waitForTimeout(100);
+    const p1 = await pts(), s1 = await p.evaluate(() => AH.S.data.strokes.length);
+    check('左ドラッグはグラフ編集（区切りは変わらない）', p1 !== p0 && s1 === s0 + 1 && JSON.stringify(await edges()) === JSON.stringify(g), `strokes ${s0}->${s1}`);
+    await p.mouse.move(X(7), yV); await p.mouse.down({ button: 'right' }); await p.mouse.move(X(7.4), yV, { steps: 4 }); await p.mouse.up({ button: 'right' }); await p.waitForTimeout(100);
+    const h = await edges();
+    await undoKey('Control+z');
+    const i = await edges(), pi = await pts();
+    await undoKey('Control+z');
+    const j = await edges(), pj = await pts();
+    check('グラフ編集 → 区切り移動 → Ctrl+Z で区切りだけ戻る', near(h, 7.4) && !near(h, 7) && near(i, 7) && pi === p1, JSON.stringify({ h, i }));
+    check('続けて Ctrl+Z でグラフが戻り、区切りはそのまま', pj === p0 && JSON.stringify(j) === JSON.stringify(i), '');
+    await clearRange(p); await p.close();
+  }
+  {
+    const p = await open('excel'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    await p.evaluate(() => { AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.S.undo = []; for (const [s, v] of [[0, 1], [1, 2], [2, 3]]) AH.setCell('v', s, v); });
+    const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
+    await p.mouse.click(box.x + 44 + 2.5 / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100);
+    check('離散（区間ごと）では右クリックで区切りを置かない', await p.evaluate(() => !AH.S.meta.range.edges && AH.nSec() === 12));
+    const geo = () => p.evaluate(() => JSON.stringify({ n: AH.nSec(), e: AH.S.meta.range.edges || null, c: [0, 1, 2, 3].map(i => AH.S.data.cells.v[i] ?? null), cl: document.getElementById('cutList').value }));
+    const before = await geo();
+    await p.evaluate(() => AH.seekTo(1.5)); await p.waitForTimeout(150); await p.click('#rgBtn'); await p.click('#cutAdd'); await p.waitForTimeout(100);
+    const split = await geo();
+    await blur(p); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    const undone = await geo();
+    await p.keyboard.press('Control+y'); await p.waitForTimeout(100);
+    const redone = await geo();
+    check('ボタンで区切った操作も Ctrl+Z で区間の値ごと戻り、Ctrl+Y でやり直せる', undone === before && redone === split && JSON.parse(split).n === 13, JSON.stringify({ before, split, undone, redone }));
+    await setField(p, 'rgStart', 0.5); await p.waitForTimeout(100);
+    const st = await p.evaluate(() => AH.binStart(0));
+    await blur(p); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    const back = await p.evaluate(() => [AH.binStart(0), document.getElementById('rgStart').value]);
+    check('評価区間の開始の変更も Ctrl+Z で戻り、設定欄も戻る', st === 0.5 && back[0] === 0 && back[1] === '0', JSON.stringify({ st, back }));
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

@@ -152,9 +152,28 @@
     }
     refresh();
   }
+  // 右クリック（連続評価のみ）：区切りから離れた所で置く、区切りの上で動かさずに離すと消す、右ドラッグで動かす。
+  // 1回の操作を取り消し（Ctrl+Z）の1件にする。左クリックはグラフ編集・シークのまま
+  let cut = null;
+  const CUT_HIT = 6;   // 区切りの線に乗ったとみなす距離（px）
+  const cutsEditable = () => model() === 'series' && !!video.src && !_.reviewing();
+  const frameT = t => { const f = (_.fps && _.fps()) || FPS; return +(Math.round(t * f) / f).toFixed(4); };   // いちばん近いフレームの始まり
+  function cutHit(x) {
+    const G = geom(), e = _.cutEdges(); let hit = -1, best = CUT_HIT;
+    for (let i = 1; i < e.length - 1; i++) { const d = Math.abs(G.xOf(e[i]) - x); if (d <= best) { best = d; hit = i; } }
+    return hit;
+  }
+  tl.addEventListener('contextmenu', e => { if (cutsEditable()) e.preventDefault(); });
   tl.addEventListener('pointerdown', e => {
     if (!S.meta.duration) return;
     const r = tl.getBoundingClientRect(), y = e.clientY - r.top;
+    if (e.button === 2) {   // 右クリックはグラフ編集・シークに使わない
+      if (!cutsEditable()) return;
+      tl.setPointerCapture(e.pointerId);
+      const x = e.clientX - r.left, i = cutHit(x);
+      cut = { i, x0: x, x, moved: false, before: _.undoPoint(), t0: i > 0 ? _.cutEdges()[i] : null };
+      return;
+    }
     tl.setPointerCapture(e.pointerId);
     const Gd = geom();
     if (y >= r.height - RULER || !graphEditable() || (Gd.f0Lane && y >= Gd.f0Lane.top)) { seeking = true; _.seekTo(geom().tOf(e.clientX - r.left)); return; }
@@ -164,14 +183,30 @@
     editAt(e);
   });
   tl.addEventListener('pointermove', e => {
+    if (cut) {
+      cut.x = e.clientX - tl.getBoundingClientRect().left;
+      if (cut.i > 0 && (cut.moved || Math.abs(cut.x - cut.x0) > 3)) { cut.moved = true; _.moveCut(cut.i, frameT(geom().tOf(cut.x)), true); }
+      return;
+    }
     if (seeking) { const r = tl.getBoundingClientRect(); _.seekTo(geom().tOf(e.clientX - r.left)); }
     else if (edit) editAt(e);
     else if (S.meta.duration) {
       const r = tl.getBoundingClientRect();
-      tl.style.cursor = (e.clientY - r.top >= r.height - RULER || !graphEditable()) ? 'pointer' : 'crosshair';
+      tl.style.cursor = cutsEditable() && cutHit(e.clientX - r.left) > 0 ? 'col-resize'
+        : (e.clientY - r.top >= r.height - RULER || !graphEditable()) ? 'pointer' : 'crosshair';
     }
   });
+  function cutUp() {
+    const c = cut; cut = null;
+    if (c.i < 0) _.addCut(frameT(geom().tOf(c.x0)));
+    else if (!c.moved) _.delCut(c.t0);
+    else {
+      const t = _.moveCut(c.i, frameT(geom().tOf(c.x)));
+      if (t !== c.t0) { pushUndo(c.before); addLog('range_cut', { value: 'move', detail: `t=${c.t0}->${t}` }); }
+    }
+  }
   const tlUp = () => {
+    if (cut) { cutUp(); return; }
     seeking = false;
     if (!edit) return;
     const e = edit; edit = null;

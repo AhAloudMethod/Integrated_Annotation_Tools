@@ -93,17 +93,26 @@
     else if (changed === 'rgLabel') setRange({ label });
     else setRange({ start, bin, label, count: countFor(start, Math.max(start + bin, target), bin) });   // 開始・区間の長さの変更は、決めた終了を保つ
   }
-  for (const id of ['rgStart', 'rgEnd', 'rgCount', 'rgBin', 'rgLabel']) $(id).addEventListener('change', () => onRangeInput(id));
-  function setEnd(end) { if (E()) { setBounds(null, end); return; } const r = RG(); setRange({ count: countFor(r.start, Math.max(r.start + r.bin, end), r.bin), target: end }); }
+  // 評価区間の変更は取り消し（Ctrl+Z）の履歴に乗せる：変える前の値と区間を取っておき、区間が変わったときだけ積む
+  // 操作の中で別の操作を呼んだとき（区切りの一覧を空にして等間隔に戻すなど）は、外側の1件だけを積む
+  let depth = 0;
+  const undoable = fn => (...a) => {
+    const sig = rangeSig(), before = S.data && !depth ? _.undoPoint() : null;
+    depth++; let out; try { out = fn(...a); } finally { depth--; }
+    if (before && rangeSig() !== sig) _.pushUndo(before);
+    return out;
+  };
+  for (const id of ['rgStart', 'rgEnd', 'rgCount', 'rgBin', 'rgLabel']) $(id).addEventListener('change', undoable(() => onRangeInput(id)));
+  const setEnd = undoable(end => { if (E()) { setBounds(null, end); return; } const r = RG(); setRange({ count: countFor(r.start, Math.max(r.start + r.bin, end), r.bin), target: end }); });
   // 今の時刻：今表示しているフレームの始まりに揃える（1フレーム移動で合わせた位置をそのまま区切りにする）
   const nowT = () => (_.frameStart ? _.frameStart(video.currentTime) : +video.currentTime.toFixed(3));
-  $('rgNow').addEventListener('click', e => { if (E()) { setBounds(nowT(), null); e.target.blur(); return; } const r = RG(), target = r.target ?? (r.start + r.count * r.bin), start = nowT(); setRange({ start, count: countFor(start, Math.max(start + r.bin, target), r.bin) }); e.target.blur(); });
+  $('rgNow').addEventListener('click', undoable(e => { if (E()) { setBounds(nowT(), null); e.target.blur(); return; } const r = RG(), target = r.target ?? (r.start + r.count * r.bin), start = nowT(); setRange({ start, count: countFor(start, Math.max(start + r.bin, target), r.bin) }); e.target.blur(); }));
   $('rgEndNow').addEventListener('click', e => { setEnd(nowT()); e.target.blur(); });
   $('rgFit').addEventListener('click', e => { setEnd(S.meta.duration); e.target.blur(); });
 
   // ---------- 区切りを自分で置く（不揃いの区間） ----------
   // 区間を割ると、区間方式で入れた値は両方に引き継ぐ。区切りを消すと、前の区間の値を残す（前が空なら後ろの値）
-  // 区切りの操作は取り消し（Ctrl+Z）の対象にしない（区間の値だけ戻ると区切りとずれるため）
+  // 区切りの操作も取り消し（Ctrl+Z）で戻せる（履歴の1件に区間も添えるので、区間の値と区切りが一緒に戻る）
   const r4 = x => +(+x).toFixed(4);
   function edgesNow() {
     if (E()) return E().slice();
@@ -122,7 +131,7 @@
     const el = $('hint'); el.classList.remove('ok'); el.textContent = msg; el.hidden = false;
     clearTimeout(hintMsg.tm); hintMsg.tm = setTimeout(() => { el.hidden = true; }, 2500);
   }
-  function addCut(t) {
+  const addCut = undoable(t => {
     const e = edgesNow(), tol = tailTol();
     t = r4(t);
     if (t <= e[0] + tol || t >= e[e.length - 1] - tol) { hintMsg('評価区間の中で区切ってください'); return false; }
@@ -131,14 +140,24 @@
     e.splice(s + 1, 0, t); cellsSplit(s);
     setEdges(e); addLog('range_cut', { value: 'add', detail: `t=${t} split=${s}` });
     return true;
-  }
-  function delCut(t) {
+  });
+  const delCut = undoable(t => {
     const e = edgesNow();
     if (e.length <= 2) { hintMsg('消せる区切りがありません'); return false; }
     let i = 1; for (let k = 2; k < e.length - 1; k++) if (Math.abs(e[k] - t) < Math.abs(e[i] - t)) i = k;
     const x = e[i]; e.splice(i, 1); cellsMerge(i);
     setEdges(e); addLog('range_cut', { value: 'delete', detail: `t=${x} merge=${i}` });
     return true;
+  });
+  // 区切り i（内側の区切り。1〜区間の数−1）を t へ動かす。隣の区切りの1フレーム手前までで止める。
+  // live のときはドラッグ中の表示だけ変える（保存・ログは離したときに1回）
+  function moveCut(i, t, live) {
+    const e = edgesNow(); if (i < 1 || i > e.length - 2) return null;
+    const f = 1 / ((_.fps && _.fps()) || 30);
+    e[i] = r4(clamp(t, e[i - 1] + f, e[i + 1] - f));
+    if (live) { S.meta.range = { ...RG(), edges: e, count: e.length - 1 }; syncRangeUI(); _.refresh(); }
+    else setEdges(e);
+    return e[i];
   }
   // 不揃いの区間で開始・終了を動かす：外に出た区切りを消す（開始側で消えた区間の値も消す）
   function setBounds(start, end) {
@@ -159,20 +178,20 @@
   }
   $('cutAdd').addEventListener('click', e => { addCut(nowT()); e.currentTarget.blur(); });
   $('cutDel').addEventListener('click', e => { delCut(video.currentTime || 0); e.currentTarget.blur(); });
-  $('cutReset').addEventListener('click', e => {
+  $('cutReset').addEventListener('click', undoable(e => {
     e.currentTarget.blur();
     if (!E()) return;
     const r = RG(), start = binStart(0), end = rangeEnd();
     setRange({ edges: null, start, target: end, count: countFor(start, end, r.bin) });
     addLog('range_cut', { value: 'uniform' });
-  });
-  $('cutList').addEventListener('change', e => {
+  }));
+  $('cutList').addEventListener('change', undoable(e => {
     const e0 = edgesNow(), xs = e.target.value.split(/[,、，\s]+/).filter(Boolean).map(Number);
     if (xs.some(x => !isFinite(x))) { hintMsg('区切りは秒の数をカンマで区切って入れてください'); syncRangeUI(); return; }
     const inner = xs.filter(x => x > e0[0] + tailTol() && x < e0[e0.length - 1] - tailTol());
     if (!inner.length) { $('cutReset').click(); e.target.blur(); return; }
     setEdges([e0[0], ...inner, e0[e0.length - 1]]); addLog('range_cut', { value: 'list', detail: inner.join(' ') }); e.target.blur();
-  });
+  }));
 
-  Object.assign(_, { addCut, delCut, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();
