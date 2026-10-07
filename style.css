@@ -168,8 +168,11 @@ body.exp .optCtl{display:none}
 .expMain{font-size:18px;padding:8px 28px}
 .expErr{margin:0;padding-left:1.2em;color:var(--pen)}
 .expWarn{margin:0;padding-left:1.2em;color:var(--aro);font-size:13px}
+.expCard:has(.expForm){max-width:960px}
 .expForm{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;width:100%;font-size:13px}
 .expForm label{gap:6px}
+.expForm label:not(.chk){white-space:nowrap}
+.expForm select{min-width:0;flex:0 1 auto}
 .expForm input[type=number]{width:5em}
 .expVids{border-collapse:collapse;font-size:13px;width:100%}
 .expVids th,.expVids td{border-bottom:1px solid var(--line);padding:3px 8px;text-align:left}
