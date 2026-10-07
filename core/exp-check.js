@@ -1,9 +1,9 @@
 // 実験の設定ファイル（experiment.json）の検査。ブラウザ（core/experiment.js）と Node（tools/exp-check.js）の両方で使う。
 // errors は実験を始められない誤り、warnings は始められるが確かめたほうがよいこと（カウンターバランスの偏りなど）
 (() => {
-  // 設定の既定値（書いていない項目はこれ）。review・voice・videoWindow はボタンを出すか
-  const DEF = { axes: 'va', rate: 1, afterWrite: 'hold', graphEdit: true, grid: false, f0: true, listen: false, timeline: false, videoSize: 55,
-    padJoy: true, padSlider: true, padSquare: true, review: false, voice: false, videoWindow: false };
+  // 設定の既定値（書いていない項目はこれ）。review・voice・videoWindow はボタンを出すか。評価区間の変更は実験モードでは常にできない
+  const DEF = { axes: 'va', rate: 1, afterWrite: 'hold', graphEdit: true, grid: true, f0: false, listen: true, timeline: true, videoSize: 55,
+    padJoy: true, padSlider: true, padSquare: true, review: true, voice: false, videoWindow: true };
   const RATES = ['0.5', '0.75', '1'];
 
   // env：modes（方式 id の配列）、axes（評価軸の組の id の配列）、has(path)（動画がフォルダにあるか）

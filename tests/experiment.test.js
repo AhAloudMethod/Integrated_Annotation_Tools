@@ -17,7 +17,7 @@ function makeFolder(name, cfg, videos) {
 }
 const GOOD = makeFolder('exp_good', {
   name: 'exptest',
-  settings: { f0: false },
+  settings: { review: false, videoWindow: false, listen: false },
   survey: 'https://survey.test/form?pid={pid}&t={trial}&m={mode}&v={video}',
   participants: {
     P01: [
@@ -76,9 +76,10 @@ const BAD = makeFolder('exp_bad', {
   for (const s of ['#pid', '#mode', '#openBtn', '#expBtn', '#setBtn', '#rgBtn', '#helpBtn', '#tlBtn', '#exportBtn', '#reviewBtn', '#voiceBtn', '#vwinBtn']) hidden[s] = !(await vis(s));
   check('参加者 ID・方式・設定・評価区間・グラフ・書き出し・見返し・音声入力・別ウィンドウを隠す', Object.values(hidden).every(Boolean), JSON.stringify(hidden));
   const r1 = await p.evaluate(() => ({ mode: AH.S.meta.mode, pid: AH.S.meta.participant, face: AH.S.meta.options.face, axes: AH._.axesId(), f0: AH._.f0Shown(),
+    tl: !document.body.classList.contains('noTl'), grid: AH._.gridShown(), edit: document.getElementById('graphEdit').checked,
     opt: [...document.querySelectorAll('#panel .optCtl')].every(e => getComputedStyle(e).display === 'none') }));
-  check('1 つ目の試行：方式・参加者・方式の設定・全体の設定（VA、F0 なし）を当て、方式の設定の欄を隠す',
-    r1.mode === 'emujoy' && r1.pid === 'P01' && r1.face === false && r1.axes === 'va' && r1.f0 === false && r1.opt, JSON.stringify(r1));
+  check('1 つ目の試行：方式・参加者・方式の設定・既定の設定（VA、F0 なし、グラフとグリッド線を出す、グラフの編集オン）を当て、方式の設定の欄を隠す',
+    r1.mode === 'emujoy' && r1.pid === 'P01' && r1.face === false && r1.axes === 'va' && r1.f0 === false && r1.tl && r1.grid && r1.edit && r1.opt, JSON.stringify(r1));
 
   // 開始前：キー・ゲームパッドのボタン 0 が効かない
   await p.evaluate(id => window.__connect(id, 0), JOY); await p.waitForTimeout(150);
@@ -93,6 +94,9 @@ const BAD = makeFolder('exp_bad', {
   await p.click('#expStart');
   check('開始で覆いが消え、完了ボタンが出る', (await state()) === 'running' && !(await vis('#expCover')) && (await vis('#expDoneBtn')));
   await p.keyboard.press('Space'); await p.waitForTimeout(1000); await p.keyboard.press('Space'); await p.waitForTimeout(200);
+  const tb = await p.locator('#tl').boundingBox();
+  await p.mouse.click(tb.x + tb.width * 0.5, tb.y + tb.height * 0.3, { button: 'right' }); await p.waitForTimeout(100);
+  check('グラフを出していても、右クリックで評価区間の区切りを置けない', await p.evaluate(() => !AH.S.meta.range.edges && !AH.S.log.some(l => l.type === 'range_cut')));
   await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
   check('見返しを許していない試行では V が効かない', !(await p.evaluate(() => AH._.reviewing())));
   await p.click('#expDoneBtn');
