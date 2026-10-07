@@ -156,9 +156,9 @@ body.exp:not(.expReview) #reviewBtn,body.exp:not(.expVoice) #voiceBtn,body.exp:n
 body.exp .optCtl{display:none}
 .expInfo{font-size:13px;color:var(--muted);white-space:nowrap}
 .expDone{font-weight:700;border-color:var(--hit)}
-.expCover{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg)}
+.expCover{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);overflow:auto}
 .expCover[hidden]{display:none}
-.expCard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px 28px;max-width:560px;width:100%;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.expCard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px 28px;max-width:640px;width:100%;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .expCard h2{font-size:18px;margin:0}
 .expCard p{margin:0}
 .expCard label{display:flex;gap:8px;align-items:center}
@@ -168,6 +168,15 @@ body.exp .optCtl{display:none}
 .expMain{font-size:18px;padding:8px 28px}
 .expErr{margin:0;padding-left:1.2em;color:var(--pen)}
 .expWarn{margin:0;padding-left:1.2em;color:var(--aro);font-size:13px}
+.expForm{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;width:100%;font-size:13px}
+.expForm label{gap:6px}
+.expForm input[type=number]{width:5em}
+.expVids{border-collapse:collapse;font-size:13px;width:100%}
+.expVids th,.expVids td{border-bottom:1px solid var(--line);padding:3px 8px;text-align:left}
+.expMiss{color:var(--pen)}
+.expSaved{width:100%;font-size:13px}
+.expZips ul{margin:4px 0;padding-left:0;list-style:none}
+.expZips li{margin:2px 0}
 .expAfter{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .expAfter[hidden]{display:none}
 

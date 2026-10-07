@@ -1,8 +1,9 @@
 // 実験フォルダの検査：npm run exp-check -- <フォルダ（または experiment.json）>
-// ブラウザで実験フォルダを開いたときと同じ規則（core/exp-check.js）で検査し、参加者ごとの順と、誤り・警告を出す。誤りがあれば終了コード 1
+// ブラウザで実験フォルダを開いたときと同じ規則（core/exp-check.js）で、experiment.json と setup.json（あれば）を検査する。
+// 参加者ごとの順と、動画ごとの評価区間、誤り・警告を出す。誤りがあれば終了コード 1
 const fs = require('fs');
 const path = require('path');
-const { check } = require('../core/exp-check');
+const { check, merge, rangeFor } = require('../core/exp-check');
 
 const ROOT = path.resolve(__dirname, '..');
 // 方式は index.html が読み込むもの（modes/_shared.js を除く）。表示名は各ファイルの登録（id と同じ行の label）
@@ -26,17 +27,31 @@ function main(arg) {
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'experiment.json');
   if (!fs.existsSync(file)) { console.log(`見つかりません：${file}`); return 1; }
   const dir = path.dirname(file);
-  let cfg;
-  try { cfg = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')); } catch (e) { console.log(`JSON として読めません：${e.message}`); return 1; }
+  const read = f => JSON.parse(fs.readFileSync(f, 'utf8').replace(/^﻿/, ''));   // ツールが書き出すファイルは BOM で始まる
+  let exp, setup = null;
+  try { exp = read(file); } catch (e) { console.log(`experiment.json を JSON として読めません：${e.message}`); return 1; }
+  const sf = path.join(dir, 'setup.json');
+  if (fs.existsSync(sf)) { try { setup = read(sf); } catch (e) { console.log(`setup.json を JSON として読めません：${e.message}`); return 1; } }
   const modes = modeList();
-  const { errors, warnings } = check(cfg, { modes: modes.map(m => m.id), axes: axesList(), has: p => fs.existsSync(path.join(dir, p)) && fs.statSync(path.join(dir, p)).isFile() });
+  const { errors, warnings } = check(exp, { modes: modes.map(m => m.id), axes: axesList(), has: p => fs.existsSync(path.join(dir, p)) && fs.statSync(path.join(dir, p)).isFile() }, setup);
+  const cfg = merge(exp, setup);
 
   console.log(`実験：${(cfg && cfg.name) || '（名前なし）'}（${file}）`);
+  console.log(setup ? 'setup.json：あり' : 'setup.json：なし（通常の画面の「実験用の設定を書き出す」で作る）');
   if (cfg && cfg.participants && typeof cfg.participants === 'object') {
     console.log('\n参加者ごとの順（[練] は練習）');
     for (const [pid, ts] of Object.entries(cfg.participants)) {
       if (!Array.isArray(ts)) continue;
       console.log(`  ${pid}: ${ts.map(t => (t && t.practice ? '[練]' : '') + (t ? `${t.mode}/${t.video}` : '?')).join(' → ')}`);
+    }
+  }
+  // 試行で使う動画ごとの評価区間（試行の range が優先）
+  if (cfg && cfg.participants && typeof cfg.participants === 'object' && !Array.isArray(cfg.participants)) {
+    const used = new Map();
+    for (const ts of Object.values(cfg.participants)) if (Array.isArray(ts)) for (const t of ts) if (t && t.video && !t.range && !used.has(t.video)) used.set(t.video, rangeFor(cfg, t));
+    if (used.size) {
+      console.log('\n動画ごとの評価区間');
+      for (const [v, r] of used) console.log(`  ${v}: ${r.edges ? `${r.edges[0]}〜${r.edges[r.edges.length - 1]} 秒（${r.edges.length - 1} 区間）` : r.start != null || r.end != null ? `${r.start ?? 0}〜${r.end ?? '最後'} 秒，${r.bin ?? 1} 秒ごと` : '動画全体，1 秒ごと'}`);
     }
   }
   if (errors.length) { console.log(`\n誤り（${errors.length} 件）`); for (const e of errors) console.log('  - ' + e); }

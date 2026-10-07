@@ -12,19 +12,25 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
   $('exportBtn').addEventListener('click', () => exportAll());
-  // 今の評価を全部書き出す（「書き出す」と、実験モードの完了）
+  // 今の評価を全部書き出す（「書き出す」）
   function exportAll() {
-    if (!video.src) return;
+    const fs = buildFiles(); if (!fs) return;
+    for (const f of fs) download(f.name, f.text, f.type);
+    $('status').textContent = `書き出しました（${fs.length}ファイル）`;
+  }
+  // 書き出すファイルの一覧 [{ name, text, type }] を作る（実験モードは zip にまとめる）
+  function buildFiles() {
+    if (!video.src) return null;
     endStroke('export'); addLog('export');
     if (_.colorSnapshot) S.meta.colors = _.colorSnapshot();   // 書き出し時点の色の設定を記録する
     const X = S.meta.experiment, tag = X ? `_t${String(X.trial + 1).padStart(2, '0')}${X.practice ? 'p' : ''}` : '';   // 実験モードでは試行の番号（p は練習）を入れる
     const base = `${S.meta.participant || 'noid'}${tag}_${S.meta.video_file.replace(/\.[^.]+$/, '')}_${_.M.id}`;
     const D = S.meta.duration, N = Math.floor(D * FPS), n = nSec();
-    const files = [];
+    const files = [];   // [{ name, text, type }]
     // 列名は評価の軸に合わせる（VA 以外は valence→pa・energy など）。回した軸（PANA・Thayer）は VA に直した値の列も付ける
     const AX = _.axSet(), rot = AX.rotated, colName = c => (/^va_/.test(c) ? c : String(c).replace('valence', AX.v.col).replace('arousal', AX.a.col));   // va_ で始まる列（VA に直した値）はそのまま
     const vaCols = (x, y) => { if (x === '' || y === '' || x == null || y == null) return ['', '']; const r = _.toVA(+x, +y); return [r.v.toFixed(3), r.a.toFixed(3)]; };
-    const out = (suffix, header, rows) => { download(base + suffix, toCSV(header.map(colName), rows), 'text/csv'); files.push(suffix); };
+    const out = (suffix, header, rows) => files.push({ name: base + suffix, text: toCSV(header.map(colName), rows), type: 'text/csv' });
     S.meta.axes = _.axesCurrent();
     S.meta.gamepads = _.padMeta();   // ゲームパッドの設定・使った機器（core/gamepad.js）
     const binCols = s => [s, secLabel(s), binStart(s).toFixed(3), _.binEnd(s).toFixed(3)];
@@ -86,9 +92,9 @@
     S.meta.display = _.displayMeta();   // 区切りの線・スティックを四角に広げたか
     S.meta.f0 = { shown: !!(_.f0Shown && _.f0Shown()), method: 'YIN 16kHz win=40ms hop=10ms 70-1000Hz th=0.15' };
     out('_events.csv', ['wall_ms', 'video_t', 'type', 'axis', 'value', 'detail'], S.log.map(e => [e.wall_ms, e.video_t, e.type, e.axis, e.value, e.detail]));
-    download(base + '_session.json', JSON.stringify({ meta: S.meta, data: S.data, log: S.log }, null, 1), 'application/json');
-    $('status').textContent = `書き出しました（${files.length + 1}ファイル）`;
+    files.push({ name: base + '_session.json', text: JSON.stringify({ meta: S.meta, data: S.data, log: S.log }, null, 1), type: 'application/json' });
+    return files;
   }
 
-  Object.assign(_, { exportAll, download, toCSV });
+  Object.assign(_, { exportAll, buildFiles, download, toCSV });
 })();
