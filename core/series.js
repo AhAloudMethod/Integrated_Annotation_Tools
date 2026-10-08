@@ -3,9 +3,12 @@
   const _ = AH._;
   const { FPS, SNAP, S, pushUndo } = _;
   // ---------- 時間系列（変化点）モデル ----------
+  // 変化点の時刻は小数 4 桁に丸めて持つので、フレームの時刻より最大 0.00005 秒後ろにずれる（61/60 秒→1.0167）。
+  // そのずれの分を許し、フレームの始まりに置いた点がそのフレームから効くようにする（1 フレームの 1/100 未満なので、ほかの点と取り違えない）
+  const TT = 1e-4;
   function idxAt(ps, t) {
     let lo = 0, hi = ps.length - 1;
-    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (ps[mid].t <= t + 1e-9) lo = mid; else hi = mid - 1; }
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (ps[mid].t <= t + TT) lo = mid; else hi = mid - 1; }
     return lo;
   }
   const valueIn = (ps, t) => ps[idxAt(ps, t)].val;
@@ -32,7 +35,7 @@
     const old = valueIn(src, tmax), init = { ...src[0] };
     const keep = src.filter(p => !p.init && (p.t < tmin - 1e-9 || p.t >= tmax - 1e-9)).map(p => ({ ...p }));
     const ins = [];
-    let last = fmin === 0 ? null : valueIn(src, tmin - 1e-6);
+    let last = fmin === 0 ? null : valueIn(src, tmin - 0.5 / FPS);   // 範囲の直前のフレームの値（範囲の始めの点は読まない）
     for (let f = fmin; f <= fmax; f++) {
       const v = samples.get(f); if (v === undefined || v === last) continue;
       if (f === 0) init.val = v; else ins.push({ t: +(f / FPS).toFixed(4), val: v });
