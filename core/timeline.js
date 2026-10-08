@@ -125,23 +125,8 @@
   // グラフ直接編集：連続方式はなぞった範囲の値を描き換え、区間方式は区間の値を設定する
   let edit = null, seeking = false;
   const graphEditable = () => $('graphEdit').checked && model() !== 'events' && !!video.src && !_.reviewing();
-  function editRebuild() {
-    const e = edit, ax = e.axis, fs = [...e.samples.keys()].sort((a, b) => a - b);
-    const fmin = fs[0], fmax = fs[fs.length - 1], tmin = fmin / FPS, tmax = (fmax + 1) / FPS;
-    const src = e.before.points[ax], old = valueIn(src, tmax);
-    const init = { ...src[0] };
-    const keep = src.filter(p => !p.init && (p.t < tmin - 1e-9 || p.t >= tmax - 1e-9)).map(p => ({ ...p }));
-    const ins = [];
-    let last = fmin === 0 ? null : valueIn(src, tmin - 1e-6);
-    for (let f = fmin; f <= fmax; f++) {
-      const v = e.samples.get(f); if (v === undefined || v === last) continue;
-      if (f === 0) init.val = v; else ins.push({ t: +(f / FPS).toFixed(4), val: v });
-      last = v;
-    }
-    // なぞった範囲の直後は編集前の値に戻す
-    if (tmax < S.meta.duration && last !== old && !keep.some(p => Math.abs(p.t - tmax) < 1e-9)) ins.push({ t: +tmax.toFixed(4), val: old });
-    S.data.points[ax] = [init, ...[...keep, ...ins].sort((a, b) => a.t - b.t)];
-  }
+  // なぞった範囲の値を描き換え、その直後は編集前の値に戻す（core/series.js の rewriteFrames）
+  function editRebuild() { S.data.points[edit.axis] = _.rewriteFrames(edit.before.points[edit.axis], edit.samples); }
   function editAt(ev) {
     const r = tl.getBoundingClientRect(), G = geom(), L = G.lanes.find(l => l.ax === edit.axis);
     const t = G.tOf(ev.clientX - r.left);
