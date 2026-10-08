@@ -243,5 +243,8 @@
     drawTimeline();
   }
 
-  Object.assign(_, { refresh });
+  // C キー（core/keys.js と Excel のセル）：今表示しているフレームの始まりで区切る。右クリックで区切れるときだけ効く
+  const cutNow = () => { if (!cutsEditable()) return false; _.addCut(_.frameStart ? _.frameStart(video.currentTime) : video.currentTime); return true; };
+
+  Object.assign(_, { refresh, cutNow });
 })();

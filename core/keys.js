@@ -21,6 +21,7 @@
     if (_.M && _.M.onKey && _.M.onKey(e)) { e.preventDefault(); return; }
     if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _.listenUsable() && _.listenRecord()) { e.preventDefault(); return; }
     if (e.code === 'KeyR' && _.listenUsable() && _.listenReplay()) { e.preventDefault(); return; }
+    if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey && _.cutNow()) { e.preventDefault(); return; }   // 今の時間で区切る
     if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
     else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       e.preventDefault();

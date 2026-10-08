@@ -164,6 +164,8 @@
       });
     }
     function build() {
+      // 区切りを変えると表を作り直す。セルに入れている途中なら、同じ軸・番号のセルにフォーカスを戻す（C キーで区切ったときなど）
+      const fo = grid.contains(document.activeElement) ? document.activeElement.dataset : null, keep = fo && { ax: fo.ax, s: fo.s };
       sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
       const tb = h('table', { class: 'xl' + (real ? ' real' : '') });
       let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s }, AH.secLabel(s))); tb.appendChild(tr);
@@ -188,6 +190,7 @@
             if (e.key === 'Escape') { inp.blur(); return; }
             // 聴いてから入力：セルに入れている間も R で聴いた区間をもう一度聴く（セルに R は入らない）
             if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey && AH._.listenUsable() && AH._.listenReplay()) { e.preventDefault(); return; }
+            if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.cutNow(); return; }   // 今の時間で区切る（区切れるときだけ）
             if (!move) return;
             e.preventDefault();
             const nx = grid.querySelector(`input[data-ax="${axes[r + move[0]]}"][data-s="${s + move[1]}"]`);
@@ -203,6 +206,8 @@
         tb.appendChild(tr);
       });
       grid.appendChild(tb);
+      const back = keep && grid.querySelector(`input[data-ax="${keep.ax}"][data-s="${keep.s}"]`);
+      if (back) { back.value = S.data.cells[keep.ax][+keep.s] ?? ''; back.focus(); back.select(); }
     }
     return () => {
       if (!S.meta.duration) return;
@@ -231,7 +236,7 @@
   }
   // 区切りのボタン（Excel で「自分で区切る」のとき。実験モードでも出す）
   function cutBox(panel) {
-    const box = h('div', { class: 'planeBox cutBox' }, '<div class="refTitle">区間の区切り</div>');
+    const box = h('div', { class: 'planeBox cutBox' }, '<div class="refTitle">区間の区切り（<kbd>C</kbd> で今の時間で区切る）</div>');
     const btn = (label, fn) => box.appendChild(h('button', { type: 'button', onclick: e => { e.currentTarget.blur(); if (!AH._.reviewing()) fn(); } }, label));
     btn('今の時間で区切る', () => AH._.addCut(AH._.frameStart ? AH._.frameStart(video.currentTime) : video.currentTime));
     btn('近くの区切りを消す', () => AH._.delCut(video.currentTime || 0));
