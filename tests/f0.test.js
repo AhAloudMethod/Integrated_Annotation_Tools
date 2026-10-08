@@ -46,15 +46,15 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(200);
     const lane = await p.evaluate(() => {
       const c = document.getElementById('tl'), d = devicePixelRatio || 1, g = c.getContext('2d');
-      const h = c.clientHeight, y = Math.round((h - 18 - 56 + 8 + (56 - 12) / 2) * d);   // F0 の欄の中ほど
+      const h = c.clientHeight, y = Math.round((h - 28 - 56 + 8 + (56 - 12) / 2) * d);   // F0 の欄の中ほど
       let ink = 0; for (let x = 60; x < c.clientWidth - 20; x += 5) if (g.getImageData(Math.round(x * d), 0, 1, c.height).data.some((v, i) => i % 4 === 3 && v > 0 && Math.abs(i / 4 - y) < 30 * d)) ink++;
       return { h, ink };
     });
-    check('評価グラフの3段目に F0 の欄がある', lane.h === 206 && lane.ink > 50, JSON.stringify(lane));
+    check('評価グラフの3段目に F0 の欄がある', lane.h === 216 && lane.ink > 50, JSON.stringify(lane));
     // 表示を切ると欄と数値が消え、操作ログに残る
     await p.click('#setBtn'); await p.uncheck('#f0Show'); await p.click('#setBtn'); await p.waitForTimeout(200);
     const off = await p.evaluate(() => ({ box: document.getElementById('f0Now').hidden, h: document.getElementById('tl').clientHeight, log: AH.S.log.filter(l => l.type === 'f0_display').map(l => l.value).join(), saved: localStorage.getItem('ahann_f0') }));
-    check('設定で F0 の表示を切れる（操作ログに残る）', off.box && off.h === 150 && off.log === 'off' && off.saved === '0', JSON.stringify(off));
+    check('設定で F0 の表示を切れる（操作ログに残る）', off.box && off.h === 160 && off.log === 'off' && off.saved === '0', JSON.stringify(off));
     await p.click('#setBtn'); await p.check('#f0Show'); await p.click('#setBtn');
     // 書き出し
     const dls = []; p.on('download', d => dls.push(d));

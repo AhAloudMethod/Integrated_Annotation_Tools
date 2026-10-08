@@ -3,7 +3,7 @@
   const _ = AH._;
   const { FPS, $, video, tl, tctx, S, model, isInt, wall, r2, clamp, addLog, snapshot, pushUndo, css, fmt, RG, nSec, binStart, rangeEnd, binAt, inRange, valueIn, endStroke, writeMode } = _;
   // ---------- タイムライン（シーク＋直接編集） ----------
-  const PAD_L = 44, PAD_R = 8, RULER = 18;   // 下端 RULER px はシーク用の目盛り帯
+  const PAD_L = 44, PAD_R = 8, RULER = 28;   // 下端 RULER px はシーク用の目盛り帯（狭いとグラフの編集と押し間違えるので広めにとる）
   function geom() {
     const w = tl.clientWidth, h = tl.clientHeight, D = S.meta.duration;
     const xOf = t => PAD_L + (D ? t / D : 0) * (w - PAD_L - PAD_R);
@@ -40,7 +40,7 @@
       }
       g.fillStyle = css('--bg'); g.fillRect(PAD_L, h - RULER, w - PAD_L - PAD_R, RULER);
       g.fillStyle = css('--muted');
-      for (let t = 0; t <= D; t += 5) g.fillText(t + 's', xOf(t) + 2, h - 5);
+      for (let t = 0; t <= D; t += 5) g.fillText(t + 's', xOf(t) + 2, h - 9);
     }
     // 快度と覚醒度の欄の区切り線
     const yDiv = Math.round((G.lanes[0].y1 + G.lanes[1].y0) / 2) + 0.5;

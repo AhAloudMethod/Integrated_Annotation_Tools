@@ -147,11 +147,11 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => { AH._.setF0Shown(false); AH.S.data.points.v[0].val = 9; AH.refresh(); });   // F0 の欄は消して2段で測る。記録の線を中立の線から離す
     await p.waitForTimeout(150);
     const r = await p.evaluate(() => {
-      const c = document.getElementById('tl'), d = devicePixelRatio || 1, h = c.clientHeight, y = Math.round(((h - 18) / 2) * d);
+      const c = document.getElementById('tl'), d = devicePixelRatio || 1, h = c.clientHeight, y = Math.round(((h - 28) / 2) * d);
       const g = c.getContext('2d'), px = x => [...g.getImageData(Math.round(x * d), y, 1, 1).data];
       const above = [...g.getImageData(Math.round(20 * d), y - Math.round(4 * d), 1, 1).data];
       // 快度の欄の中立（5）の線：8px 続けて途切れない（点線ではない）。記録の線と重ならない位置（右端寄り）で見る
-      const y5 = Math.round((8 + ((h - 18) / 2 - 8 - 8) / 2) * d), x0 = Math.round((c.clientWidth - 60) * d);
+      const y5 = Math.round((8 + ((h - 28) / 2 - 8 - 8) / 2) * d), x0 = Math.round((c.clientWidth - 60) * d);
       const neutral = Array.from({ length: Math.round(8 * d) }, (_x, k) => g.getImageData(x0 + k, y5, 1, 1).data[3]);
       return { at: px(20), mid: px(c.clientWidth / 3 + 3), above, neutral };
     });

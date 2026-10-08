@@ -18,7 +18,7 @@ const { URL, VID, BROWSER, out } = require('./_env');
   };
   const blur = p => p.evaluate(() => document.activeElement && document.activeElement.blur());
   const st = p => p.evaluate(() => { const d = AH.S.data; return { mode: AH.S.meta.mode, pv: d.points.v.map(x => [+x.t.toFixed(2), x.val]).slice(0, 10), pa: d.points.a.map(x => [+x.t.toFixed(2), x.val]).slice(0, 6), cv: d.cells.v.slice(0, 8), ca: d.cells.a.slice(0, 8), strokes: d.strokes.map(s => (s.source || '') + ':' + s.axes), undo: AH.S.undo.length }; });
-  const tlLane = async (p, axis, fx, fy) => { const b = await p.locator('#tl').boundingBox(); const top = axis === 'v' ? 8 : (b.height - 18) / 2 + 8, bot = axis === 'v' ? (b.height - 18) / 2 - 8 : b.height - 26; return { x: b.x + 44 + fx * (b.width - 52), y: b.y + top + (1 - fy) * (bot - top) }; };
+  const tlLane = async (p, axis, fx, fy) => { const b = await p.locator('#tl').boundingBox(); const top = axis === 'v' ? 8 : (b.height - 28) / 2 + 8, bot = axis === 'v' ? (b.height - 28) / 2 - 8 : b.height - 36; return { x: b.x + 44 + fx * (b.width - 52), y: b.y + top + (1 - fy) * (bot - top) }; };
 
   // 1. 方式の切り替えと復帰
   let p = await newPage('key');
