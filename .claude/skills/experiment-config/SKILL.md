@@ -104,7 +104,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 | `sam` | SAM（9 段階の絵） | 区間ごと | `autoNext`（false） |
 | `affectrank` | AffectRank（変化時に 8 方向） | 相対の変化 | ― |
 | `change` | 変化ボタン | 変化の時点 | ― |
-| `custom` | カスタム（設計軸の組み合わせ） | 組み合わせによる | `rep`，`time`，`values`，`input`，`dims`，`scale`，`face`，`trail`，`color`，`border`，`autoNext`，`cuts`（README の「カスタム方式」．`rep: "excel"` と `cuts: "self"` で参加者が区切る Excel になる） |
+| `custom` | カスタム（設計軸の組み合わせ） | 組み合わせによる | `rep`，`time`，`values`，`input`，`dims`，`scale`，`face`，`trail`，`color`，`border`，`autoNext`，`cuts`，`curveInput`（README の「カスタム方式」．`rep: "excel"` と `cuts: "self"` で参加者が区切る Excel になる．`rep: "excel"` と `values: "curve"` で区間内で変化になり，`curveInput` で入れ方（`"both"`・`"draw"`・`"template"`）を決める） |
 
 - CARMA と RankTrace は 1 軸ずつ評価する．快度と覚醒度の両方を取るなら，`options.axis` を `"v"` と `"a"` にした 2 つの試行にする．このとき同じ動画を 2 回使うと方式と動画の組が重複するので，`custom` の 1 軸（`dims`）を使うか，動画を分ける．どうするかはユーザに確かめる．
 

@@ -45,6 +45,7 @@ const GOOD = makeFolder('exp_good', {
       P02: [{ mode: 'sam', video: 'a.mp4' }],
       P03: [{ mode: 'sam', video: 'c.mp4' }],
       P04: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'self' } }],
+      P05: [{ mode: 'custom', video: 'a.mp4', options: { rep: 'excel', values: 'curve', curveInput: 'draw' } }],
     },
   },
   // 動画ごとの評価区間。c.mp4 は動画（12 秒）より長い終了にして、試行を始められないことを確かめる
@@ -282,6 +283,18 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const sc = await p.evaluate(() => ({ n: AH.nSec(), edges: AH.S.meta.range.edges, cols: document.querySelectorAll('table.xl input[data-ax=v]').length }));
   check('自分で区切る試行は、評価区間（1〜11 秒）を区切りの無い 1 区間にして始める', sc.n === 1 && JSON.stringify(sc.edges) === '[1,11]' && sc.cols === 1, JSON.stringify(sc));
+  await p.keyboard.press('Control+Shift+KeyE');
+  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+
+  // ---- 区間内で変化の試行：options の入れ方を当て、方式の設定の欄は隠すが、区間内の動きの欄（形・発声なし）は出す
+  await p.setInputFiles('#expDir', GOOD);
+  await p.waitForSelector('#expGo');
+  await p.selectOption('#expPid', 'P05');
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const cv = await p.evaluate(() => ({ curve: AH.mode.curve, tool: AH.mode.curveTool(), tools: document.querySelectorAll('.curveBox .tool').length, box: !!document.querySelector('.curveBox') && getComputedStyle(document.querySelector('.curveBox')).display !== 'none',
+    cfg: [...document.querySelectorAll('#panel .optCtl')].every(e => getComputedStyle(e).display === 'none'), table: !!document.querySelector('table.xl.curve') }));
+  check('区間内で変化の試行：入れ方（描くだけ）を当て、切り替えは出さず、形と発声なしの欄と表を出す（方式の設定は隠す）', cv.curve && cv.tool === 'draw' && cv.tools === 0 && cv.box && cv.cfg && cv.table, JSON.stringify(cv));
   await p.keyboard.press('Control+Shift+KeyE');
   await p.waitForLoadState('load'); await p.waitForTimeout(500);
 

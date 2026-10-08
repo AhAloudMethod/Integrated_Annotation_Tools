@@ -145,6 +145,23 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 7. 聴いてから入力：区間方式と同じく区間の終わりで止まり、止まっている間にグラフで入れ、Enter で次の区間を聴く
+  {
+    const p = await open({ curveInput: 'template' });
+    await p.evaluate(() => { AH._.setListen(true); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); document.activeElement.blur(); });
+    await p.keyboard.press('Space');
+    const stop0 = await p.waitForFunction(() => AH.video.paused && AH.video.currentTime > 0.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    await p.waitForTimeout(150); const box = await p.evaluate(() => document.getElementById('listenBox').textContent);
+    const at = await graph(p);
+    await drag(p, at('v', 0.5, 3), at('v', 0.5, 7));
+    await p.keyboard.press('Enter');
+    const stop1 = await p.waitForFunction(() => AH.video.paused && AH.curSec() === 1 && AH.video.currentTime > 1.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    const r = await p.evaluate(() => ({ c: AH.curveInfo('v', 0), armed: AH.S.armed, rec: AH.S.log.some(l => l.type === 'listen_record'), next: AH.S.log.some(l => l.type === 'listen_next') }));
+    check('聴いてから入力：区間の終わりで止まり（「次へ」の案内）、グラフで入れて Enter で次の区間を聴く（記録の段階は無い）', stop0 && /次へ/.test(box) && stop1 && r.c.entered && r.c.from === 3 && r.c.to === 7 && !r.armed && !r.rec && r.next, JSON.stringify({ stop0, stop1, box, r }));
+    await p.evaluate(() => AH._.setListen(false));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();
