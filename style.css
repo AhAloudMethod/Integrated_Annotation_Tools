@@ -86,6 +86,9 @@ body.f0 #tl{height:216px}
 
 /* 動画を別ウィンドウで表示中：動画欄を外し、ツールに画面を使う */
 body.pip main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"side" "under" "tl"}
+/* 動画の欄が空くので、評価グラフを高くする（F0 の欄はその下に 56 px 足す） */
+body.pip #tl{height:clamp(160px,34vh,380px)}
+body.pip.f0 #tl{height:calc(clamp(160px,34vh,380px) + 56px)}
 body.pip .stage{position:fixed;right:16px;bottom:16px;width:0;height:0;background:none;z-index:20}
 body.pip .stage video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 body.pip .stage .empty{display:none}

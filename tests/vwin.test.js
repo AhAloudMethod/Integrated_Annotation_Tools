@@ -43,8 +43,13 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.dismiss());
   await p.goto(URL); await p.selectOption('#mode', 'key'); await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0);
+  await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+  const tlH = () => p.evaluate(() => document.getElementById('tl').clientHeight);
+  const h0 = await tlH();
   const [pop] = await Promise.all([p.waitForEvent('popup'), p.click('#vwinBtn')]);
   await p.waitForTimeout(300);
+  const h1 = await tlH();
+  check('別窓の間は評価グラフを高くする', h1 > h0 + 50, JSON.stringify({ h0, h1 }));
   const moved = await p.evaluate(() => AH.video.ownerDocument !== document && document.body.classList.contains('vwin'));
   await pop.keyboard.press('Space'); await p.waitForTimeout(500); await pop.keyboard.press('Space');
   await pop.keyboard.press('Digit7');                                   // 別窓で押したキーが評価側に届く
@@ -54,6 +59,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   await pop.close(); await p.waitForTimeout(800);
   const back = await p.evaluate(() => ({ back: AH.video.parentElement.id === 'stage', cls: document.body.className, log: AH.S.log.filter(l => l.type === 'video_window').map(l => l.value).join(',') }));
   check('別窓を閉じると動画が戻る', back.back && !back.cls.includes('vwin') && back.log === 'on,off', JSON.stringify(back));
+  check('動画が戻ると評価グラフの高さも戻る', (await tlH()) === h0);
   // ボタンで戻す
   const [pop2] = await Promise.all([p.waitForEvent('popup'), p.click('#vwinBtn')]);
   await p.waitForTimeout(300); await p.click('#vwinBtn'); await p.waitForTimeout(300);
