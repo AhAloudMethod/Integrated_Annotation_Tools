@@ -150,7 +150,12 @@
   // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
   function xlTable(under, axes = ['v', 'a'], real = false) {
     const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
-    let sig = '';
+    let sig = '', lastCur = -1;
+    // 区間が多くて表が横にはみ出すときは、ホイールの縦の回転で横に送る（表は 2〜3 行なので縦には送らない）
+    grid.addEventListener('wheel', e => {
+      if (grid.scrollWidth <= grid.clientWidth || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault(); grid.scrollLeft += e.deltaY;
+    }, { passive: false });
     const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
     const half = x => x.replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));   // 全角の数字と小数点を半角に
     function bindReal(inp, ax, s) {
@@ -221,8 +226,10 @@
         if (document.activeElement !== inp && inp.value !== String(v ?? '')) inp.value = v ?? '';
       }
       for (const cell of grid.querySelectorAll('[data-s]')) if (cell.tagName !== 'INPUT') cell.classList.toggle('cur', +cell.dataset.s === cur);
+      // 今の区間の列を見える所に出す：再生中と、シーク・聴いてから入力などで区間が変わったとき
       const th = grid.querySelector(`th[data-s="${cur}"]`);
-      if (th && !video.paused) th.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      if (th && (!video.paused || cur !== lastCur)) th.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      lastCur = cur;
     };
   }
   // Excel の右の欄：ラベル・プロット表（VA のときだけ）とメモ
