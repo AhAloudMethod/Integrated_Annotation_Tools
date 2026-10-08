@@ -69,7 +69,7 @@ const BAD = makeFolder('exp_bad', {
   });
   await ctx.route('https://survey.test/**', r => r.fulfill({ contentType: 'text/html', body: '<p>survey</p>' }));
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
-  p.on('dialog', d => d.accept());
+  const dialogs = []; p.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   const downloads = [];
   p.on('download', d => downloads.push(d));
   const dl = name => downloads.find(d => d.suggestedFilename() === name);
@@ -248,6 +248,30 @@ const BAD = makeFolder('exp_bad', {
   const cleared = await p.evaluate(() => ({ prog: localStorage.getItem('ahann_exp:exptest:P02'), auto: localStorage.getItem('ahann4:sam:P02:a.mp4') }));
   check('「ブラウザから消す」で zip・進行・自動保存を消す', (await p.$$eval('#expZips li', ls => ls.length)) === 0 && cleared.prog === null && cleared.auto === null, JSON.stringify(cleared));
   await p.click('#expCancel');
+
+  // ---- 通常の画面で残った保存データ（同じ参加者 ID・方式・動画）と、開始を押す前の保存データは、再開を尋ねずに新しく始める
+  await p.evaluate(() => {
+    localStorage.setItem('ahann4:sam:P02:a.mp4', JSON.stringify({ meta: { mode: 'sam', participant: 'P02', video_file: 'a.mp4' }, data: { cells: { v: [3], a: [3] } }, log: [{ type: 'session_start', wall_ms: 0 }] }));
+  });
+  await p.setInputFiles('#expDir', GOOD);
+  await p.waitForSelector('#expGo');
+  await p.selectOption('#expPid', 'P02');
+  const nd = dialogs.length;
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const fresh = await p.evaluate(() => ({ v0: AH.S.data.cells.v[0] ?? null, restore: AH.S.log.some(l => l.type === 'restore') }));
+  check('実験の外の保存データは再開を尋ねずに新しく始める', dialogs.length === nd && fresh.v0 === null && !fresh.restore, JSON.stringify({ fresh, dialogs: dialogs.slice(nd) }));
+  await p.keyboard.press('Control+Shift+KeyE');   // 開始の前に抜ける（保存データは残るが、開始を押していない）
+  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+  await p.setInputFiles('#expDir', GOOD);
+  await p.waitForSelector('#expGo');
+  await p.selectOption('#expPid', 'P02');
+  const nd2 = dialogs.length;
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  check('開始を押す前の保存データも再開を尋ねない', dialogs.slice(nd2).every(m => !m.includes('途中データ')), JSON.stringify(dialogs.slice(nd2)));
+  await p.keyboard.press('Control+Shift+KeyE');
+  await p.waitForLoadState('load'); await p.waitForTimeout(500);
 
   // ---- 動画より長い評価区間：試行を始めない
   await p.setInputFiles('#expDir', GOOD);

@@ -445,5 +445,10 @@
   $('expSetupDir').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) setupExport(list); });
   $('expDoneBtn').addEventListener('click', e => { e.currentTarget.blur(); complete(); });
 
-  Object.assign(_, { expOn: () => !!X, expBlocked: () => !!X && X.state !== 'running', expState: () => (X ? X.state : null) });
+  // 自動保存から再開してよいか：この実験・参加者・試行の保存データで、「開始」を押した後のもの（core/storage.js）
+  const expResumable = s => {
+    const m = s && s.meta && s.meta.experiment;
+    return !!X && !!m && m.name === X.cfg.name && m.participant === X.pid && m.trial === X.i && (s.log || []).some(l => l.type === 'task_start');
+  };
+  Object.assign(_, { expResumable, expOn: () => !!X, expBlocked: () => !!X && X.state !== 'running', expState: () => (X ? X.state : null) });
 })();

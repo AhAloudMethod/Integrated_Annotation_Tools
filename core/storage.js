@@ -12,6 +12,9 @@
     try {
       const raw = localStorage.getItem(key()); if (!raw) return false;
       const s = JSON.parse(raw);
+      // 実験モードでは、この実験のこの試行を「開始」した後の保存データだけを再開する。
+      // 通常の画面で同じ参加者 ID・方式・動画を開いて残った保存データや、開始を押す前の保存データは尋ねずに新しく始める（上書きする）
+      if (_.expOn && _.expOn() && !_.expResumable(s)) return false;
       if (!confirm(`「${modes[S.meta.mode].label}」でこの参加者ID・動画の途中データがあります。続きから再開しますか？\n（キャンセルすると新しく始めます）`)) {
         localStorage.removeItem(key()); return false;
       }
