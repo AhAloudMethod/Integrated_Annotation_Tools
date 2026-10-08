@@ -86,6 +86,23 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.close();
   }
 
+  // ---- Excel：見返しの間は画面の色が変わり、セルに打てない（入れている途中のセルからもフォーカスを外す）
+  {
+    const p = await open('excel');
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('6');
+    await p.click('input[data-ax=v][data-s="1"]');
+    await p.evaluate(() => AH._.setReview(true)); await p.waitForTimeout(100);
+    await p.keyboard.type('7');
+    await p.evaluate(() => document.querySelector('input[data-ax=v][data-s="2"]').focus()); await p.keyboard.type('8');
+    const rv = await p.evaluate(() => ({ cells: [0, 1, 2].map(s => AH.S.data.cells.v[s] ?? null), ro: document.querySelector('input[data-ax=v][data-s="2"]').readOnly,
+      shadow: getComputedStyle(document.querySelector('main')).boxShadow, tag: getComputedStyle(document.querySelector('main'), '::before').content }));
+    check('Excel：見返しの間は画面の枠と札が出て、セルに打てない', JSON.stringify(rv.cells) === '[6,null,null]' && rv.ro && rv.shadow !== 'none' && /見返し中/.test(rv.tag), JSON.stringify(rv));
+    await p.evaluate(() => AH._.setReview(false)); await p.waitForTimeout(100);
+    const back = await p.evaluate(() => ({ ro: document.querySelector('input[data-ax=v][data-s="2"]').readOnly, shadow: getComputedStyle(document.querySelector('main')).boxShadow }));
+    check('Excel：見返しを終えるとセルに打てて、枠も消える', !back.ro && back.shadow === 'none', JSON.stringify(back));
+    await p.close();
+  }
+
   { const p = await ctx.newPage(); await p.goto(URL); await p.evaluate(() => localStorage.removeItem('ahann_listen')); await p.close(); }
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();

@@ -9,6 +9,7 @@
     if (on === v) return;
     on = v;
     if (on) { _.setArmed(false); _.endStroke('review'); _.pen.down = false; if (_.setVoice) _.setVoice(false); }
+    if (on && $('under').contains(document.activeElement)) document.activeElement.blur();   // Excel のセルに入れている途中なら外す
     document.body.classList.toggle('review', on);
     $('reviewBtn').classList.toggle('on', on);
     $('reviewBtn').textContent = on ? '見返し中' : '見返し';

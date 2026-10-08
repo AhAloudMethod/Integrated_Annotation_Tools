@@ -214,7 +214,9 @@
       if (!S.meta.duration) return;
       if (sig !== AH.rangeSig()) build();
       const cur = AH.curSec();
+      const ro = AH.reviewing();   // 見返しの間はセルに打てない
       for (const inp of grid.querySelectorAll('input')) {
+        inp.readOnly = ro;
         const v = S.data.cells[inp.dataset.ax][+inp.dataset.s];
         if (document.activeElement !== inp && inp.value !== String(v ?? '')) inp.value = v ?? '';
       }
