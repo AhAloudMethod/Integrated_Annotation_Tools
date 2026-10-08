@@ -48,6 +48,27 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   check('手入力のフレームレートを動画ごとに覚える', f.fps === '25' && /手入力/.test(f.info), JSON.stringify(f));
   await p.locator('#rgPanel').screenshot({ path: out('shot_frame_panel.png') });
 
+  // 矢印キー：←→ は前・次の区間の始めへ（不揃いの区間でも）、Ctrl+←→ は 1 フレーム、Shift+←→ は 0.1 秒
+  await p.keyboard.press('Escape'); await p.selectOption('#mode', 'excel'); await p.waitForTimeout(150);
+  await p.evaluate(() => { AH._.setRange({ edges: [1, 2.5, 4, 7, 10], start: 1, target: 10, count: 4 }); AH.seekTo(3); document.activeElement.blur(); }); await p.waitForTimeout(150);
+  const tAt = () => p.evaluate(() => +AH.video.currentTime.toFixed(3));
+  await p.keyboard.press('ArrowRight'); await p.waitForTimeout(120); const k1 = await tAt();
+  await p.keyboard.press('ArrowRight'); await p.waitForTimeout(120); const k2 = await tAt();
+  await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(120); await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(120); const k3 = await tAt();
+  await p.evaluate(() => AH.seekTo(0.3)); await p.waitForTimeout(120);
+  await p.keyboard.press('ArrowRight'); await p.waitForTimeout(120); const k4 = await tAt();
+  check('←→ で前・次の区間の始めへ移り、評価区間の前からは最初の区間へ', k1 === 4.001 && k2 === 7.001 && k3 === 2.501 && k4 === 1.001, JSON.stringify([k1, k2, k3, k4]));
+  const fr0 = await p.evaluate(() => AH._.frameAt(AH.video.currentTime));
+  await p.keyboard.press('Control+ArrowRight'); await p.waitForTimeout(120); const fr1 = await p.evaluate(() => AH._.frameAt(AH.video.currentTime));
+  await p.keyboard.press('Control+ArrowLeft'); await p.keyboard.press('Control+ArrowLeft'); await p.waitForTimeout(120); const fr2 = await p.evaluate(() => AH._.frameAt(AH.video.currentTime));
+  await p.keyboard.press('Shift+ArrowRight'); await p.waitForTimeout(120); const k5 = await tAt();
+  check('Ctrl+←→ で 1 フレーム、Shift+←→ で 0.1 秒動く', fr1 === fr0 + 1 && fr2 === fr0 - 1 && Math.abs(k5 - (fr2 / 25 + 0.001 + 0.1)) < 0.002, JSON.stringify({ fr0, fr1, fr2, k5 }));
+  // Excel のセルの中：←→ はセルの移動のまま、Ctrl+←→ は 1 フレーム
+  await p.click('input[data-ax=v][data-s="1"]');
+  await p.keyboard.press('Control+ArrowRight'); await p.waitForTimeout(120); const fr3 = await p.evaluate(() => [AH._.frameAt(AH.video.currentTime), document.activeElement.dataset.s]);
+  await p.keyboard.press('ArrowRight'); const fs4 = await p.evaluate(() => document.activeElement.dataset.s);
+  check('セルの中では Ctrl+←→ で 1 フレーム動き、←→ はセルを移る', fr3[0] === fr2 + 3 && fr3[1] === '1' && fs4 === '2', JSON.stringify({ fr3, fs4 }));
+
   await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_fps') || k.startsWith('ahann_range')) localStorage.removeItem(k); });
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();

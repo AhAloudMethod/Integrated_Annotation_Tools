@@ -190,6 +190,7 @@
             if (e.key === 'Escape') { inp.blur(); return; }
             // 聴いてから入力：セルに入れている間も R で聴いた区間をもう一度聴く（セルに R は入らない）
             if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey && AH._.listenUsable() && AH._.listenReplay()) { e.preventDefault(); return; }
+            if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); AH._.frameStep(e.key === 'ArrowLeft' ? -1 : 1); return; }   // Ctrl+←→：1 フレーム移動
             if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.cutNow(); return; }   // 今の時間で区切る（区切れるときだけ）
             if (!move) return;
             e.preventDefault();

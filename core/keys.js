@@ -2,6 +2,15 @@
 (() => {
   const _ = AH._;
   const { video, S, undo, redo, writeMode, setArmed, seekTo, togglePlay } = _;
+  // ←→：評価区間の前・次の区間の始めへ（評価区間の外からは最初・最後の区間へ）。Shift+←→ は 0.1 秒、Ctrl+←→ は 1 フレーム
+  function arrow(e) {
+    const d = e.code === 'ArrowLeft' ? -1 : 1;
+    if (e.ctrlKey || e.metaKey) { _.frameStep(d); return; }
+    if (e.shiftKey) { seekTo(video.currentTime + 0.1 * d); return; }
+    const n = _.nSec(), b = _.binAt(video.currentTime || 0);
+    const s = b < 0 ? (d > 0 ? 0 : -1) : b >= n ? (d < 0 ? n - 1 : n) : b + d;
+    if (s >= 0 && s < n) seekTo(_.binStart(s) + 0.001);
+  }
   // ---------- キー操作 ----------
   document.addEventListener('keydown', e => {
     let tag = e.target.tagName;
@@ -15,7 +24,7 @@
     if (e.code === 'KeyV' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _.setReview(!_.reviewing()); return; }
     if (_.reviewing()) {   // 見返しの間は再生・移動だけ（方式のキー入力は渡さない）
       if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-      else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); seekTo(video.currentTime + (e.shiftKey ? 0.1 : 1) * (e.code === 'ArrowLeft' ? -1 : 1)); }
+      else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); arrow(e); }
       return;
     }
     if (_.M && _.M.onKey && _.M.onKey(e)) { e.preventDefault(); return; }
@@ -23,10 +32,7 @@
     if (e.code === 'KeyR' && _.listenUsable() && _.listenReplay()) { e.preventDefault(); return; }
     if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey && _.cutNow()) { e.preventDefault(); return; }   // 今の時間で区切る
     if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-    else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
-      e.preventDefault();
-      seekTo(video.currentTime + (e.shiftKey ? 0.1 : 1) * (e.code === 'ArrowLeft' ? -1 : 1));
-    }
+    else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); arrow(e); }
     else if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
     else if (e.code === 'KeyY' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
     else if (e.code === 'KeyR' && writeMode() === 'armed') { e.preventDefault(); setArmed(!S.armed); }
