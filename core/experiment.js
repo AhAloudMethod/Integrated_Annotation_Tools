@@ -253,8 +253,8 @@
       cover(head + '<p>準備ができたら「開始」を押してください。</p><button id="expStart" type="button" class="expMain">開始</button>');
       $('expStart').addEventListener('click', start);   // フォーカスは置かない（Space で誤って始めないように）
     } else if (st === 'done' || st === 'finished') {
-      // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（最後なら終わりの案内）を出さない
-      const sv = surveys(X.i), last = st === 'finished', opened = new Set();
+      // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（最後なら終わりの案内）を出さない。最後の試行の後には finalSurvey も出す
+      const last = st === 'finished', sv = surveys(X.i, last), opened = new Set();
       const next = last ? '<p>すべての試行が終わりました。ありがとうございました。</p><button id="expSum" type="button">要約をもう一度書き出す</button>'
         : '<button id="expNext" type="button" class="expMain">次へ</button>';
       const many = sv.length > 1;
@@ -272,14 +272,14 @@
     } else cover('');
   }
   // アンケートの一覧 [{ url, label }]：試行の survey（false なら無し）、なければ全体の survey（練習の試行には使わない）。
-  // survey は URL の文字列か、URL の文字列・{ url, label } の配列。{pid} などを試行の値に置き換える
-  function surveys(i) {
+  // final なら、実験の後に 1 回だけ答える finalSurvey を後ろに足す。
+  // どちらも URL の文字列か、URL の文字列・{ url, label } の配列。{pid} などを試行の値に置き換える
+  function surveys(i, final) {
     const t = X.trials[i];
-    const tpl = t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey;
-    if (!tpl) return [];
     const val = { pid: X.pid, trial: i + 1, mode: t.mode, video: t.video, practice: t.practice ? 1 : 0, name: X.cfg.name };
     const fill = u => u.replace(/\{(pid|trial|mode|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
-    return (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
+    const list = tpl => !tpl ? [] : (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
+    return [...list(t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey), ...(final ? list(X.cfg.finalSurvey) : [])];
   }
   function start() {
     if (!X || X.state !== 'ready') return;

@@ -35,6 +35,7 @@ const GOOD = makeFolder('exp_good', {
     name: 'exptest',
     settings: { review: false, videoWindow: false, listen: false },
     survey: ['https://survey.test/form?pid={pid}&t={trial}&m={mode}&v={video}', { url: 'https://survey.test/sus?pid={pid}', label: 'SUS に答える' }],
+    finalSurvey: 'https://survey.test/final?pid={pid}&n={name}',
     participants: {
       P01: [
         { mode: 'emujoy', video: 'practice.mp4', practice: true, options: { face: false } },
@@ -175,7 +176,7 @@ const BAD = makeFolder('exp_bad', {
   const csv = (z2['P01_exptest_trials.csv'] || '').trim().split('\n');
   check('最後の試行の zip の要約に全試行が入る', csv.length === 3 && csv[0].startsWith('trial,practice,mode,video') && csv[1].startsWith('1,1,emujoy') && csv[2].startsWith('2,0,excel'), JSON.stringify(csv));
   const labels = await p.$$eval('.expSurvey', bs => bs.map(b => b.textContent));
-  check('本番の試行の後はアンケートのボタン（名前の無いものは番号、あるものはその名前）だけを出す', JSON.stringify(labels) === '["アンケート 1 を開く","SUS に答える"]' && !(await vis('#expSum')), JSON.stringify(labels));
+  check('最後の試行の後は試行のアンケートと finalSurvey のボタン（名前の無いものは番号、あるものはその名前）だけを出す', JSON.stringify(labels) === '["アンケート 1 を開く","SUS に答える","アンケート 3 を開く"]' && !(await vis('#expSum')), JSON.stringify(labels));
   const [pop] = await Promise.all([ctx.waitForEvent('page'), p.click('#expSurvey')]);
   await pop.waitForLoadState();
   check('アンケートを別のタブで開き、URL に参加者・試行・方式・動画が入る', pop.url() === 'https://survey.test/form?pid=P01&t=2&m=excel&v=a.mp4', pop.url());
@@ -186,8 +187,13 @@ const BAD = makeFolder('exp_bad', {
   await pop2.waitForLoadState();
   check('2 つ目のアンケートも別のタブで開く', pop2.url() === 'https://survey.test/sus?pid=P01', pop2.url());
   await pop2.close();
+  check('2 つ開いても、finalSurvey を開くまでは終わりの案内を出さない', !(await vis('#expSum')));
+  const [pop3] = await Promise.all([ctx.waitForEvent('page'), p.click('#expSurvey3')]);
+  await pop3.waitForLoadState();
+  check('finalSurvey を別のタブで開き、URL に参加者と実験名が入る', pop3.url() === 'https://survey.test/final?pid=P01&n=exptest', pop3.url());
+  await pop3.close();
   prog = await p.evaluate(() => JSON.parse(localStorage.getItem('ahann_exp:exptest:P01')).done);
-  check('すべて開いた後に終わりの案内が出て、要約に開いた数（survey_opened）が残る', (await vis('#expSum')) && prog[1].survey_opened === 2 && prog[0].survey_opened === 0, JSON.stringify(prog[1]));
+  check('すべて開いた後に終わりの案内が出て、要約に開いた数（survey_opened）が残る', (await vis('#expSum')) && prog[1].survey_opened === 3 && prog[0].survey_opened === 0, JSON.stringify(prog[1]));
   check('進行をブラウザに残す', JSON.stringify(Object.keys(prog)) === '["0","1"]');
 
   // ---- 抜ける：設定が実験前の値に戻る
