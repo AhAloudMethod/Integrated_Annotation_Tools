@@ -140,7 +140,7 @@
     const t = G.tOf(ev.clientX - r.left);
     let v = L.vOf(clamp(ev.clientY - r.top, L.y0, L.y1));
     if (!(_.M && _.M.unbounded)) v = clamp(v, 1, 9);
-    v = isInt() ? Math.round(v) : r2(v);
+    v = isInt() ? Math.round(v) : _.M && _.M.decimals === 1 ? Math.round(v * 10) / 10 : r2(v);   // Excel の連続値は小数第1位まで
     if (model() === 'table') {
       const s = binAt(t); if (s < 0 || s >= nSec()) return;
       if (S.data.cells[edit.axis][s] !== v) { if (!edit.changed) pushUndo(edit.before); edit.changed = true; S.data.cells[edit.axis][s] = v; edit.bins.add(s); }

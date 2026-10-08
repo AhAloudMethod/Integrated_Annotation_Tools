@@ -167,16 +167,16 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('自分で区切る：C キーで今の時間で区切る（セルに入れている間も効き、セルに C は入らない）', c1[0] === 15 && c1[1] && c2[0] === 16 && c2[1] && c2[2] === '7', JSON.stringify({ c1, c2 }));
     await p.keyboard.press('Escape');
     await p.evaluate(() => { AH._.expOn = AH._.__expOn; });
-    // 値「連続値」：セルに小数（小数第2位まで）が入り、確定のときに 1〜9 の外を弾く。全角の数字も入る
+    // 値「連続値」：セルに小数（小数第1位まで）が入り、確定のときに 1〜9 の外を弾く。全角の数字も入る
     await pick(p, '値', 'real');
     const realTb = await p.evaluate(() => ({ values: AH.S.meta.options.values, real: !!document.querySelector('table.xl.real'), int: AH.mode.isInteger() }));
     await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.press('Control+a');
-    await p.keyboard.type('7.25'); await p.keyboard.press('Enter');
+    await p.keyboard.type('7.25'); await p.keyboard.press('Enter');   // 3 文字（7.2）までしか入らない
     await p.keyboard.type('３．５'); await p.keyboard.press('Enter');
     await p.keyboard.type('9.5'); await p.keyboard.press('Enter');
     await p.keyboard.type('0.5'); await p.keyboard.press('Escape'); await p.waitForTimeout(100);
     const rc = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));
-    check('Excel＋連続値：小数が入り（全角も可）、1〜9 の外は入らない', realTb.values === 'real' && realTb.real && !realTb.int && JSON.stringify(rc) === '[[7.25,null],[3.5,null]]', JSON.stringify({ realTb, rc }));
+    check('Excel＋連続値：小数が入り（全角も可）、1〜9 の外は入らない', realTb.values === 'real' && realTb.real && !realTb.int && JSON.stringify(rc) === '[[7.2,null],[3.5,null]]', JSON.stringify({ realTb, rc }));
     // 1軸：その軸の行だけ
     await pick(p, '次元', 'a');
     const ax1 = await p.evaluate(() => [...document.querySelectorAll('table.xl input[data-s="0"]')].map(i => i.dataset.ax));

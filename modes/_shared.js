@@ -147,7 +147,7 @@
     };
   }
   // Excel の評価シート（Excel 方式とカスタムの Excel）：行は軸、列は評価区間。セルに 1〜9 を入れる
-  // real：連続値（1〜9 の小数。小数第2位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
+  // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
   function xlTable(under, axes = ['v', 'a'], real = false) {
     const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
     let sig = '';
@@ -159,7 +159,7 @@
         const x = half(inp.value).trim();
         if (x === '') { AH.setCell(ax, s, null, 'clear'); return; }
         const v = +x;
-        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && v >= 1 && v <= 9) { AH.setCell(ax, s, AH.r2(v), 'input'); inp.value = AH.r2(v); }
+        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && v >= 1 && v <= 9) { const r = Math.round(v * 10) / 10; AH.setCell(ax, s, r, 'input'); inp.value = r; }
         else bad(inp, ax, s);
       });
     }
@@ -173,7 +173,7 @@
         const L = AH.ax(ax), name = `${L.name}(1:${L.lo}ー9:${L.hi})`;
         tr = h('tr', {}, `<th>${name}</th>`);
         for (let s = 0; s < n; s++) {
-          const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: real ? 'decimal' : 'numeric', maxlength: real ? '4' : '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
+          const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: real ? 'decimal' : 'numeric', maxlength: real ? '3' : '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
           if (real) bindReal(inp, ax, s);
           else inp.addEventListener('input', () => {
             const x = inp.value.trim();
