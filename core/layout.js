@@ -74,6 +74,16 @@
 
   function resize() { fitStage(); fitTools(); fitCanvas(tl); if (_.M && _.M.resize) _.M.resize(); refresh(); }
   window.addEventListener('resize', resize);
+  // 区間方式の欄（Excel の表など）や評価グラフの高さが変わると、動画の欄に使える高さも変わる。合わせ直さないと動画が表に重なる
+  if (window.ResizeObserver) {
+    let queued = false, last = '';
+    const ro = new ResizeObserver(() => {
+      const sig = $('under').offsetHeight + ':' + tl.parentElement.offsetHeight;
+      if (queued || sig === last) return;
+      last = sig; queued = true; requestAnimationFrame(() => { queued = false; resize(); });
+    });
+    ro.observe($('under')); ro.observe(tl.parentElement);
+  }
 
   let tlOn = false; try { tlOn = localStorage.getItem('ahann_tl') === '1'; } catch (_) {}
   document.body.classList.toggle('noTl', !tlOn); $('tlBtn').classList.toggle('on', tlOn);
