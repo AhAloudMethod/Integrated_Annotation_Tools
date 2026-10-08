@@ -91,6 +91,21 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await q.close();
   }
 
+  // ---- 4. 発声なし：今の区間を両軸 0 にし、セルは 0、形のボタンでは変わらない。Ctrl+Z の 1 回で戻る
+  {
+    const p = await open();
+    await p.evaluate(() => AH.seekTo(4.5)); await p.waitForTimeout(100);
+    await p.click('.curveBox .novoice');
+    const z = await p.evaluate(() => ({ v: AH.valueAt('v', 4.5), a: AH.valueAt('a', 4.99), b: AH.valueAt('v', 5.0), log: AH.S.log.some(l => l.type === 'curve_novoice') }));
+    const cz = [(await cells(p, 'v'))[4], (await cells(p, 'a'))[4]];
+    await p.click('.curveBox .shape:text("直線")');
+    const cz2 = (await cells(p, 'v'))[4];
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    const back = await p.evaluate(() => AH.valueAt('v', 4.5));
+    check('発声なしは今の区間を両軸 0 にしてセルに 0 を出し、形のボタンでは変わらず、Ctrl+Z で戻る', z.v === 0 && z.a === 0 && z.b === 5 && z.log && cz.join() === '0,0' && cz2 === '0' && back === 5, JSON.stringify({ z, cz, cz2, back }));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

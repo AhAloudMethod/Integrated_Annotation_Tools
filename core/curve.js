@@ -50,14 +50,14 @@
     return m;
   }
   // 区間 s・軸 ax を形の曲線で描き換え（base の系列から）、形の記録と書き込みの記録（_strokes）に残す。取り消しの記録は呼び出し側
-  function put(base, ax, s, from, to, shape, reason) {
+  function put(base, ax, s, from, to, shape, reason, source = 'template') {
     const m = samples(s, from, to, shape); if (!m.size) return false;
     S.data.points[ax] = _.rewriteFrames(base.points[ax], m);
     const b0 = binStart(s), b1 = _.binEnd(s);
     trim(ax, b0, b1);
     if (SHAPES[shape]) (S.data.shapes || (S.data.shapes = [])).push({ axis: ax, t0: +b0.toFixed(4), t1: +b1.toFixed(4), shape });
     const fs = [...m.keys()];
-    S.data.strokes.push({ id: S.data.strokes.length, source: 'template', axes: ax, shape, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: reason, wall_ms_end: wall(),
+    S.data.strokes.push({ id: S.data.strokes.length, source, axes: ax, shape, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: reason, wall_ms_end: wall(),
       samples: fs.map(f => [+(f / FPS).toFixed(4), ax === 'v' ? m.get(f) : '', ax === 'a' ? m.get(f) : '']) });
     return true;
   }
@@ -100,5 +100,16 @@
     _.refresh(); return true;
   }
 
-  Object.assign(_, { curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
+  // 発声なし（パネルのボタン）：区間を両軸とも 0 で描き換える（形の記録は外す）。読みでは shape が zero になる
+  function noVoice(s, axes) {
+    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    const before = snapshot();
+    let ch = false; for (const ax of axes) ch = put(S.data, ax, s, 0, 0, 'none', 'novoice', 'novoice') || ch;
+    if (!ch) return false;
+    pushUndo(before);
+    addLog('curve_novoice', { axis: axes.join(''), detail: 'bin ' + s });
+    _.refresh(); return true;
+  }
+
+  Object.assign(_, { curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
 })();

@@ -57,13 +57,15 @@
       if (!D || !S.data) continue;
       g.strokeStyle = L.col; g.fillStyle = L.col; g.lineWidth = 2;
       if (model() === 'series') {
-        const ps = S.data.points[L.ax];
-        g.beginPath();
+        // 区間内で変化（core/curve.js）の 0 は発声なし：線ではなく、欄の高さの灰色の帯にする
+        const ps = S.data.points[L.ax], zero = i => _.curveOn() && ps[i].val === 0;
+        g.beginPath(); let on = false;
         ps.forEach((p, i) => {
-          const y = L.yOf(p.val);
-          if (i === 0) g.moveTo(xOf(p.t), y); else g.lineTo(xOf(p.t), y);
           const nx = i + 1 < ps.length ? xOf(ps[i + 1].t) : xOf(D);
-          g.lineTo(nx, y); if (i + 1 < ps.length) g.lineTo(nx, L.yOf(ps[i + 1].val));
+          if (zero(i)) { g.fillStyle = css('--muted'); g.globalAlpha = 0.25; g.fillRect(xOf(p.t), L.y0, nx - xOf(p.t), L.y1 - L.y0); g.globalAlpha = 1; g.fillStyle = L.col; on = false; return; }
+          const y = L.yOf(p.val);
+          if (!on) { g.moveTo(xOf(p.t), y); on = true; } else g.lineTo(xOf(p.t), y);
+          g.lineTo(nx, y); if (i + 1 < ps.length && !zero(i + 1)) g.lineTo(nx, L.yOf(ps[i + 1].val));
         });
         g.stroke();
         if (isInt() && ps.length < 400) for (const p of ps) if (!p.init) { g.beginPath(); g.arc(xOf(p.t), L.yOf(p.val), 2.5, 0, 7); g.fill(); }

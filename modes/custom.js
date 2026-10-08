@@ -62,6 +62,7 @@
     const shapes = h('div', { class: 'curveShapes' });
     for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; AH.curveReshape(AH.curSec(), k, act()); })).dataset.k = k;
     box.appendChild(shapes);
+    const nv = h('div', { class: 'curveShapes' }); nv.appendChild(btn('発声なし', 'novoice', () => AH.curveNoVoice(AH.curSec(), act()))); box.appendChild(nv);
     const sync = () => {
       if (tools) for (const b of tools.children) b.classList.toggle('on', b.dataset.k === curveTool());
       for (const b of shapes.children) b.classList.toggle('on', b.dataset.k === curveShapeSel);
@@ -290,7 +291,7 @@
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
-      if (curve()) return `<p>Excel の評価シートと同じ区間で、区間の中の値の動きを評価グラフに入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。表のセルは表示だけで、区間の始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。セルをクリックするとその区間へ移ります。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${other() ? AH.ax(other()).name + 'は5に固定します。' : ''}</p>`;
+      if (curve()) return `<p>Excel の評価シートと同じ区間で、区間の中の値の動きを評価グラフに入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で今の区間を 0（発声なし）にします。表のセルは表示だけで、区間の始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。セルをクリックするとその区間へ移ります。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${other() ? AH.ax(other()).name + 'は5に固定します。' : ''}</p>`;
       if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${o().cuts === 'self' ? '「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;

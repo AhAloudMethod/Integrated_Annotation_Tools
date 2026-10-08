@@ -23,7 +23,7 @@
     S, pen, video, init, register, refresh, remount, addLog, pushUndo, snapshot, css, fitCanvas, fmt, clamp, r2,
     vt, valueAt, placePoint, deletePointBefore, penDown, penMove, penUp, setArmed, endStroke, isWriting: () => !!_.stroke,
     nSec, curSec, inputSec, binStart, secLabel, rangeSig, inRange, setCell, setCells, addEvent, deleteEventBefore, seekTo, togglePlay, setOption,
-    gamepad, padJoy, padSliders, quadColor, gradColor, intensity, rgba, hasVideo: () => !!video.src, curveInfo: (ax, s, mean) => _.curveInfo(ax, s, mean), curveReshape: (s, shape, axes) => _.curveReshape(s, shape, axes), listenLive: () => _.listenLive(), reviewing: () => _.reviewing(), gridShown: () => _.gridShown(), padSquare: () => _.padSquare(), ax: k => _.ax(k), relabel: t => _.relabel(t),
+    gamepad, padJoy, padSliders, quadColor, gradColor, intensity, rgba, hasVideo: () => !!video.src, curveInfo: (ax, s, mean) => _.curveInfo(ax, s, mean), curveReshape: (s, shape, axes) => _.curveReshape(s, shape, axes), curveNoVoice: (s, axes) => _.curveNoVoice(s, axes), listenLive: () => _.listenLive(), reviewing: () => _.reviewing(), gridShown: () => _.gridShown(), padSquare: () => _.padSquare(), ax: k => _.ax(k), relabel: t => _.relabel(t),
   });
   Object.defineProperty(AH, 'mode', { get() { return _.M; }, enumerable: true });
 })();
