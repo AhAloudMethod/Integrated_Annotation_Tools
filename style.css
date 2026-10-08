@@ -218,6 +218,7 @@ table.xl th,table.xl td{border:1px solid var(--line);padding:0;text-align:center
 table.xl th{padding:3px 6px;font-weight:500;color:var(--muted);white-space:nowrap;background:var(--bg)}
 table.xl tr th:first-child{position:sticky;left:0;z-index:1;text-align:left}
 table.xl td input{width:34px;height:28px;border:0;text-align:center;font:inherit;font-size:14px;background:transparent;color:var(--ink)}
+table.xl.real td input{width:46px}
 table.xl td input:focus{outline:2px solid var(--val);outline-offset:-2px}
 table.xl .cur{background:color-mix(in srgb,var(--val) 16%,transparent)}
 table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}

@@ -4,10 +4,10 @@
   const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, cutBox, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
   const o = () => opts();
   const follow = follower();
-  // インタフェース（rep）。grid・sam・buttons・excel は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
-  // excel は Excel の評価シート（区間ごとのセルにキーボードで入れる）
+  // インタフェース（rep）。grid・sam・buttons は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
+  // excel は Excel の評価シート（区間ごとのセルにキーボードで入れる。値は整数か小数を選ぶ）
   const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', excel: 'Excel（セル）', sliders: 'スライダー2本', rank8: '8方向ボタン（変化の方向）' };
-  const nine = r => ['grid', 'sam', 'buttons', 'excel'].includes(r);
+  const nine = r => ['grid', 'sam', 'buttons'].includes(r);
   // values：値の刻み（real＝連続。1〜9 の小数、int＝離散。1〜9 の整数）。インタフェースとは別に選ぶ
   // cuts：区間の区切り（fixed＝評価区間に従う、self＝自分で区切る。Excel だけ）
   const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false, cuts: 'fixed' };
@@ -24,7 +24,7 @@
     affectgrid: ['Affect Grid', P('disc', 'grid', 'mouse', { trail: false })],
     sam: ['SAM', P('disc', 'sam', 'mouse', { trail: false })],
     affectrank: ['AffectRank', P('cont', 'rank8', 'mouse', { trail: false })],
-    excel: ['Excel', P('disc', 'excel', 'keyboard', { trail: false })],
+    excel: ['Excel', P('disc', 'excel', 'keyboard', { values: 'int', trail: false })],
   };
   const KEYS = Object.keys(DEF).filter(k => k !== 'autoNext' && k !== 'cuts');   // 区切りの選び方はプリセットの判定に使わない
   function normalize(x) {
@@ -258,7 +258,7 @@
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
-      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9 を入力します。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${o().cuts === 'self' ? '「今の時間で区切る」で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
+      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9 を入力します${o().values === 'real' ? '（小数も可。小数第2位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${o().cuts === 'self' ? '「今の時間で区切る」で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
       if (pointType()) how = o().time === 'disc' ? 'クリック（または数字キー：快度＝1〜9、覚醒度＝Shift+数字）で今の区間の値を設定します。<kbd>Backspace</kbd> で今の区間を消去。' : 'クリック（または数字キー）でその時刻に変化点を置きます。<kbd>Backspace</kbd> で直前の変化点を削除。';
@@ -282,7 +282,7 @@
       rows = null; c = null; g = null; this._rank = null; this._now = null; strip = null; table = null; memo = null;
       if (rank()) { this._rank = rankPad(panel, act()); return; }
       if (xl()) {
-        table = xlTable(under, act());
+        table = xlTable(under, act(), o().values === 'real');
         if (o().cuts === 'self') cutBox(panel);
         memo = xlRef(panel);
         return;

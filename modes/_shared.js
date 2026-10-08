@@ -147,23 +147,37 @@
     };
   }
   // Excel の評価シート（Excel 方式とカスタムの Excel）：行は軸、列は評価区間。セルに 1〜9 を入れる
-  function xlTable(under, axes = ['v', 'a']) {
+  // real：連続値（1〜9 の小数。小数第2位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
+  function xlTable(under, axes = ['v', 'a'], real = false) {
     const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
     let sig = '';
+    const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
+    const half = x => x.replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));   // 全角の数字と小数点を半角に
+    function bindReal(inp, ax, s) {
+      inp.addEventListener('input', () => { const x = half(inp.value); if (x !== inp.value) inp.value = x; if (!/^\d*\.?\d*$/.test(x)) bad(inp, ax, s); });
+      inp.addEventListener('change', () => {
+        const x = half(inp.value).trim();
+        if (x === '') { AH.setCell(ax, s, null, 'clear'); return; }
+        const v = +x;
+        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && v >= 1 && v <= 9) { AH.setCell(ax, s, AH.r2(v), 'input'); inp.value = AH.r2(v); }
+        else bad(inp, ax, s);
+      });
+    }
     function build() {
       sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
-      const tb = h('table', { class: 'xl' });
+      const tb = h('table', { class: 'xl' + (real ? ' real' : '') });
       let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s }, AH.secLabel(s))); tb.appendChild(tr);
       axes.forEach((ax, r) => {
         const L = AH.ax(ax), name = `${L.name}(1:${L.lo}ー9:${L.hi})`;
         tr = h('tr', {}, `<th>${name}</th>`);
         for (let s = 0; s < n; s++) {
-          const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: 'numeric', maxlength: '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
-          inp.addEventListener('input', () => {
+          const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: real ? 'decimal' : 'numeric', maxlength: real ? '4' : '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
+          if (real) bindReal(inp, ax, s);
+          else inp.addEventListener('input', () => {
             const x = inp.value.trim();
             if (/^[1-9]$/.test(x)) AH.setCell(ax, s, +x, 'input');
             else if (x === '') AH.setCell(ax, s, null, 'clear');
-            else { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); }
+            else bad(inp, ax, s);
           });
           inp.addEventListener('keydown', e => {
             // Enter は下（最後の行の下は次の区間の最初の行）、Tab は右。Shift を押すと逆向き

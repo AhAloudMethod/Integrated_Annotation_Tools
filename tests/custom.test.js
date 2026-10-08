@@ -1,4 +1,4 @@
-// カスタム条件の回帰：軌跡は実際に評価した範囲だけ・値の刻み（連続／離散）・1軸のときの固定・AffectRank のプリセット・Excel（セル）と区切り、と変化ボタン
+// カスタム条件の回帰：軌跡は実際に評価した範囲だけ・値の刻み（連続／離散）・1軸のときの固定・AffectRank のプリセット・Excel（セル）の区切りと連続値、と変化ボタン
 const { chromium } = require('playwright-core');
 const { URL, VID, BROWSER } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
@@ -127,7 +127,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
       rows: document.querySelectorAll('table.xl tr').length, cutBox: !!document.querySelector('.cutBox') }));
     check('プリセット「Excel」：区間ごと・整数・キーボードで、表を出し、時間・値・入力・フィードバックの欄を出さない',
       st.o.rep === 'excel' && st.o.time === 'disc' && st.o.values === 'int' && st.o.input === 'keyboard' && st.model === 'table' && /Excel/.test(st.note)
-      && st.sels.join() === 'インタフェース,次元,区切り' && !st.fb && st.rows === 3 && !st.cutBox, JSON.stringify(st));
+      && st.sels.join() === 'インタフェース,値,次元,区切り' && !st.fb && st.rows === 3 && !st.cutBox, JSON.stringify(st));
     await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('7'); await p.keyboard.press('Enter'); await p.keyboard.type('3'); await p.keyboard.press('Enter'); await p.keyboard.type('x');
     await p.keyboard.press('Escape');
     const cells = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));
@@ -156,6 +156,16 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('自分で区切る：プリセットは Excel のまま、区切りのボタンを出す', /Excel/.test(self.note) && self.btns.join() === '今の時間で区切る,近くの区切りを消す', JSON.stringify(self));
     check('自分で区切る：実験モードでも右クリックとボタンで区切りを置き、ボタンで消せる', n3 === 14 && n4[0] === 15 && n4[1] && n5[0] === 14 && !n5[1], JSON.stringify({ n3, n4, n5 }));
     await p.evaluate(() => { AH._.expOn = AH._.__expOn; });
+    // 値「連続値」：セルに小数（小数第2位まで）が入り、確定のときに 1〜9 の外を弾く。全角の数字も入る
+    await pick(p, '値', 'real');
+    const realTb = await p.evaluate(() => ({ values: AH.S.meta.options.values, real: !!document.querySelector('table.xl.real'), int: AH.mode.isInteger() }));
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.press('Control+a');
+    await p.keyboard.type('7.25'); await p.keyboard.press('Enter');
+    await p.keyboard.type('３．５'); await p.keyboard.press('Enter');
+    await p.keyboard.type('9.5'); await p.keyboard.press('Enter');
+    await p.keyboard.type('0.5'); await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+    const rc = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));
+    check('Excel＋連続値：小数が入り（全角も可）、1〜9 の外は入らない', realTb.values === 'real' && realTb.real && !realTb.int && JSON.stringify(rc) === '[[7.25,null],[3.5,null]]', JSON.stringify({ realTb, rc }));
     // 1軸：その軸の行だけ
     await pick(p, '次元', 'a');
     const ax1 = await p.evaluate(() => [...document.querySelectorAll('table.xl input[data-s="0"]')].map(i => i.dataset.ax));
