@@ -342,7 +342,8 @@
     }
     if (playAt != null) play += w1 - playAt;
     if (revAt != null) rev += w1 - revAt;
-    const bins = _.nSec(), filled = ax => S.data.cells[ax].slice(0, bins).filter(x => x != null && x !== '').length;
+    // 値を入れた区間の数。区間内で変化（core/curve.js）は、書き込みがかかった区間を数える
+    const bins = _.nSec(), filled = ax => (_.curveOn() ? [...Array(bins).keys()].filter(s => (_.curveInfo(ax, s) || {}).entered).length : S.data.cells[ax].slice(0, bins).filter(x => x != null && x !== '').length);
     return { trial: X.i + 1, practice: t.practice ? 1 : 0, mode: t.mode, condition: cond(t), video: t.video,
       start_iso: S.meta.experiment.start_iso || '', end_iso: S.meta.experiment.end_iso || '',
       task_ms: +(w1 - w0).toFixed(1), play_ms: +play.toFixed(1), review_ms: +rev.toFixed(1),

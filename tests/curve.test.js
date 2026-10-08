@@ -126,6 +126,25 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 6. 書き出し：_bins.csv は軸ごとに from・to・mean・shape。入れていない区間は形が空欄、発声なしは 4 列とも 0。_60hz.csv は連続の方式と同じ
+  {
+    const p = await open({ curveInput: 'template' });
+    await p.evaluate(() => {
+      AH._.setRange({ start: 0, bin: 1, count: 4, target: 4, edges: null });
+      AH._.curveDown('v', 1.5, 2); AH._.curveMove(8); AH._.curveUp();       // 区間 1：快度 2→8 の直線
+      AH._.curveNoVoice(2, ['v', 'a']);                                      // 区間 2：発声なし
+    });
+    const f = await p.evaluate(() => Object.fromEntries(AH._.buildFiles().map(x => [x.name.replace(/^.*?_custom/, ''), x.text])));
+    const bins = f['_bins.csv'].trim().split(String.fromCharCode(10)).map(r => r.split(','));
+    const hz = f['_60hz.csv'].trim().split(String.fromCharCode(10));
+    check('_bins.csv：軸ごとに from・to・mean・shape（直線 2→8 の平均は 5、入れていない区間は形が空欄、発声なしは 0）', bins[0].join() === 'bin,label,t_start,t_end,valence_from,valence_to,valence_mean,valence_shape,arousal_from,arousal_to,arousal_mean,arousal_shape'
+      && bins[2].slice(4).join() === '2,8,5.000,line,5,5,5.000,' && bins[3].slice(4).join() === '0,0,0,0,0,0,0,0' && bins[1].slice(4).join() === '5,5,5.000,,5,5,5.000,', JSON.stringify(bins));
+    check('_60hz.csv・_changepoints.csv・_strokes.csv を連続の方式と同じく書き出す', hz.length === 12 * 60 + 2 && hz[0] === 'frame,t,valence,arousal' && !!f['_changepoints.csv'] && /template/.test(f['_strokes.csv']) && /novoice/.test(f['_strokes.csv']), hz.slice(0, 2).join(' | '));
+    const ses = JSON.parse(f['_session.json']);
+    check('_session.json に形の記録（shapes）が残る', JSON.stringify(ses.data.shapes) === '[{"axis":"v","t0":1,"t1":2,"shape":"line"}]', JSON.stringify(ses.data.shapes));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

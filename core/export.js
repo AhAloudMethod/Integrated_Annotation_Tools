@@ -42,7 +42,18 @@
       out('_60hz.csv', rot ? ['frame', 't', 'valence', 'arousal', 'va_valence', 'va_arousal'] : ['frame', 't', 'valence', 'arousal'], smp);
       // 区間系列。整数値の方式：各区間で最も長く続いた値（同数なら先）。連続値：各区間の平均（有界なら9段階丸めも）
       const rows = [];
-      for (let s = 0; s < n; s++) {
+      if (_.curveOn()) {
+        // 区間内で変化（core/curve.js）：軸ごとに区間の始めの値・終わりの値・平均・形（入れていない区間は形が空欄。発声なしは 4 列とも 0）
+        for (let s = 0; s < n; s++) {
+          const row = binCols(s);
+          for (const ax of ['v', 'a']) {
+            const c = _.curveInfo(ax, s, true);
+            row.push(...(!c ? ['', '', '', ''] : c.shape === 'zero' ? [0, 0, 0, 0] : [c.from, c.to, c.mean.toFixed(3), c.entered ? c.shape : '']));
+          }
+          rows.push(row);
+        }
+      }
+      for (let s = 0; s < (_.curveOn() ? 0 : n); s++) {
         const k0 = Math.round(binStart(s) * FPS), k1 = Math.min(Math.round(_.binEnd(s) * FPS), N + 1);
         const ks = []; for (let k = k0; k < k1; k++) ks.push(k);
         const row = binCols(s);
@@ -61,7 +72,8 @@
         rows.push(row);
       }
       const vaH = rot && !_.M.unbounded ? ['va_valence', 'va_arousal'] : [];
-      out('_bins.csv', isInt() ? [...binHead, 'valence', 'arousal', ...vaH] : _.M.unbounded ? [...binHead, 'valence_mean', 'arousal_mean']
+      const curveH = ['valence', 'arousal'].flatMap(a => ['from', 'to', 'mean', 'shape'].map(k => `${a}_${k}`));
+      out('_bins.csv', _.curveOn() ? [...binHead, ...curveH] : isInt() ? [...binHead, 'valence', 'arousal', ...vaH] : _.M.unbounded ? [...binHead, 'valence_mean', 'arousal_mean']
         : [...binHead, 'valence_mean', 'arousal_mean', 'valence_r9', 'arousal_r9', ...vaH], rows);
       const cps = [];
       for (const ax of ['v', 'a']) for (const p of S.data.points[ax]) cps.push([colName(ax === 'v' ? 'valence' : 'arousal'), p.t, p.val, p.init ? 1 : 0]);
