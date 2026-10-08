@@ -3,7 +3,7 @@
 // 参加者ごとの順と、動画ごとの評価区間、誤り・警告を出す。誤りがあれば終了コード 1
 const fs = require('fs');
 const path = require('path');
-const { check, merge, rangeFor } = require('../core/exp-check');
+const { check, merge, rangeFor, conditionFor } = require('../core/exp-check');
 
 const ROOT = path.resolve(__dirname, '..');
 // 方式は index.html が読み込むもの（modes/_shared.js を除く）。表示名は各ファイルの登録（id と同じ行の label）
@@ -42,7 +42,7 @@ function main(arg) {
     console.log('\n参加者ごとの順（[練] は練習）');
     for (const [pid, ts] of Object.entries(cfg.participants)) {
       if (!Array.isArray(ts)) continue;
-      console.log(`  ${pid}: ${ts.map(t => (t && t.practice ? '[練]' : '') + (t ? `${t.mode}/${t.video}` : '?')).join(' → ')}`);
+      console.log(`  ${pid}: ${ts.map(t => (t && t.practice ? '[練]' : '') + (t ? `${t.mode}${conditionFor(cfg, t) ? `（${conditionFor(cfg, t)}）` : ''}/${t.video}` : '?')).join(' → ')}`);
     }
   }
   // 試行で使う動画ごとの評価区間（試行の range が優先）

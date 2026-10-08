@@ -34,11 +34,12 @@ const GOOD = makeFolder('exp_good', {
   'experiment.json': {
     name: 'exptest',
     settings: { review: false, videoWindow: false, listen: false },
-    survey: ['https://survey.test/form?pid={pid}&t={trial}&m={mode}&v={video}', { url: 'https://survey.test/sus?pid={pid}', label: 'SUS に答える' }],
+    conditions: { excel: '条件B' },
+    survey: ['https://survey.test/form?pid={pid}&t={trial}&m={mode}&v={video}&c={condition}', { url: 'https://survey.test/sus?pid={pid}', label: 'SUS に答える' }],
     finalSurvey: 'https://survey.test/final?pid={pid}&n={name}',
     participants: {
       P01: [
-        { mode: 'emujoy', video: 'practice.mp4', practice: true, options: { face: false } },
+        { mode: 'emujoy', video: 'practice.mp4', practice: true, options: { face: false }, condition: '練習用' },
         { mode: 'excel', video: 'a.mp4', settings: { review: true } },
       ],
       P02: [{ mode: 'sam', video: 'a.mp4' }],
@@ -124,6 +125,8 @@ const BAD = makeFolder('exp_bad', {
     opt: [...document.querySelectorAll('#panel .optCtl')].every(e => getComputedStyle(e).display === 'none') }));
   check('1 つ目の試行：方式・参加者・方式の設定・既定の設定（VA、F0 なし、グラフとグリッド線を出す、グラフの編集オン）を当て、方式の設定の欄を隠す',
     r1.mode === 'emujoy' && r1.pid === 'P01' && r1.face === false && r1.axes === 'va' && r1.f0 === false && r1.tl && r1.grid && r1.edit && r1.opt, JSON.stringify(r1));
+  const info1 = await p.evaluate(() => [document.getElementById('expInfo').textContent, AH.S.meta.experiment.condition]);
+  check('条件名（試行の condition）を進行の表示に出し、meta.experiment.condition に残す', info1[0] === '1 / 2　練習　練習用' && info1[1] === '練習用', JSON.stringify(info1));
 
   // 開始前：キー・ゲームパッドのボタン 0 が効かない
   await p.evaluate(id => window.__connect(id, 0), JOY); await p.waitForTimeout(150);
@@ -167,19 +170,21 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready' && AH.S.meta.mode === 'excel');
   const r2 = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), end: AH._.rangeEnd(), log: AH.S.log.filter(l => l.type === 'task_start').length, file: AH.S.meta.video_file }));
   check('2 つ目の試行：Excel・a.mp4 の評価区間（1〜11 秒、2 秒ごと → 5 区間）を当て、ログは新しく始まる', r2.n === 5 && r2.s0 === 1 && Math.abs(r2.end - 11) < 1e-6 && r2.log === 0 && r2.file === 'a.mp4', JSON.stringify(r2));
+  const info2 = await p.evaluate(() => [document.getElementById('expInfo').textContent, document.querySelector('.expProg').textContent]);
   await p.click('#expStart');
   check('見返しを許した試行では見返しボタンが出る', await vis('#reviewBtn'));
+  check('条件名（全体の conditions）を進行の表示と開始の覆いに出す', info2[0] === '2 / 2　条件B' && info2[1] === '2 / 2　条件B', JSON.stringify(info2));
   await p.click('#expDoneBtn');
   await p.waitForFunction(() => AH._.expState() === 'finished');
   await p.waitForTimeout(500);
   const z2 = await zip('P01_t02_a_excel.zip');
   const csv = (z2['P01_exptest_trials.csv'] || '').trim().split('\n');
-  check('最後の試行の zip の要約に全試行が入る', csv.length === 3 && csv[0].startsWith('trial,practice,mode,video') && csv[1].startsWith('1,1,emujoy') && csv[2].startsWith('2,0,excel'), JSON.stringify(csv));
+  check('最後の試行の zip の要約に全試行が入る', csv.length === 3 && csv[0].startsWith('trial,practice,mode,condition,video') && csv[1].startsWith('1,1,emujoy,練習用,') && csv[2].startsWith('2,0,excel,条件B,'), JSON.stringify(csv));
   const labels = await p.$$eval('.expSurvey', bs => bs.map(b => b.textContent));
   check('最後の試行の後は試行のアンケートと finalSurvey のボタン（名前の無いものは番号、あるものはその名前）だけを出す', JSON.stringify(labels) === '["アンケート 1 を開く","SUS に答える","アンケート 3 を開く"]' && !(await vis('#expSum')), JSON.stringify(labels));
   const [pop] = await Promise.all([ctx.waitForEvent('page'), p.click('#expSurvey')]);
   await pop.waitForLoadState();
-  check('アンケートを別のタブで開き、URL に参加者・試行・方式・動画が入る', pop.url() === 'https://survey.test/form?pid=P01&t=2&m=excel&v=a.mp4', pop.url());
+  check('アンケートを別のタブで開き、URL に参加者・試行・方式・動画・条件名が入る', decodeURIComponent(pop.url()) === 'https://survey.test/form?pid=P01&t=2&m=excel&v=a.mp4&c=条件B', pop.url());
   await pop.close();
   let prog = await p.evaluate(() => JSON.parse(localStorage.getItem('ahann_exp:exptest:P01')).done);
   check('1 つだけ開いた時点では終わりの案内を出さず、要約の survey_opened は 1', !(await vis('#expSum')) && prog[1].survey_opened === 1, JSON.stringify(prog[1]));

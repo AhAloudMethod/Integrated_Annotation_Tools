@@ -39,6 +39,13 @@
     return r;
   }
 
+  // 試行の条件名：試行の condition ＞ 全体の conditions（方式 id → 条件名）。無ければ空（画面に出さない）
+  function conditionFor(cfg, t) {
+    if (typeof t.condition === 'string') return t.condition;
+    const c = isObj(cfg.conditions) ? cfg.conditions[t.mode] : null;
+    return typeof c === 'string' ? c : '';
+  }
+
   // exp：experiment.json、setup：setup.json（無ければ null）。env：modes（方式 id の配列）、axes（評価軸の組の id の配列）、has(path)（動画がフォルダにあるか）
   function check(exp, env, setup = null) {
     const errors = [], warnings = [];
@@ -80,6 +87,10 @@
       if (Array.isArray(v) && v.length && v.every(s => isUrl(s) || (isObj(s) && isUrl(s.url) && (s.label == null || typeof s.label === 'string')))) return;
       errors.push(`${where}：${key} は URL の文字列、URL（または { url, label }）の配列、false のどれかです`);
     };
+    if (cfg.conditions != null) {
+      if (!isObj(cfg.conditions) || Object.values(cfg.conditions).some(c => typeof c !== 'string')) errors.push('conditions は方式 id から条件名（文字列）への対応です');
+      else for (const m of Object.keys(cfg.conditions)) if (!env.modes.includes(m)) errors.push(`conditions：方式「${m}」はありません`);
+    }
     chkSet(cfg.settings, '全体'); chkRange(cfg.range, '全体の range'); chkSurvey(cfg.survey, '全体'); chkSurvey(cfg.finalSurvey, '全体', 'finalSurvey');
     const videos = isObj(cfg.videos) ? cfg.videos : {};
     for (const [v, r] of Object.entries(videos)) {
@@ -101,6 +112,7 @@
         const key = `${t.mode}|${t.video}`;
         if (seen.has(key)) errors.push(`${where}：方式と動画の組（${t.mode}・${t.video}）が重複しています`); seen.add(key);
         chkSet(t.settings, where); chkRange(t.range, where); chkSurvey(t.survey, where);
+        if (t.condition != null && typeof t.condition !== 'string') errors.push(`${where}：condition（条件名）は文字列です`);
         if (useVideos && !t.range && t.video && !videos[t.video]) noRange.add(t.video);
       });
     }
@@ -157,7 +169,7 @@
     return ws;
   }
 
-  const api = { SETTINGS, DEF, merge, rangeFor, check, orderWarnings };
+  const api = { SETTINGS, DEF, merge, rangeFor, conditionFor, check, orderWarnings };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else AH._.expCheck = api;
 })();

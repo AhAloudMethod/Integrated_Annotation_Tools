@@ -11,7 +11,7 @@
   // 設定の項目・既定値（書いていない項目はこれ。参加者のブラウザに残った値は使わない）と検査は core/exp-check.js
   const E = _.expCheck, { DEF } = E;
   const LS_KEYS = ['ahann_axes', 'ahann_after', 'ahann_grid', 'ahann_pad_square', 'ahann_f0', 'ahann_listen', 'ahann_tl', 'ahann_vidsize', 'ahann_pad_joy', 'ahann_pad_slider'];
-  const SUM_COLS = ['trial', 'practice', 'mode', 'video', 'start_iso', 'end_iso', 'task_ms', 'play_ms', 'review_ms', 'n_play', 'n_seek', 'n_undo', 'n_redo',
+  const SUM_COLS = ['trial', 'practice', 'mode', 'condition', 'video', 'start_iso', 'end_iso', 'task_ms', 'play_ms', 'review_ms', 'n_play', 'n_seek', 'n_undo', 'n_redo',
     'n_strokes', 'n_events', 'bins', 'filled_v', 'filled_a', 'n_restore', 'partial', 'survey_opened'];
   const VIDEO_RE = /\.(mp4|m4v|mov|webm|mkv|avi|ogv|mpe?g|wmv)$/i;
   // X：実験の状態。cfg（experiment.json に setup.json を合わせたもの）、get（相対パス→File）、pid、trials、i（今の試行）、set（今の設定）、range、state、backup（元の設定）
@@ -89,7 +89,8 @@
     if (html) $('expCard').innerHTML = html;
   }
   const errList = errs => `<ul class="expErr">${errs.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`;
-  const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}　${t.video}`;
+  const cond = t => E.conditionFor(X.cfg, t);   // 条件名（experiment.json の condition・conditions。無ければ空）
+  const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}${cond(t) ? `（${cond(t)}）` : ''}　${t.video}`;
   function setup(cfg, get, { errors: errs, warnings = [] }) {
     X = { cfg, get, state: 'setup', backup: null };
     if (errs.length) {
@@ -232,15 +233,15 @@
     const t = X.trials[i], log = S.log;
     const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
-      name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, settings: X.set, options: { ...S.meta.options } };
+      name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
     if (!started) {   // 復元したときは、その時点の評価区間のまま続ける
       const err = applyRange(X.range);
       if (err) { setState('error', err); return; }
-      addLog('exp_trial', { value: i + 1, detail: JSON.stringify({ name: X.cfg.name, mode: t.mode, video: t.video, practice: !!t.practice, range: X.range }) });
+      addLog('exp_trial', { value: i + 1, detail: JSON.stringify({ name: X.cfg.name, mode: t.mode, condition: cond(t), video: t.video, practice: !!t.practice, range: X.range }) });
     }
     setState(ended ? (i + 1 < X.trials.length ? 'done' : 'finished') : started ? 'running' : 'ready');
   }
-  const progText = () => `${X.i + 1} / ${X.trials.length}${X.trials[X.i].practice ? '　練習' : ''}`;
+  const progText = () => { const t = X.trials[X.i]; return `${X.i + 1} / ${X.trials.length}${t.practice ? '　練習' : ''}${cond(t) ? '　' + cond(t) : ''}`; };
   function setState(st, msg) {
     X.state = st;
     document.body.classList.toggle('expWait', st !== 'running');
@@ -276,8 +277,8 @@
   // どちらも URL の文字列か、URL の文字列・{ url, label } の配列。{pid} などを試行の値に置き換える
   function surveys(i, final) {
     const t = X.trials[i];
-    const val = { pid: X.pid, trial: i + 1, mode: t.mode, video: t.video, practice: t.practice ? 1 : 0, name: X.cfg.name };
-    const fill = u => u.replace(/\{(pid|trial|mode|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
+    const val = { pid: X.pid, trial: i + 1, mode: t.mode, condition: cond(t), video: t.video, practice: t.practice ? 1 : 0, name: X.cfg.name };
+    const fill = u => u.replace(/\{(pid|trial|mode|condition|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
     const list = tpl => !tpl ? [] : (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
     return [...list(t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey), ...(final ? list(X.cfg.finalSurvey) : [])];
   }
@@ -339,7 +340,7 @@
     if (playAt != null) play += w1 - playAt;
     if (revAt != null) rev += w1 - revAt;
     const bins = _.nSec(), filled = ax => S.data.cells[ax].slice(0, bins).filter(x => x != null && x !== '').length;
-    return { trial: X.i + 1, practice: t.practice ? 1 : 0, mode: t.mode, video: t.video,
+    return { trial: X.i + 1, practice: t.practice ? 1 : 0, mode: t.mode, condition: cond(t), video: t.video,
       start_iso: S.meta.experiment.start_iso || '', end_iso: S.meta.experiment.end_iso || '',
       task_ms: +(w1 - w0).toFixed(1), play_ms: +play.toFixed(1), review_ms: +rev.toFixed(1),
       n_play: n('play'), n_seek: n('seek'), n_undo: n('undo'), n_redo: n('redo'),

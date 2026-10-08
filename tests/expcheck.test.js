@@ -36,6 +36,10 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   check('動画ごとの評価区間を出す', r.text.includes('a.mp4: 0.5〜10 秒，1 秒ごと') && r.text.includes('practice.mp4: 4.5〜10 秒'));
   const r0 = run(folder('expc_nosetup', { name: 'ok', participants: balanced }, [...V, 'practice.mp4']));
   check('setup.json が無ければ、動画全体で評価するという警告を出す', r0.code === 0 && r0.text.includes('setup.json：なし') && r0.text.includes('動画ごとの評価区間（setup.json の videos）がありません'), r0.text);
+  const rc = run(folder('expc_cond', { name: 'ok', conditions: { excel: '紙の再現', sam: 1, nosuch: 'x' }, participants: { P01: [{ mode: 'excel', video: 'a.mp4', condition: 2 }] } }, V));
+  check('conditions の値が文字列でない・方式が無い、試行の condition が文字列でないときは誤り', rc.code === 1 && rc.text.includes('conditions は方式 id から条件名') && rc.text.includes('P01 の 1 番目：condition（条件名）は文字列です'), rc.text);
+  const rc2 = run(folder('expc_cond2', { name: 'ok', conditions: { excel: '紙の再現' }, participants: { P01: [{ mode: 'excel', video: 'a.mp4' }, { mode: 'sam', video: 'b.mp4', condition: 'SAM条件' }] } }, V));
+  check('参加者ごとの順に条件名を添える（試行の condition が優先）', rc2.code === 0 && rc2.text.includes('P01: excel（紙の再現）/a.mp4 → sam（SAM条件）/b.mp4'), rc2.text);
   check('参加者ごとの順を出す（練習に [練] を付ける）', r.text.includes('P01: [練]excel/practice.mp4 → excel/a.mp4 → [練]sam/practice.mp4'));
 }
 {
