@@ -82,10 +82,13 @@
       if (r.duration > 0 && end != null && end > r.duration + 0.02) errors.push(`${where}：終了（${end} 秒）が動画の長さ（${r.duration} 秒）を超えています`);
     };
     const isUrl = s => typeof s === 'string' && s !== '';
+    // {pid} の無いアンケートの URL は、回答と参加者を結び付けられない（Google フォームの事前入力の URL に {pid} を入れる）。同じ URL は 1 回だけ警告する
+    const noPid = new Set();
     const chkSurvey = (v, where, key = 'survey') => {
-      if (v == null || v === false || isUrl(v)) return;
-      if (Array.isArray(v) && v.length && v.every(s => isUrl(s) || (isObj(s) && isUrl(s.url) && (s.label == null || typeof s.label === 'string')))) return;
-      errors.push(`${where}：${key} は URL の文字列、URL（または { url, label }）の配列、false のどれかです`);
+      if (v == null || v === false) return;
+      const list = isUrl(v) ? [v] : Array.isArray(v) && v.length && v.every(s => isUrl(s) || (isObj(s) && isUrl(s.url) && (s.label == null || typeof s.label === 'string'))) ? v.map(s => (isUrl(s) ? s : s.url)) : null;
+      if (!list) { errors.push(`${where}：${key} は URL の文字列、URL（または { url, label }）の配列、false のどれかです`); return; }
+      for (const u of list) if (!u.includes('{pid}') && !noPid.has(u)) { noPid.add(u); warnings.push(`${where}：${key} の URL に {pid}（参加者 ID）がありません。回答と参加者を結び付けられません（${u}）`); }
     };
     if (cfg.conditions != null) {
       if (!isObj(cfg.conditions) || Object.values(cfg.conditions).some(c => typeof c !== 'string')) errors.push('conditions は方式 id から条件名（文字列）への対応です');

@@ -67,6 +67,8 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   const fin = finalSurvey => run(folder('expc_fin', { name: 'fin', finalSurvey, participants: { P01: [{ mode: 'excel', video: 'a.mp4' }] } }, ['a.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
   const finOk = fin(['https://x.test/final?p={pid}', { url: 'https://x.test/f2', label: '最後に' }]), finBad = fin(3);
   check('finalSurvey も survey と同じ規則で検査する', finOk.code === 0 && finBad.code === 1 && finBad.text.includes('全体：finalSurvey は URL の文字列'), finOk.text + finBad.text);
+  const svPid = [sv('https://x.test/a'), sv(['https://x.test/a?p={pid}', { url: 'https://x.test/b?p={pid}', label: 'SUS' }])];
+  check('survey の URL に {pid} が無ければ警告する（あれば警告しない）', svPid[0].code === 0 && svPid[0].text.includes('{pid}（参加者 ID）がありません') && !svPid[1].text.includes('{pid}（参加者 ID）'), svPid.map(r => r.text).join('\n'));
   check('survey の空の配列・url の無いもの・文字列でない要素・配列でないオブジェクトは誤り', svBad.every(r => r.code === 1 && r.text.includes('survey は URL の文字列')), svBad.map(r => r.text).join('\n'));
   // experiment.json の settings・試行の range は setup.json より優先する
   const r4 = run(folder('expc_over', { name: 'o', settings: { grid: true }, participants: { P01: [{ mode: 'excel', video: 'c.mp4', range: { start: 1, end: 5 } }] } }, ['c.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
