@@ -182,6 +182,8 @@ body.exp .optCtl{display:none}
 .expZips li{margin:2px 0}
 .expAfter{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .expAfter[hidden]{display:none}
+.expSurveys{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-bottom:12px}
+.expSurvey.expOpened::after{content:"　✓ 開きました"}
 
 /* ==================== 方式別 ==================== */
 

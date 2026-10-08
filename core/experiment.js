@@ -253,28 +253,33 @@
       cover(head + '<p>準備ができたら「開始」を押してください。</p><button id="expStart" type="button" class="expMain">開始</button>');
       $('expStart').addEventListener('click', start);   // フォーカスは置かない（Space で誤って始めないように）
     } else if (st === 'done' || st === 'finished') {
-      // アンケートがある試行は、「アンケートを開く」を押すまで「次へ」（最後なら終わりの案内）を出さない
-      const url = surveyUrl(X.i), last = st === 'finished';
+      // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（最後なら終わりの案内）を出さない
+      const sv = surveys(X.i), last = st === 'finished', opened = new Set();
       const next = last ? '<p>すべての試行が終わりました。ありがとうございました。</p><button id="expSum" type="button">要約をもう一度書き出す</button>'
         : '<button id="expNext" type="button" class="expMain">次へ</button>';
-      cover(head + '<p>完了しました。</p>' + (url ? '<p>アンケートに答えてください。答え終わったら、この画面に戻ってください。</p><button id="expSurvey" type="button" class="expMain">アンケートを開く</button>' : '')
-        + `<div id="expAfter"${url ? ' hidden' : ''} class="expAfter">${next}</div>`);
-      if (url) $('expSurvey').addEventListener('click', () => {
-        window.open(url, '_blank');
-        saveProgress(X.i, { survey_opened: 1 });   // 完了の後なので、操作ログではなく要約に残す
-        $('expAfter').hidden = false;
-      });
+      const many = sv.length > 1;
+      cover(head + '<p>完了しました。</p>' + (sv.length ? `<p>アンケートに答えてください${many ? `（${sv.length} つあります。上から順に答えてください）` : ''}。答え終わったら、この画面に戻ってください。</p>`
+        + `<div class="expSurveys">${sv.map((s, k) => `<button id="expSurvey${k ? k + 1 : ''}" type="button" class="expMain expSurvey">${esc(s.label || (many ? `アンケート ${k + 1} を開く` : 'アンケートを開く'))}</button>`).join('')}</div>` : '')
+        + `<div id="expAfter"${sv.length ? ' hidden' : ''} class="expAfter">${next}</div>`);
+      sv.forEach((s, k) => $('expSurvey' + (k ? k + 1 : '')).addEventListener('click', e => {
+        window.open(s.url, '_blank');
+        opened.add(k); e.currentTarget.classList.add('expOpened');
+        saveProgress(X.i, { survey_opened: opened.size });   // 完了の後なので、操作ログではなく要約に残す
+        if (opened.size === sv.length) $('expAfter').hidden = false;
+      }));
       if (last) $('expSum').addEventListener('click', () => _.download(summaryName(), summaryCSV(), 'text/csv'));
       else $('expNext').addEventListener('click', () => startTrial(X.i + 1));
     } else cover('');
   }
-  // アンケートの URL：試行の survey（false なら無し）、なければ全体の survey（練習の試行には使わない）。{pid} などを試行の値に置き換える
-  function surveyUrl(i) {
+  // アンケートの一覧 [{ url, label }]：試行の survey（false なら無し）、なければ全体の survey（練習の試行には使わない）。
+  // survey は URL の文字列か、URL の文字列・{ url, label } の配列。{pid} などを試行の値に置き換える
+  function surveys(i) {
     const t = X.trials[i];
     const tpl = t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey;
-    if (!tpl) return null;
+    if (!tpl) return [];
     const val = { pid: X.pid, trial: i + 1, mode: t.mode, video: t.video, practice: t.practice ? 1 : 0, name: X.cfg.name };
-    return tpl.replace(/\{(pid|trial|mode|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
+    const fill = u => u.replace(/\{(pid|trial|mode|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
+    return (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
   }
   function start() {
     if (!X || X.state !== 'ready') return;

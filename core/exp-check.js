@@ -74,7 +74,12 @@
       const end = Array.isArray(r.edges) ? r.edges[r.edges.length - 1] : r.end;
       if (r.duration > 0 && end != null && end > r.duration + 0.02) errors.push(`${where}：終了（${end} 秒）が動画の長さ（${r.duration} 秒）を超えています`);
     };
-    const chkSurvey = (v, where) => { if (v != null && v !== false && typeof v !== 'string') errors.push(`${where}：survey は URL の文字列か false です`); };
+    const isUrl = s => typeof s === 'string' && s !== '';
+    const chkSurvey = (v, where) => {
+      if (v == null || v === false || isUrl(v)) return;
+      if (Array.isArray(v) && v.length && v.every(s => isUrl(s) || (isObj(s) && isUrl(s.url) && (s.label == null || typeof s.label === 'string')))) return;
+      errors.push(`${where}：survey は URL の文字列、URL（または { url, label }）の配列、false のどれかです`);
+    };
     chkSet(cfg.settings, '全体'); chkRange(cfg.range, '全体の range'); chkSurvey(cfg.survey, '全体');
     const videos = isObj(cfg.videos) ? cfg.videos : {};
     for (const [v, r] of Object.entries(videos)) {

@@ -55,6 +55,12 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   const r3 = run(folder('expc_setup', { name: 's', participants: { P01: [{ mode: 'excel', video: 'a.mp4' }, { mode: 'sam', video: 'b.mp4' }, { mode: 'key', video: 'c.mp4' }] } }, ['a.mp4', 'b.mp4', 'c.mp4'], su));
   check('setup.json の誤りを出す（評価区間の無い動画・動画より長い終了・edges・値の型・使えない項目）', r3.code === 1 && r3.text.includes('動画「c.mp4」の評価区間がありません') && r3.text.includes('終了（13 秒）が動画の長さ（12 秒）を超えています')
     && r3.text.includes('edges は 2 つ以上の増えていく秒の配列です') && r3.text.includes('grid は true か false です') && r3.text.includes('videoSize は 25〜80 の数です') && r3.text.includes('setup.json の「other」は使えない項目です'), r3.text);
+  // survey：URL の文字列・URL か { url, label } の配列・false は通し、空の配列や url の無いものは誤り
+  const sv = (survey, t) => run(folder('expc_sv', { name: 'sv', survey, participants: { P01: [{ mode: 'excel', video: 'a.mp4', ...t }] } }, ['a.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
+  const svOk = [sv('https://x.test/a'), sv(['https://x.test/a', { url: 'https://x.test/b?p={pid}', label: 'SUS' }]), sv(null, { survey: false })];
+  check('survey は URL・URL か { url, label } の配列・false を通す', svOk.every(r => r.code === 0), svOk.map(r => r.text).join('\n'));
+  const svBad = [sv([]), sv([{ label: 'SUS' }]), sv(['https://x.test/a', 3]), sv(null, { survey: { url: 'https://x.test/a' } })];
+  check('survey の空の配列・url の無いもの・文字列でない要素・配列でないオブジェクトは誤り', svBad.every(r => r.code === 1 && r.text.includes('survey は URL の文字列')), svBad.map(r => r.text).join('\n'));
   // experiment.json の settings・試行の range は setup.json より優先する
   const r4 = run(folder('expc_over', { name: 'o', settings: { grid: true }, participants: { P01: [{ mode: 'excel', video: 'c.mp4', range: { start: 1, end: 5 } }] } }, ['c.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
   check('試行の range があれば、setup.json に無い動画でも誤りにしない', r4.code === 0, r4.text);
