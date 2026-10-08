@@ -299,7 +299,11 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => { AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.S.undo = []; for (const [s, v] of [[0, 1], [1, 2], [2, 3]]) AH.setCell('v', s, v); });
     const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
     await p.mouse.click(box.x + 44 + 2.5 / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100);
-    check('離散では右クリックで区切りを置かない', await p.evaluate(() => !AH.S.meta.range.edges && AH.nSec() === 12));
+    const xr = await p.evaluate(() => ({ e: AH.S.meta.range.edges, n: AH.nSec(), c: [0, 1, 2, 3, 4].map(i => AH.S.data.cells.v[i] ?? null), th: document.querySelectorAll('table.xl th[data-s]').length }));
+    check('Excel では右クリックで区切りを置き（2.5 秒付近）、割った区間の値を両方に引き継ぎ、表の列も増える',
+      xr.n === 13 && xr.e.some(x => Math.abs(x - 2.5) < 0.05) && JSON.stringify(xr.c) === '[1,2,3,3,null]' && xr.th === 13, JSON.stringify(xr));
+    await blur(p); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('Excel の右クリックの区切りも Ctrl+Z で戻る', await p.evaluate(() => !AH.S.meta.range.edges && AH.nSec() === 12 && AH.S.data.cells.v[2] === 3 && AH.S.data.cells.v[3] == null));
     const geo = () => p.evaluate(() => JSON.stringify({ n: AH.nSec(), e: AH.S.meta.range.edges || null, c: [0, 1, 2, 3].map(i => AH.S.data.cells.v[i] ?? null), cl: document.getElementById('cutList').value }));
     const before = await geo();
     await p.evaluate(() => AH.seekTo(1.5)); await p.waitForTimeout(150); await p.click('#rgBtn'); await p.click('#cutAdd'); await p.waitForTimeout(100);
@@ -315,6 +319,14 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const back = await p.evaluate(() => [AH.binStart(0), document.getElementById('rgStart').value]);
     check('評価区間の開始の変更も Ctrl+Z で戻り、設定欄も戻る', st === 0.5 && back[0] === 0 && back[1] === '0', JSON.stringify({ st, back }));
     await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
+    await p.close();
+  }
+  {
+    const p = await open('affectgrid'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); });
+    const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
+    await p.mouse.click(box.x + 44 + 2.5 / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100);
+    check('Excel 以外の離散（Affect Grid）では右クリックで区切りを置かない', await p.evaluate(() => !AH.S.meta.range.edges && AH.nSec() === 12));
     await p.close();
   }
 

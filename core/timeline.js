@@ -152,11 +152,13 @@
     }
     refresh();
   }
-  // 右クリック（連続評価のみ）：区切りから離れた所で置く、区切りの上で動かさずに離すと消す、右ドラッグで動かす。
+  // 右クリック（連続評価と Excel）：区切りから離れた所で置く、区切りの上で動かさずに離すと消す、右ドラッグで動かす。
   // 1回の操作を取り消し（Ctrl+Z）の1件にする。左クリックはグラフ編集・シークのまま
   let cut = null;
   const CUT_HIT = 6;   // 区切りの線に乗ったとみなす距離（px）
-  const cutsEditable = () => model() === 'series' && !!video.src && !_.reviewing() && !(_.expOn && _.expOn());   // 実験モードでは評価区間を変えさせない
+  // 実験モードでは評価区間を変えさせない。ただしカスタムの Excel で「自分で区切る」を選んだ試行は参加者が区切る
+  const selfCuts = () => !!(_.M && _.M.selfCuts && _.M.selfCuts());
+  const cutsEditable = () => (model() === 'series' || !!(_.M && _.M.graphCuts)) && !!video.src && !_.reviewing() && (!(_.expOn && _.expOn()) || selfCuts());
   const frameT = t => { const f = (_.fps && _.fps()) || FPS; return +(Math.round(t * f) / f).toFixed(4); };   // いちばん近いフレームの始まり
   function cutHit(x) {
     const G = geom(), e = _.cutEdges(); let hit = -1, best = CUT_HIT;

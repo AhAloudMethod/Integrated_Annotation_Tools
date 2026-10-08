@@ -146,6 +146,69 @@
       if (cc && !video.paused) cc.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     };
   }
+  // Excel の評価シート（Excel 方式とカスタムの Excel）：行は軸、列は評価区間。セルに 1〜9 を入れる
+  function xlTable(under, axes = ['v', 'a']) {
+    const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
+    let sig = '';
+    function build() {
+      sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
+      const tb = h('table', { class: 'xl' });
+      let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s }, AH.secLabel(s))); tb.appendChild(tr);
+      axes.forEach((ax, r) => {
+        const L = AH.ax(ax), name = `${L.name}(1:${L.lo}ー9:${L.hi})`;
+        tr = h('tr', {}, `<th>${name}</th>`);
+        for (let s = 0; s < n; s++) {
+          const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: 'numeric', maxlength: '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
+          inp.addEventListener('input', () => {
+            const x = inp.value.trim();
+            if (/^[1-9]$/.test(x)) AH.setCell(ax, s, +x, 'input');
+            else if (x === '') AH.setCell(ax, s, null, 'clear');
+            else { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); }
+          });
+          inp.addEventListener('keydown', e => {
+            // Enter は下（最後の行の下は次の区間の最初の行）、Tab は右。Shift を押すと逆向き
+            const back = e.shiftKey ? -1 : 1, last = axes.length - 1;
+            const move = e.key === 'Enter' ? (r + back >= 0 && r + back <= last ? [back, 0] : [-back * last, back])
+              : e.key === 'Tab' ? [0, back]
+              : { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
+            if (e.key === 'Escape') { inp.blur(); return; }
+            if (!move) return;
+            e.preventDefault();
+            const nx = grid.querySelector(`input[data-ax="${axes[r + move[0]]}"][data-s="${s + move[1]}"]`);
+            if (nx) { nx.focus(); nx.select(); }
+          });
+          inp.addEventListener('focus', () => AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }));
+          td.appendChild(inp); tr.appendChild(td);
+        }
+        tb.appendChild(tr);
+      });
+      grid.appendChild(tb);
+    }
+    return () => {
+      if (!S.meta.duration) return;
+      if (sig !== AH.rangeSig()) build();
+      const cur = AH.curSec();
+      for (const inp of grid.querySelectorAll('input')) {
+        const v = S.data.cells[inp.dataset.ax][+inp.dataset.s];
+        if (document.activeElement !== inp && inp.value !== String(v ?? '')) inp.value = v ?? '';
+      }
+      for (const cell of grid.querySelectorAll('[data-s]')) if (cell.tagName !== 'INPUT') cell.classList.toggle('cur', +cell.dataset.s === cur);
+      const th = grid.querySelector(`th[data-s="${cur}"]`);
+      if (th && !video.paused) th.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    };
+  }
+  // Excel の右の欄：ラベル・プロット表（VA のときだけ）とメモ
+  const XL_LABELS = [['ストレス', 1, 9], ['覚醒', 5, 9], ['興奮', 9, 9], ['快', 9, 5], ['不快', 1, 5], ['憂鬱', 1, 1], ['眠気', 5, 1], ['安堵', 9, 1]];   // [ラベル, 快度, 覚醒度]
+  function xlRef(panel) {
+    const ref = h('div', { class: 'planeBox' }, '<div class="refTitle">ラベル・プロット表</div>');
+    const t = h('table', { class: 'ref' }, '<tr><th>感情ラベル</th><th>快度</th><th>覚醒度</th></tr>' + XL_LABELS.map(([l, v, a]) => `<tr><td>${l}</td><td>${v}</td><td>${a}</td></tr>`).join(''));
+    ref.appendChild(t);
+    if (AH._.axesCurrent() !== 'va') t.hidden = true;
+    const memo = h('textarea', { rows: '3', placeholder: '判断に迷ったなど何かあればメモ' });
+    memo.addEventListener('change', () => { S.data.memo = memo.value; AH.addLog('memo', { detail: memo.value.length + ' chars' }); });
+    ref.appendChild(memo); panel.appendChild(ref);
+    return () => { if (document.activeElement !== memo) memo.value = S.data.memo || ''; };
+  }
   const setBoth = (s, v, a, how) => AH.setCells(s, { v, a }, how);
   function autoNext(s) { if (opts().autoNext && s + 1 < AH.nSec()) AH.seekTo(AH.binStart(s + 1) + 0.001); }
 
@@ -317,6 +380,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, xlTable, xlRef, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

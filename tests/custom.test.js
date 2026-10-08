@@ -1,4 +1,4 @@
-// カスタム条件の回帰：軌跡は実際に評価した範囲だけ・値の刻み（連続／離散）・1軸のときの固定・AffectRank のプリセット、と変化ボタン
+// カスタム条件の回帰：軌跡は実際に評価した範囲だけ・値の刻み（連続／離散）・1軸のときの固定・AffectRank のプリセット・Excel（セル）と区切り、と変化ボタン
 const { chromium } = require('playwright-core');
 const { URL, VID, BROWSER } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
@@ -114,6 +114,57 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await pick(p, '次元', 'v');
     const n1 = await p.evaluate(() => [...document.querySelectorAll('.arBtn')].map(b => b.title));
     check('8方向ボタン＋快度だけ：快・不快の2方向', n1.join() === '快,不快', n1.join());
+    await p.close();
+  }
+
+  // ---- 4b. Excel（セル）：プリセット、セルへの入力、1軸、区切り（評価区間に従う／自分で区切る） ----
+  {
+    const p = await open('custom');
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); });
+    await p.selectOption('.cfg > select', 'excel'); await p.waitForTimeout(200);
+    const st = await p.evaluate(() => ({ o: AH.S.meta.options, model: AH.mode.model, note: document.querySelector('.cfgNote').textContent,
+      sels: [...document.querySelectorAll('.cfgGrid select')].map(s => s.getAttribute('aria-label')), fb: !!document.querySelector('.cfg .opts'),
+      rows: document.querySelectorAll('table.xl tr').length, cutBox: !!document.querySelector('.cutBox') }));
+    check('プリセット「Excel」：区間ごと・整数・キーボードで、表を出し、時間・値・入力・フィードバックの欄を出さない',
+      st.o.rep === 'excel' && st.o.time === 'disc' && st.o.values === 'int' && st.o.input === 'keyboard' && st.model === 'table' && /Excel/.test(st.note)
+      && st.sels.join() === 'インタフェース,次元,区切り' && !st.fb && st.rows === 3 && !st.cutBox, JSON.stringify(st));
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('7'); await p.keyboard.press('Enter'); await p.keyboard.type('3'); await p.keyboard.press('Enter'); await p.keyboard.type('x');
+    await p.keyboard.press('Escape');
+    const cells = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));
+    check('セルに入れた値が区間の値になり、Enter で下・次の区間へ移り、1〜9 以外は入らない', JSON.stringify(cells) === '[[7,null],[3,null]]', JSON.stringify(cells));
+    // 評価区間に従う：実験モードでは右クリックで区切れない（実験の外では区切れる）
+    await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
+    const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
+    const rclick = async t => { await p.mouse.click(box.x + 44 + t / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100); };
+    await rclick(4.5);
+    const n1 = await p.evaluate(() => AH.nSec());
+    await p.evaluate(() => { AH._.__expOn = AH._.expOn; AH._.expOn = () => true; });   // 実験モードの代わり
+    await rclick(6.5);
+    const n2 = await p.evaluate(() => AH.nSec());
+    check('評価区間に従う：右クリックで区切れるが、実験モードでは区切れない', n1 === 13 && n2 === 13, JSON.stringify({ n1, n2 }));
+    // 自分で区切る：区切りのボタンが出て、実験モードでも右クリックとボタンで区切れる
+    await pick(p, '区切り', 'self');
+    const self = await p.evaluate(() => ({ note: document.querySelector('.cfgNote').textContent, btns: [...document.querySelectorAll('.cutBox button')].map(b => b.textContent) }));
+    await rclick(6.5);
+    const n3 = await p.evaluate(() => AH.nSec());
+    await p.evaluate(() => AH.seekTo(8.5)); await p.waitForTimeout(150);
+    await p.click('.cutBox button:text("今の時間で区切る")'); await p.waitForTimeout(100);
+    const n4 = await p.evaluate(() => [AH.nSec(), AH.S.meta.range.edges.some(x => Math.abs(x - 8.5) < 0.05)]);
+    await p.evaluate(() => AH.seekTo(8.45)); await p.waitForTimeout(150);
+    await p.click('.cutBox button:text("近くの区切りを消す")'); await p.waitForTimeout(100);
+    const n5 = await p.evaluate(() => [AH.nSec(), AH.S.meta.range.edges.some(x => Math.abs(x - 8.5) < 0.05)]);
+    check('自分で区切る：プリセットは Excel のまま、区切りのボタンを出す', /Excel/.test(self.note) && self.btns.join() === '今の時間で区切る,近くの区切りを消す', JSON.stringify(self));
+    check('自分で区切る：実験モードでも右クリックとボタンで区切りを置き、ボタンで消せる', n3 === 14 && n4[0] === 15 && n4[1] && n5[0] === 14 && !n5[1], JSON.stringify({ n3, n4, n5 }));
+    await p.evaluate(() => { AH._.expOn = AH._.__expOn; });
+    // 1軸：その軸の行だけ
+    await pick(p, '次元', 'a');
+    const ax1 = await p.evaluate(() => [...document.querySelectorAll('table.xl input[data-s="0"]')].map(i => i.dataset.ax));
+    check('Excel＋覚醒度だけ：表は覚醒度の行だけ', ax1.join() === 'a', ax1.join());
+    // ほかのインタフェースに替えると区切りの選び方は「評価区間に従う」に戻る
+    await pick(p, 'インタフェース', 'grid');
+    const back = await p.evaluate(() => ({ cuts: AH.S.meta.options.cuts, sel: !!document.querySelector('select[aria-label=区切り]'), graphCuts: !!AH.mode.graphCuts }));
+    check('Excel 以外では区切りの欄を出さず、右クリックの区切りも無効', back.cuts === 'fixed' && !back.sel && !back.graphCuts, JSON.stringify(back));
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
     await p.close();
   }
 

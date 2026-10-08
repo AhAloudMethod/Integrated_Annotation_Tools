@@ -220,6 +220,8 @@ table.xl td input:focus{outline:2px solid var(--val);outline-offset:-2px}
 table.xl .cur{background:color-mix(in srgb,var(--val) 16%,transparent)}
 table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
 .refTitle{font-size:13px;font-weight:600;margin-bottom:4px}
+.cutBox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cutBox .refTitle{flex-basis:100%;margin-bottom:0}
 table.ref{border-collapse:collapse;font-size:13px;width:100%;margin-bottom:8px}
 table.ref th,table.ref td{border:1px solid var(--line);padding:2px 6px;text-align:center}
 table.ref th{color:var(--muted);font-weight:500}

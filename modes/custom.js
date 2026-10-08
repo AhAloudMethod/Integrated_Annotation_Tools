@@ -1,14 +1,16 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
-  const { S, pen, video } = AH;
-  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
+  const { S, pen, video } = AH, _ = AH._;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
   const o = () => opts();
   const follow = follower();
-  // インタフェース（rep）。grid・sam・buttons は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
-  const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', sliders: 'スライダー2本', rank8: '8方向ボタン（変化の方向）' };
-  const nine = r => ['grid', 'sam', 'buttons'].includes(r);
+  // インタフェース（rep）。grid・sam・buttons・excel は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
+  // excel は Excel の評価シート（区間ごとのセルにキーボードで入れる）
+  const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', excel: 'Excel（セル）', sliders: 'スライダー2本', rank8: '8方向ボタン（変化の方向）' };
+  const nine = r => ['grid', 'sam', 'buttons', 'excel'].includes(r);
   // values：値の刻み（real＝連続。1〜9 の小数、int＝離散。1〜9 の整数）。インタフェースとは別に選ぶ
-  const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false };
+  // cuts：区間の区切り（fixed＝評価区間に従う、self＝自分で区切る。Excel だけ）
+  const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false, cuts: 'fixed' };
   const P = (t, r, i, extra = {}) => ({ ...DEF, time: t, rep: r, input: i, ...extra });
   const PRESETS = {
     emujoy: ['EMuJoy', P('cont', 'plane', 'mouse', { face: true })],
@@ -22,18 +24,22 @@
     affectgrid: ['Affect Grid', P('disc', 'grid', 'mouse', { trail: false })],
     sam: ['SAM', P('disc', 'sam', 'mouse', { trail: false })],
     affectrank: ['AffectRank', P('cont', 'rank8', 'mouse', { trail: false })],
+    excel: ['Excel', P('disc', 'excel', 'keyboard', { trail: false })],
   };
-  const KEYS = Object.keys(DEF).filter(k => k !== 'autoNext');
+  const KEYS = Object.keys(DEF).filter(k => k !== 'autoNext' && k !== 'cuts');   // 区切りの選び方はプリセットの判定に使わない
   function normalize(x) {
     const n = { ...DEF, ...x };
     if ((nine(n.rep) || n.time === 'disc') && n.input === 'gamepad') n.input = 'mouse';
     if (!(n.rep === 'sliders' && n.time === 'cont')) n.scale = 'abs';
     if (n.rep === 'rank8') Object.assign(n, { time: 'cont', input: n.input === 'gamepad' ? 'mouse' : n.input, face: false, trail: false, color: false, border: false });
+    if (n.rep === 'excel') Object.assign(n, { time: 'disc', input: 'keyboard', face: false, trail: false, color: false, border: false, autoNext: false });
+    else n.cuts = 'fixed';
     if (nine(n.rep) || n.rep === 'rank8') n.values = 'int';
     if (n.scale === 'rel') n.values = 'real';
     return n;
   }
   const rank = () => o().rep === 'rank8';
+  const xl = () => o().rep === 'excel';
   const act = () => (o().dims === 'both' ? ['v', 'a'] : [o().dims]);
   const pointType = () => o().time === 'disc' || nine(o().rep);
   const rel = () => o().scale === 'rel';
@@ -54,7 +60,7 @@
   const joyMode = () => !pointType() && (o().rep === 'plane' || o().rep === 'circle') && (o().input === 'gamepad' || (o().input === 'mouse' && stk().on()));
   const slDev = () => o().rep === 'sliders' && o().time === 'cont' && !rel() && sl.on();
   const slIdx = ax => (act().length === 1 ? 0 : ax === 'v' ? 0 : 1);
-  let c = null, g = null, rows = null, strip = null, note = null; const PAD = 26;
+  let c = null, g = null, rows = null, strip = null, note = null, table = null, memo = null; const PAD = 26;
 
   function writeMode() {
     if (rank() || pointType()) return null;
@@ -114,14 +120,15 @@
     ps.addEventListener('change', () => { if (ps.value) apply({ ...PRESETS[ps.value][1] }); });
     box.appendChild(ps);
     sel('インタフェース', 'rep', Object.entries(REPS));
-    if (!rank()) sel('時間', 'time', [['cont', '連続'], ['disc', '区間ごと']]);
+    if (!rank() && !xl()) sel('時間', 'time', [['cont', '連続'], ['disc', '区間ごと']]);
     if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '連続値'], ['int', '9段階']]);
     const inputs = rank() ? [['mouse', 'マウス'], ['keyboard', 'テンキー']] : nine(o().rep) || o().time === 'disc' ? [['mouse', 'マウス'], ['keyboard', 'キーボード（数字）']] : [['mouse', 'マウス'], ['keyboard', 'キーボード'], ['gamepad', 'ゲームパッド']];
-    sel('入力', 'input', inputs);
+    if (!xl()) sel('入力', 'input', inputs);
     sel('次元', 'dims', [['both', '2軸同時'], ['v', AH.ax('v').name + 'のみ'], ['a', AH.ax('a').name + 'のみ']]);
     if (o().rep === 'sliders' && o().time === 'cont') sel('尺度', 'scale', [['abs', '絶対（1〜9）'], ['rel', '相対（上下限なし）']]);
+    if (xl()) sel('区切り', 'cuts', [['fixed', '評価区間に従う'], ['self', '自分で区切る']]);
     box.appendChild(grid);
-    if (rank()) { note = h('div', { class: 'cfgNote' }, presetName()); box.appendChild(note); panel.appendChild(box); return; }   // 変化の方向にはフィードバックの欄がない
+    if (rank() || xl()) { note = h('div', { class: 'cfgNote' }, presetName()); box.appendChild(note); panel.appendChild(box); return; }   // 変化の方向と Excel にはフィードバックの欄がない
     const fb = h('div', { class: 'opts' }, 'フィードバック：');
     for (const [k, l] of [['face', '顔'], ['trail', '軌跡'], ['color', '位置の色'], ['border', '画面枠の色']]) {
       const lab = h('label', {}, `<input type="checkbox"> ${l}`), cb = lab.querySelector('input');
@@ -246,9 +253,12 @@
     options: { ...DEF },
     get model() { return rank() ? 'events' : o().time === 'disc' ? 'table' : 'series'; },
     get unbounded() { return o().time === 'cont' && rel(); },
+    get graphCuts() { return xl(); },   // Excel：評価グラフの右クリックで区切りを編集する
+    selfCuts: () => xl() && o().cuts === 'self',   // 自分で区切る：実験モードでも参加者が区切れる
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
+      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9 を入力します。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${o().cuts === 'self' ? '「今の時間で区切る」で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
       if (pointType()) how = o().time === 'disc' ? 'クリック（または数字キー：快度＝1〜9、覚醒度＝Shift+数字）で今の区間の値を設定します。<kbd>Backspace</kbd> で今の区間を消去。' : 'クリック（または数字キー）でその時刻に変化点を置きます。<kbd>Backspace</kbd> で直前の変化点を削除。';
@@ -269,8 +279,20 @@
     mount({ panel, overlay, under }) {
       Object.assign(S.meta.options, normalize(S.meta.options));
       config(panel);
-      rows = null; c = null; g = null; this._rank = null; this._now = null; strip = null;
+      rows = null; c = null; g = null; this._rank = null; this._now = null; strip = null; table = null; memo = null;
       if (rank()) { this._rank = rankPad(panel, act()); return; }
+      if (xl()) {
+        table = xlTable(under, act());
+        if (o().cuts === 'self') {   // 区切りのボタン（実験モードでも出す）
+          const box = h('div', { class: 'planeBox cutBox' }, '<div class="refTitle">区間の区切り</div>');
+          const btn = (label, fn) => box.appendChild(h('button', { type: 'button', onclick: e => { e.currentTarget.blur(); if (!_.reviewing()) fn(); } }, label));
+          btn('今の時間で区切る', () => _.addCut(_.frameStart ? _.frameStart(video.currentTime) : video.currentTime));
+          btn('近くの区切りを消す', () => _.delCut(video.currentTime || 0));
+          panel.appendChild(box);
+        }
+        memo = xlRef(panel);
+        return;
+      }
       const box = h('div', { class: 'planeBox' });
       if (o().rep === 'sam' || o().rep === 'buttons') {
         if (o().rep === 'sam') { const sb = h('div', { class: 'planeBox sam' }); rows = samRows(sb, (ax, i) => pointAction({ [ax]: i }), act()); panel.appendChild(sb); }
@@ -329,6 +351,7 @@
     onBlur() { kW.clear(); kUD.clear(); kAD.clear(); },
     update(t) {
       if (this._rank) { this._rank.update(); return; }
+      if (table) { table(); memo(); return; }
       const c0 = cur(t), cv = c0.v == null || c0.a == null ? { ...c0, ...(other() ? { [other()]: 5 } : {}) } : qv(c0);   // 区間の未入力（null）は刻みを合わせず固定だけ
       if (c && g) { if (o().rep === 'sliders') drawSliders(t, cv); else drawPlaneLike(t, cv); }
       if (rows) for (const ax of Object.keys(rows)) for (const b of rows[ax].children) b.classList.toggle('on', cv[ax] != null && +b.dataset.v === Math.round(cv[ax]));
