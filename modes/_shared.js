@@ -148,7 +148,8 @@
   }
   // Excel の評価シート（Excel 方式とカスタムの Excel）：行は軸、列は評価区間。セルに 1〜9 を入れる
   // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
-  // 0 は「発声なし」（声の無い区間に付ける値）。どちらの値でも入る。0.5 のような 0 台の小数は入らない
+  // 0 は「発声なし」（声の無い区間に付ける値）。どちらの値でも入る。0.5 のような 0 台の小数は入らない。
+  // 発声なしは両軸そろうので、片方に 0 を入れたらもう片方も 0 にし、0 の区間で片方に 1〜9 を入れたらもう片方の 0 を空欄に戻す（取り消しは 1 回）
   function xlTable(under, axes = ['v', 'a'], real = false) {
     const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
     let sig = '', lastCur = -1;
@@ -158,6 +159,12 @@
       e.preventDefault(); grid.scrollLeft += e.deltaY;
     }, { passive: false });
     const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
+    const put = (ax, s, v) => {
+      const others = axes.filter(o => o !== ax), c = S.data.cells;
+      if (v === 0) return AH.setCells(s, Object.fromEntries(axes.map(o => [o, 0])), 'input');
+      if (others.some(o => c[o][s] === 0)) return AH.setCells(s, { [ax]: v, ...Object.fromEntries(others.filter(o => c[o][s] === 0).map(o => [o, null])) }, 'input');
+      return AH.setCell(ax, s, v, 'input');
+    };
     const half = x => x.replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));   // 全角の数字と小数点を半角に
     function bindReal(inp, ax, s) {
       inp.addEventListener('input', () => { const x = half(inp.value); if (x !== inp.value) inp.value = x; if (!/^\d*\.?\d*$/.test(x)) bad(inp, ax, s); });
@@ -165,7 +172,7 @@
         const x = half(inp.value).trim();
         if (x === '') { AH.setCell(ax, s, null, 'clear'); return; }
         const v = +x;
-        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && (v === 0 || (v >= 1 && v <= 9))) { const r = Math.round(v * 10) / 10; AH.setCell(ax, s, r, 'input'); inp.value = r; }
+        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && (v === 0 || (v >= 1 && v <= 9))) { const r = Math.round(v * 10) / 10; put(ax, s, r); inp.value = r; }
         else bad(inp, ax, s);
       });
     }
@@ -183,7 +190,7 @@
           if (real) bindReal(inp, ax, s);
           else inp.addEventListener('input', () => {
             const x = inp.value.trim();
-            if (/^[0-9]$/.test(x)) AH.setCell(ax, s, +x, 'input');   // 0 は発声なし
+            if (/^[0-9]$/.test(x)) put(ax, s, +x);   // 0 は発声なし
             else if (x === '') AH.setCell(ax, s, null, 'clear');
             else bad(inp, ax, s);
           });

@@ -119,14 +119,18 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // 6. Excel：0（発声なし）を入れられる。9 段階でも連続値でも入り、0.5 のような 0 台の小数は入らない
   {
     const p = await open('excel');
-    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('0'); await p.keyboard.press('Enter'); await p.keyboard.type('0');
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('0');
     const int = await p.evaluate(() => [AH.S.data.cells.v[0], AH.S.data.cells.a[0]]);
+    await p.click('input[data-ax=a][data-s="0"]'); await p.keyboard.type('6');
+    const back = await p.evaluate(() => [AH.S.data.cells.v[0] ?? null, AH.S.data.cells.a[0], document.querySelector('input[data-ax=v][data-s="0"]').value]);
+    const undo = await p.evaluate(() => { const c = () => [AH.S.data.cells.v[0] ?? null, AH.S.data.cells.a[0] ?? null]; AH._.undo(); const u1 = c(); AH._.undo(); return [u1, c()]; });
+    check('Excel：片方に 0 を入れると両軸 0、0 の区間で片方に 1〜9 を入れるともう片方は空欄（取り消しは 1 回ずつ）', JSON.stringify(back) === '[null,6,""]' && JSON.stringify(undo) === '[[0,0],[null,null]]', JSON.stringify({ int, back, undo }));
     await p.selectOption('#mode', 'custom'); await p.waitForTimeout(150);
     await p.selectOption('select[aria-label=インタフェース]', 'excel'); await p.waitForTimeout(100);
     await p.selectOption('select[aria-label=値]', 'real'); await p.waitForTimeout(100);
-    for (const [s, x] of [[0, '0'], [1, '0.5'], [2, '0.0']]) { await p.click(`input[data-ax=v][data-s="${s}"]`); await p.keyboard.type(x); await p.keyboard.press('Escape'); await p.waitForTimeout(450); }
-    const real = await p.evaluate(() => [0, 1, 2].map(s => AH.S.data.cells.v[s] ?? null));
-    check('Excel：0（発声なし）を入れられ、0 台の小数は入らない', JSON.stringify(int) === '[0,0]' && JSON.stringify(real) === '[0,null,0]', JSON.stringify({ int, real }));
+    for (const [s, x] of [[3, '0'], [1, '0.5'], [2, '0.0']]) { await p.click(`input[data-ax=v][data-s="${s}"]`); await p.keyboard.type(x); await p.keyboard.press('Escape'); await p.waitForTimeout(450); }
+    const real = await p.evaluate(() => [3, 1, 2].map(s => AH.S.data.cells.v[s] ?? null).concat([AH.S.data.cells.a[3]]));
+    check('Excel：0（発声なし）を入れられ、0 台の小数は入らない', JSON.stringify(int) === '[0,0]' && JSON.stringify(real) === '[0,null,0,0]', JSON.stringify({ int, real }));
     await p.evaluate(() => localStorage.clear()); await p.close();
   }
 
