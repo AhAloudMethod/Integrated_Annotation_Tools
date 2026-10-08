@@ -45,6 +45,29 @@
   const rank = () => o().rep === 'rank8';
   const xl = () => o().rep === 'excel';
   const curve = () => xl() && o().values === 'curve';
+  // 区間内で変化：今の入れ方（draw＝描く、template＝テンプレート）と、テンプレートで入れる形
+  const CURVE_SHAPES = [['line', '直線'], ['early', '前半で変化'], ['late', '後半で変化']];
+  let curveToolSel = 'draw', curveShapeSel = 'line';
+  const curveTool = () => (o().curveInput === 'both' ? curveToolSel : o().curveInput);
+  // 区間内で変化のパネル：入れ方の切り替え（両方のときだけ）と形のボタン。形のボタンは、次に入れる形を選び、今の区間に入れた値があればその形に変える
+  function curveBox(panel) {
+    const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内の動き</div>');
+    const btn = (label, cls, fn) => { const b = h('button', { type: 'button', class: cls, onclick: e => { e.currentTarget.blur(); if (!AH.reviewing()) { fn(); sync(); } } }, label); return b; };
+    let tools = null;
+    if (o().curveInput === 'both') {
+      tools = h('div', { class: 'curveTools' });
+      for (const [k, l] of [['draw', '描く'], ['template', 'テンプレート']]) tools.appendChild(btn(l, 'tool', () => { curveToolSel = k; AH.addLog('option', { detail: 'curveTool=' + k }); })).dataset.k = k;
+      box.appendChild(tools);
+    }
+    const shapes = h('div', { class: 'curveShapes' });
+    for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; AH.curveReshape(AH.curSec(), k, act()); })).dataset.k = k;
+    box.appendChild(shapes);
+    const sync = () => {
+      if (tools) for (const b of tools.children) b.classList.toggle('on', b.dataset.k === curveTool());
+      for (const b of shapes.children) b.classList.toggle('on', b.dataset.k === curveShapeSel);
+    };
+    sync(); panel.appendChild(box);
+  }
   const act = () => (o().dims === 'both' ? ['v', 'a'] : [o().dims]);
   const pointType = () => o().time === 'disc' || nine(o().rep);
   const rel = () => o().scale === 'rel';
@@ -259,6 +282,7 @@
     options: { ...DEF },
     get model() { return rank() ? 'events' : curve() ? 'series' : o().time === 'disc' ? 'table' : 'series'; },
     get curve() { return curve(); },   // 区間内で変化（core/curve.js）
+    curveTool, curveShape: () => curveShapeSel,
     get unbounded() { return o().time === 'cont' && rel(); },
     get graphCuts() { return xl(); },   // Excel：評価グラフの右クリックで区切りを編集する
     get decimals() { return xl() && !curve() ? 1 : 2; },   // Excel の連続値は小数第1位まで（グラフでの編集も）。区間内で変化は連続の方式と同じ
@@ -266,7 +290,7 @@
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
-      if (curve()) return `<p>Excel の評価シートと同じ区間で、区間の中の値の動きを評価グラフに入れます。評価グラフをなぞると、その範囲の動きを描きます（連続の方式のグラフでの編集と同じ）。表のセルは表示だけで、区間の始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。セルをクリックするとその区間へ移ります。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${other() ? AH.ax(other()).name + 'は5に固定します。' : ''}</p>`;
+      if (curve()) return `<p>Excel の評価シートと同じ区間で、区間の中の値の動きを評価グラフに入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。表のセルは表示だけで、区間の始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。セルをクリックするとその区間へ移ります。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${other() ? AH.ax(other()).name + 'は5に固定します。' : ''}</p>`;
       if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${o().cuts === 'self' ? '「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
@@ -292,6 +316,7 @@
       if (rank()) { this._rank = rankPad(panel, act()); return; }
       if (curve()) {
         table = curveTable(under, act());
+        curveBox(panel);
         if (o().cuts === 'self') cutBox(panel);
         memo = xlRef(panel);
         return;

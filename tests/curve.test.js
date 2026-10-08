@@ -46,6 +46,51 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 2. テンプレート：区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形の曲線が入る。形のボタンで形を変える
+  {
+    const p = await open();
+    const tools = await p.$$eval('.curveBox .tool', bs => bs.map(b => b.textContent));
+    await p.click('.curveBox .tool:text("テンプレート")');
+    const at = await graph(p);
+    await drag(p, at('v', 3.5, 7), at('v', 3.6, 3));
+    const mid = () => p.evaluate(() => AH.valueAt('v', 3.5));
+    const c1 = (await cells(p, 'v'))[3], m1 = await mid();
+    const sh1 = await p.evaluate(() => JSON.stringify(AH.S.data.shapes) + '|' + AH.S.data.strokes.map(s => s.source + ':' + s.shape).join());
+    check('両方のときは入れ方の切り替えを出し、テンプレートは押した高さ→離した高さの直線を区間に入れる', tools.join() === '描く,テンプレート' && /^[67]→[34]直$/.test(c1) && m1 > 4.5 && m1 < 5.5 && /"shape":"line"/.test(sh1) && /template:line/.test(sh1), JSON.stringify({ tools, c1, m1, sh1 }));
+    await p.evaluate(() => AH.seekTo(3.2)); await p.waitForTimeout(100);
+    await p.click('.curveBox .shape:text("前半で変化")');
+    const c2 = (await cells(p, 'v'))[3], m2 = await mid();
+    check('形のボタンで今の区間を前半で変化にする（始めと終わりの値はそのまま）', c2 === c1.replace('直', '前') && m2 < m1 - 0.5, JSON.stringify({ c2, m1, m2 }));
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('形の変更は Ctrl+Z の 1 回で戻る', (await cells(p, 'v'))[3] === c1 && Math.abs((await mid()) - m1) < 1e-9);
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('テンプレートの入力も Ctrl+Z の 1 回で戻る', (await cells(p, 'v'))[3] === '' && (await mid()) === 5);
+    // 後半で変化を選んでから入れる。自由に描き直すと、重なった区間は「描」になる
+    await p.click('.curveBox .shape:text("後半で変化")');
+    await drag(p, at('v', 6.5, 3), at('v', 6.5, 8));
+    const c3 = (await cells(p, 'v'))[6], m3 = await p.evaluate(() => AH.valueAt('v', 6.5));
+    await p.click('.curveBox .tool:text("描く")');
+    await drag(p, at('v', 6.4, 5), at('v', 6.6, 6), 4);
+    const c4 = (await cells(p, 'v'))[6];
+    check('後半で変化の曲線が入り、その区間を自由に描き直すと「描」になる', /^3→8後$/.test(c3) && m3 < 5 && /描$/.test(c4), JSON.stringify({ c3, m3, c4 }));
+    await p.close();
+  }
+  // ---- 3. 入れ方の設定：テンプレートだけなら切り替えを出さず、ドラッグはテンプレート。描くだけならドラッグは描く
+  {
+    const p = await open({ curveInput: 'template' });
+    const at = await graph(p);
+    const t1 = await p.$$eval('.curveBox .tool', bs => bs.length);
+    await drag(p, at('a', 2.5, 2), at('a', 2.5, 8));
+    const ca = (await cells(p, 'a'))[2];
+    await p.close();
+    const q = await open({ curveInput: 'draw' });
+    const at2 = await graph(q);
+    await drag(q, at2('a', 2.2, 2), at2('a', 2.8, 8));
+    const cb = (await cells(q, 'a'))[2];
+    check('テンプレートだけ／描くだけでは切り替えを出さず、ドラッグはその入れ方になる', t1 === 0 && /^2→8直$/.test(ca) && /描$/.test(cb) && (await q.$$eval('.curveBox .tool', bs => bs.length)) === 0, JSON.stringify({ t1, ca, cb }));
+    await q.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

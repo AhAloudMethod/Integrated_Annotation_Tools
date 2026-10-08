@@ -3,7 +3,7 @@
 // 形（テンプレート）の記録は系列とは別に S.data.shapes（{ axis, t0, t1, shape }）に持つ。区間をちょうど覆う記録があればその形、無ければ free
 (() => {
   const _ = AH._;
-  const { FPS, S, binStart } = _;
+  const { FPS, S, binStart, binAt, nSec, r2, clamp, snapshot, pushUndo, addLog, wall } = _;
   const on = () => !!(_.M && _.M.curve);
   const EPS = 1e-6, TOL = 1.5 / FPS;   // 記録が区間をちょうど覆うとみなす幅
   const frames = s => {   // 区間 s のフレーム [f0, f1)（動画の最後のフレームまで）
@@ -41,5 +41,64 @@
     S.data.shapes = out;
   }
 
-  Object.assign(_, { curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames });
+  // ---------- テンプレート ----------
+  // 区間の中の位置 u（0〜1）での変わり方。前半で変化は始めに大きく動き、後半で変化は終わりに大きく動く
+  const SHAPES = { line: u => u, early: u => 1 - (1 - u) ** 2, late: u => u * u };
+  function samples(s, from, to, shape) {
+    const [f0, f1] = frames(s), n = f1 - f0, m = new Map(), fn = SHAPES[shape] || SHAPES.line;
+    for (let k = 0; k < n; k++) { const u = n > 1 ? k / (n - 1) : 1; m.set(f0 + k, r2(from + (to - from) * fn(u))); }
+    return m;
+  }
+  // 区間 s・軸 ax を形の曲線で描き換え（base の系列から）、形の記録と書き込みの記録（_strokes）に残す。取り消しの記録は呼び出し側
+  function put(base, ax, s, from, to, shape, reason) {
+    const m = samples(s, from, to, shape); if (!m.size) return false;
+    S.data.points[ax] = _.rewriteFrames(base.points[ax], m);
+    const b0 = binStart(s), b1 = _.binEnd(s);
+    trim(ax, b0, b1);
+    if (SHAPES[shape]) (S.data.shapes || (S.data.shapes = [])).push({ axis: ax, t0: +b0.toFixed(4), t1: +b1.toFixed(4), shape });
+    const fs = [...m.keys()];
+    S.data.strokes.push({ id: S.data.strokes.length, source: 'template', axes: ax, shape, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: reason, wall_ms_end: wall(),
+      samples: fs.map(f => [+(f / FPS).toFixed(4), ax === 'v' ? m.get(f) : '', ax === 'a' ? m.get(f) : '']) });
+    return true;
+  }
+  const q = v => r2(clamp(v, 1, 9));
+  // グラフのドラッグ（core/timeline.js）：区間の中で押した高さが始めの値、離した高さが終わりの値。ドラッグの間は曲線を予覧する
+  let drag = null;
+  function down(axis, t, v) {
+    if (!on() || _.M.curveTool() !== 'template') return false;
+    const s = binAt(t);
+    if (s < 0 || s >= nSec()) { _.hintMsg('評価区間の中で入れてください'); return true; }
+    drag = { axis, s, before: snapshot(), from: q(v), to: q(v) };
+    preview(); return true;
+  }
+  function preview() {
+    const d = drag; S.data.points[d.axis] = _.rewriteFrames(d.before.points[d.axis], samples(d.s, d.from, d.to, _.M.curveShape())); _.refresh();
+  }
+  const move = v => { if (drag) { drag.to = q(v); preview(); } };
+  function up() {
+    const d = drag; drag = null; if (!d) return;
+    const shape = _.M.curveShape();
+    S.data.points[d.axis] = d.before.points[d.axis].map(p => ({ ...p }));   // 予覧を捨ててから、記録つきで描き換える
+    if (put(d.before, d.axis, d.s, d.from, d.to, shape, 'template')) {
+      pushUndo(d.before);
+      addLog('graph_curve', { axis: d.axis, value: `${d.from}->${d.to}`, detail: `bin ${d.s} ${shape}` });
+    }
+    _.refresh();
+  }
+  // 形を変える（パネルの形のボタン）：入れた区間の始めと終わりの値を保ったまま、その形の曲線にする。自由に描いた区間も同じ。発声なしの区間は変えない
+  function reshape(s, shape, axes) {
+    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    const before = snapshot(), done = [];
+    for (const ax of axes) {
+      const c = info(ax, s);
+      if (!c || !c.entered || c.shape === 'zero' || c.shape === shape) continue;
+      if (put(S.data, ax, s, c.from, c.to, shape, 'reshape')) done.push(ax);
+    }
+    if (!done.length) return false;
+    pushUndo(before);
+    addLog('curve_shape', { axis: done.join(''), value: shape, detail: 'bin ' + s });
+    _.refresh(); return true;
+  }
+
+  Object.assign(_, { curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
 })();

@@ -174,6 +174,9 @@
     if (y >= r.height - RULER || !graphEditable() || (Gd.f0Lane && y >= Gd.f0Lane.top)) { seeking = true; _.seekTo(geom().tOf(e.clientX - r.left)); return; }
     endStroke('graph');
     const G = geom(), axis = y < (G.lanes[0].y1 + G.lanes[1].y0) / 2 ? 'v' : 'a';
+    // 区間内で変化のテンプレート（core/curve.js）：押した区間に、押した高さから離した高さへの曲線を入れる
+    const LA = G.lanes.find(l => l.ax === axis);
+    if (_.curveDown(axis, G.tOf(e.clientX - r.left), LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
     edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set() };
     editAt(e);
   });
@@ -183,6 +186,7 @@
       if (cut.i > 0 && (cut.moved || Math.abs(cut.x - cut.x0) > 3)) { cut.moved = true; _.moveCut(cut.i, frameT(geom().tOf(cut.x)), true); }
       return;
     }
+    if (_.curveDragging()) { const r = tl.getBoundingClientRect(), L = geom().lanes.find(l => l.ax === _.curveDragging()); _.curveMove(L.vOf(clamp(e.clientY - r.top, L.y0, L.y1))); return; }
     if (seeking) { const r = tl.getBoundingClientRect(); _.seekTo(geom().tOf(e.clientX - r.left)); }
     else if (edit) editAt(e);
     else if (S.meta.duration) {
@@ -202,6 +206,7 @@
   }
   const tlUp = () => {
     if (cut) { cutUp(); return; }
+    if (_.curveDragging()) { _.curveUp(); return; }
     seeking = false;
     if (!edit) return;
     const e = edit; edit = null;
