@@ -194,6 +194,8 @@
             if (nx && e.key === 'Enter' && move[1] === 1 && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
           });
           inp.addEventListener('focus', () => AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }));
+          // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
+          inp.addEventListener('mouseup', e => { if (inp.selectionStart === inp.selectionEnd) { e.preventDefault(); inp.select(); } });
           td.appendChild(inp); tr.appendChild(td);
         }
         tb.appendChild(tr);

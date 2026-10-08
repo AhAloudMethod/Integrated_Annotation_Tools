@@ -88,6 +88,21 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => localStorage.clear()); await p.close();
   }
 
+  // 4. Excel：値の入ったセルをクリックしても打ち直せる（グラフの目盛りの帯でシークした後も）
+  {
+    const p = await open('excel');
+    if (await p.evaluate(() => document.body.classList.contains('noTl'))) { await p.click('#tlBtn'); await p.waitForTimeout(100); }
+    const tl = await p.locator('#tl').boundingBox();
+    for (let s = 0; s < 3; s++) { await p.click(`input[data-ax=v][data-s="${s}"]`); await p.keyboard.type(String(s + 2)); }
+    for (let s = 0; s < 3; s++) {
+      await p.mouse.click(tl.x + 80 + s * 40, tl.y + tl.height - 6); await p.waitForTimeout(80);
+      await p.click(`input[data-ax=v][data-s="${s}"]`); await p.keyboard.type(String(s + 7));
+    }
+    const v = await p.evaluate(() => AH.S.data.cells.v.slice(0, 3));
+    check('値の入ったセルをクリックして打ち直せる', JSON.stringify(v) === '[7,8,9]', JSON.stringify(v));
+    await p.evaluate(() => localStorage.clear()); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();
