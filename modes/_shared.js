@@ -186,6 +186,8 @@
               : e.key === 'Tab' ? [0, back]
               : { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
             if (e.key === 'Escape') { inp.blur(); return; }
+            // 聴いてから入力：セルに入れている間も R で聴いた区間をもう一度聴く（セルに R は入らない）
+            if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey && AH._.listenUsable() && AH._.listenReplay()) { e.preventDefault(); return; }
             if (!move) return;
             e.preventDefault();
             const nx = grid.querySelector(`input[data-ax="${axes[r + move[0]]}"][data-s="${s + move[1]}"]`);
