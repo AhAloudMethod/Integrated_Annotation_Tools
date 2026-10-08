@@ -181,13 +181,14 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
     // PANA：VA に直した列。片方の軸が未入力なら空欄
     const q = await open('excel', 'pana');
-    await setRange(q, { start: 0, bin: 1, count: 2, target: 2, label: 'countdown' });
-    await q.evaluate(() => { AH.S.data.cells = { v: [9, 5], a: [1] }; });
+    await setRange(q, { start: 0, bin: 1, count: 3, target: 3, label: 'countdown' });
+    await q.evaluate(() => { AH.S.data.cells = { v: [9, 5, 0], a: [1, undefined, 0] }; });
     const g = await exportAll(q);
-    check('区間方式×PANA：VA に直した値、片方が未入力なら空欄', same(g['_bins.csv'].rows, [
+    check('区間方式×PANA：VA に直した値、片方が未入力か 0（発声なし）なら空欄', same(g['_bins.csv'].rows, [
       ['bin', 'label', 't_start', 't_end', 'pa', 'na', 'va_valence', 'va_arousal'],
-      ['0', '0:01', '0.000', '1.000', '9', '1', '10.657', '5.000'],
-      ['1', '0:00', '1.000', '2.000', '5', '', '', ''],
+      ['0', '0:02', '0.000', '1.000', '9', '1', '10.657', '5.000'],
+      ['1', '0:01', '1.000', '2.000', '5', '', '', ''],
+      ['2', '0:00', '2.000', '3.000', '0', '0', '', ''],
     ]), JSON.stringify(g['_bins.csv'].rows));
     await q.close();
   }

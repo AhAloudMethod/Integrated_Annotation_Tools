@@ -72,7 +72,7 @@
       }
     } else if (model() === 'table') {
       out('_bins.csv', [...binHead, 'valence', 'arousal', ...(rot ? ['va_valence', 'va_arousal'] : [])],
-        [...Array(n).keys()].map(s => { const x = S.data.cells.v[s] ?? '', y = S.data.cells.a[s] ?? ''; return [...binCols(s), x, y, ...(rot ? vaCols(x, y) : [])]; }));
+        [...Array(n).keys()].map(s => { const x = S.data.cells.v[s] ?? '', y = S.data.cells.a[s] ?? ''; return [...binCols(s), x, y, ...(rot ? (x === 0 || y === 0 ? ['', ''] : vaCols(x, y)) : [])]; }));   // 0 は発声なし（VA に直さない）
     } else if (model() === 'events') {
       out('_ranks.csv', ['t', 'label', 'd_valence', 'd_arousal', 'source'], S.data.events.map(e => [e.t, e.label, e.dv, e.da, e.source || 'input']));
       const rows = [];

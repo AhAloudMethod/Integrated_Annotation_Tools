@@ -116,6 +116,20 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => localStorage.clear()); await p.close();
   }
 
+  // 6. Excel：0（発声なし）を入れられる。9 段階でも連続値でも入り、0.5 のような 0 台の小数は入らない
+  {
+    const p = await open('excel');
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('0'); await p.keyboard.press('Enter'); await p.keyboard.type('0');
+    const int = await p.evaluate(() => [AH.S.data.cells.v[0], AH.S.data.cells.a[0]]);
+    await p.selectOption('#mode', 'custom'); await p.waitForTimeout(150);
+    await p.selectOption('select[aria-label=インタフェース]', 'excel'); await p.waitForTimeout(100);
+    await p.selectOption('select[aria-label=値]', 'real'); await p.waitForTimeout(100);
+    for (const [s, x] of [[0, '0'], [1, '0.5'], [2, '0.0']]) { await p.click(`input[data-ax=v][data-s="${s}"]`); await p.keyboard.type(x); await p.keyboard.press('Escape'); await p.waitForTimeout(450); }
+    const real = await p.evaluate(() => [0, 1, 2].map(s => AH.S.data.cells.v[s] ?? null));
+    check('Excel：0（発声なし）を入れられ、0 台の小数は入らない', JSON.stringify(int) === '[0,0]' && JSON.stringify(real) === '[0,null,0]', JSON.stringify({ int, real }));
+    await p.evaluate(() => localStorage.clear()); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

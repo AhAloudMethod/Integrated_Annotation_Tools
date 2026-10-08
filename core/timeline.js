@@ -69,7 +69,13 @@
         if (isInt() && ps.length < 400) for (const p of ps) if (!p.init) { g.beginPath(); g.arc(xOf(p.t), L.yOf(p.val), 2.5, 0, 7); g.fill(); }
       } else if (model() === 'table') {
         const c = S.data.cells[L.ax];
-        for (let s = 0; s < nSec(); s++) if (c[s] != null) g.fillRect(xOf(binStart(s)) + 1, L.yOf(c[s]) - 1.5, xOf(Math.min(_.binEnd(s), D)) - xOf(binStart(s)) - 2, 3);
+        for (let s = 0; s < nSec(); s++) {
+          if (c[s] == null) continue;
+          const x0 = xOf(binStart(s)) + 1, bw = xOf(Math.min(_.binEnd(s), D)) - xOf(binStart(s)) - 2;
+          if (c[s] === 0) {   // 0 は発声なし：値の線ではなく、欄の高さの灰色の帯にする
+            g.fillStyle = css('--muted'); g.globalAlpha = 0.25; g.fillRect(x0, L.y0, bw, L.y1 - L.y0); g.globalAlpha = 1; g.fillStyle = L.col;
+          } else g.fillRect(x0, L.yOf(c[s]) - 1.5, bw, 3);
+        }
       } else if (model() === 'events') {
         const mid = (L.y0 + L.y1) / 2;
         for (const e of S.data.events) {

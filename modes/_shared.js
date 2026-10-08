@@ -148,6 +148,7 @@
   }
   // Excel の評価シート（Excel 方式とカスタムの Excel）：行は軸、列は評価区間。セルに 1〜9 を入れる
   // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
+  // 0 は「発声なし」（声の無い区間に付ける値）。どちらの値でも入る。0.5 のような 0 台の小数は入らない
   function xlTable(under, axes = ['v', 'a'], real = false) {
     const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
     let sig = '', lastCur = -1;
@@ -164,7 +165,7 @@
         const x = half(inp.value).trim();
         if (x === '') { AH.setCell(ax, s, null, 'clear'); return; }
         const v = +x;
-        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && v >= 1 && v <= 9) { const r = Math.round(v * 10) / 10; AH.setCell(ax, s, r, 'input'); inp.value = r; }
+        if (/^\d*\.?\d+$|^\d+\.$/.test(x) && (v === 0 || (v >= 1 && v <= 9))) { const r = Math.round(v * 10) / 10; AH.setCell(ax, s, r, 'input'); inp.value = r; }
         else bad(inp, ax, s);
       });
     }
@@ -182,7 +183,7 @@
           if (real) bindReal(inp, ax, s);
           else inp.addEventListener('input', () => {
             const x = inp.value.trim();
-            if (/^[1-9]$/.test(x)) AH.setCell(ax, s, +x, 'input');
+            if (/^[0-9]$/.test(x)) AH.setCell(ax, s, +x, 'input');   // 0 は発声なし
             else if (x === '') AH.setCell(ax, s, null, 'clear');
             else bad(inp, ax, s);
           });
