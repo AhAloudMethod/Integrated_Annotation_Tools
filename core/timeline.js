@@ -32,10 +32,11 @@
       if (RG().start > 0) g.fillRect(PAD_L, 0, xOf(Math.min(RG().start, D)) - PAD_L, h - RULER);
       if (rangeEnd() < D) g.fillRect(xOf(rangeEnd()), 0, xOf(D) - xOf(rangeEnd()), h - RULER);
       g.globalAlpha = 1;
-      // 区間の境界（評価区間に合わせた格子）と動画時刻の目盛り
+      // 区間の境界（評価区間に合わせた格子）と動画時刻の目盛り。自分で置いた区切り（不揃いの区間）は濃く引く
+      const own = !!RG().edges;
       for (let s = 0; s <= nSec(); s++) {
         const bs = s === nSec() ? rangeEnd() : binStart(s), x = xOf(bs); if (bs > D + 1e-6) break;
-        g.strokeStyle = css('--grid'); g.lineWidth = s % 5 === 0 ? 1.2 : 0.6;
+        g.strokeStyle = own ? css('--muted') : css('--line'); g.lineWidth = own ? 1.5 : s % 5 === 0 ? 1.4 : 0.8;
         g.beginPath(); g.moveTo(x, 4); g.lineTo(x, h - RULER); g.stroke();
       }
       g.fillStyle = css('--bg'); g.fillRect(PAD_L, h - RULER, w - PAD_L - PAD_R, RULER);
