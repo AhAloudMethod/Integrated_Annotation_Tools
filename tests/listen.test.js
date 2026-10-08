@@ -1,4 +1,4 @@
-// 聴いてから入力（core/listen.js）：区間の終わりで自動で止まり、Enter／ボタン0 で同じ区間を再生し直して連続の入力を記録し、そのまま次の区間を聴く
+// 聴いてから入力（core/listen.js）：区間の終わりで自動で止まり、Enter／ボタン0 で同じ区間を再生し直して連続の入力を記録し、そのまま次の区間を聴く。区間方式は止まっている間に値を入れ、Enter で次の区間を聴く
 const { chromium } = require('playwright-core');
 const fs = require('fs');
 const { URL, VID, BROWSER } = require('./_env');
@@ -117,12 +117,59 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.close();
   }
 
-  // ---- 表の方式（Excel）には効かない
+  // 区間 n の終わりで止まるのを待つ
+  const pausedIn = (p, n) => p.waitForFunction(n => AH.video.paused && AH.curSec() === n && AH.video.currentTime > n + 0.9, n, { timeout: 5000 }).then(() => p.waitForTimeout(80)).then(() => true).catch(() => false);
+
+  // ---- 区間方式（Excel）：区間の終わりで止まり、値を入れて Enter（最後の行）で次の区間を聴く。R でもう一度聴く
   {
     const p = await open('excel');
+    await p.evaluate(() => AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }));
+    const t0 = await playToPause(p);
+    const box = await p.evaluate(() => ({ shown: !document.getElementById('listenBox').hidden, txt: document.getElementById('listenBox').textContent, sec: AH.curSec(), log: AH.S.log.some(l => l.type === 'listen_pause' && l.detail === 'sec=0') }));
+    check('Excel：区間 0 の終わりで止まり、「次へ」の案内を出す', Math.abs(t0 - 0.998) < 0.01 && box.shown && /次へ/.test(box.txt) && box.sec === 0 && box.log, JSON.stringify({ t0, box }));
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('6'); await p.keyboard.press('Enter'); await p.keyboard.type('4'); await p.keyboard.press('Enter');
+    const ok1 = await pausedIn(p, 1);
+    const c1 = await p.evaluate(() => ({ v: AH.S.data.cells.v[0], a: AH.S.data.cells.a[0], focus: document.activeElement.dataset.ax + document.activeElement.dataset.s, next: AH.S.log.some(l => l.type === 'listen_next' && l.detail === 'sec=1') }));
+    check('Excel：止まっている間に入れた値は聴いた区間に入り、最後の行の Enter で次の区間を聴いて止まる', ok1 && c1.v === 6 && c1.a === 4 && c1.focus === 'v1' && c1.next, JSON.stringify({ ok1, c1 }));
+    await p.keyboard.press('Escape');
+    await p.keyboard.press('KeyR'); await p.waitForFunction(() => !AH.video.paused, null, { timeout: 2000 }).catch(() => {});
+    const ok2 = await pausedIn(p, 1);
+    await p.keyboard.press('Enter');
+    const ok3 = await pausedIn(p, 2);
+    check('Excel：R で同じ区間をもう一度聴き、セルの外の Enter で次の区間を聴く', ok2 && ok3 && await p.evaluate(() => AH.S.log.some(l => l.type === 'listen_replay' && l.detail === 'sec=1')), JSON.stringify({ ok2, ok3 }));
+    const dl = []; p.on('download', d => dl.push(d));
+    await p.click('#exportBtn'); await p.waitForTimeout(1200);
+    const js = dl.find(d => d.suggestedFilename().endsWith('_session.json'));
+    const ses = JSON.parse(fs.readFileSync(await js.path(), 'utf8').replace(/^﻿/, ''));
+    check('Excel：書き出しの meta.listen は区間方式の流れ', ses.meta.listen.on === true && ses.meta.listen.flow === 'listen-pause-input', JSON.stringify(ses.meta.listen));
+    await p.close();
+  }
+
+  // ---- 区間方式（Affect Grid）：止まっている間のクリックは聴いた区間に入る。「入力後に次の区間へ」なら次の区間を聴く
+  {
+    const p = await open('affectgrid');
+    await p.evaluate(() => AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }));
+    await playToPause(p);
+    const b = await p.locator('canvas.plane').boundingBox();
+    await p.mouse.click(b.x + b.width * 0.8, b.y + b.height * 0.2); await p.waitForTimeout(100);
+    const c0 = await p.evaluate(() => ({ v: AH.S.data.cells.v[0], paused: AH.video.paused }));
+    await p.keyboard.press('Enter');
+    const ok1 = await pausedIn(p, 1);
+    check('Affect Grid：止まっている間のクリックは区間 0 に入り、Enter で次の区間を聴いて止まる', c0.v != null && c0.paused && ok1, JSON.stringify({ c0, ok1 }));
+    await p.click('.opts input[type=checkbox]'); await p.evaluate(() => document.activeElement.blur());
+    await p.mouse.click(b.x + b.width * 0.3, b.y + b.height * 0.7);
+    const ok2 = await pausedIn(p, 2);
+    const c1 = await p.evaluate(() => [AH.S.data.cells.v[1], AH.S.data.cells.v[2] ?? null]);
+    check('Affect Grid＋入力後に次の区間へ：入れると次の区間を聴いて止まる（区間を飛ばさない）', ok2 && c1[0] != null && c1[1] == null, JSON.stringify({ ok2, c1 }));
+    await p.close();
+  }
+
+  // ---- 変化の方式（AffectRank）には効かない
+  {
+    const p = await open('affectrank');
     await p.keyboard.press('Space'); await p.waitForTimeout(1400);
     const r = await p.evaluate(() => ({ playing: !AH.video.paused, listen: !document.getElementById('listenBox').hidden }));
-    check('Excel（表の方式）では止まらず、案内も出ない', r.playing && !r.listen, JSON.stringify(r));
+    check('AffectRank（変化の方式）では止まらず、案内も出ない', r.playing && !r.listen, JSON.stringify(r));
     await p.close();
   }
 

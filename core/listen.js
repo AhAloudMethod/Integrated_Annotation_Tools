@@ -3,6 +3,8 @@
 //   2. 止まっている間に考える。画面には今の入力を映す（listenLive）が、書き込まない
 //   3. Enter／ボタン0 で、同じ区間を始めから音声つきで再生し直し、その間の連続の入力を記録する（記録オンと同じ書き込み）
 //   4. 区間の終わりで記録を終え、そのまま次の区間を聴く（1 に戻る）。R は聴いた区間をもう一度聴く（記録なし）
+// 区間方式（表のモデル：Excel、Affect Grid、SAM、カスタムの区間ごと）では記録の段階がない。
+//   止まっている間に聴いた区間の値を入れ、Enter／ボタン0 で次の区間を聴く（Excel は最後の行で Enter を押して次の列へ移ったときも）
 // 設定は「設定」パネルで切り替え、ブラウザに保存する（ahann_listen）。操作ログに listen_mode・listen_pause・listen_record・listen_replay、書き出しの meta.listen に残す
 (() => {
   const _ = AH._;
@@ -10,14 +12,15 @@
   let on = false;
   try { on = localStorage.getItem('ahann_listen') === '1'; } catch (_) {}
 
-  // この方式で使えるか：時間系列（変化点）モデルで、書き込みのある方式（連続の方式）
-  const usable = () => on && !_.reviewing() && !!_.M && model() === 'series' && !!_.M.writeMode;   // 見返しの間は止めない
+  // この方式で使えるか：時間系列（変化点）モデルで書き込みのある方式（連続の方式）か、表のモデル（区間方式）。変化の方式には効かない
+  const table = () => model() === 'table';
+  const usable = () => on && !_.reviewing() && !!_.M && ((model() === 'series' && !!_.M.writeMode) || table());   // 見返しの間は止めない
   let phase = 'listen';   // listen＝聴く（記録しない）／record＝聴いた区間を再生し直して記録している
   let recStart = null;    // 記録する区間の始め（最初の書き込みだけここから。takeStart で受け取る）
   const recording = () => usable() && phase === 'record';
   // 方式の画面に今の入力を映す：止まって考えている間と、記録している間
   const waiting = () => usable() && !!video.src && video.paused && !video.seeking;
-  const live = () => waiting() || recording();
+  const live = () => (waiting() && !table()) || recording();   // 区間方式は区間の値をそのまま映す（予覧を使わない）
 
   // ---------- 区間の終わりで止める・記録を終える ----------
   let target = null;   // 今再生している区間の終わり。評価区間の外なら null
@@ -63,9 +66,19 @@
     Object.assign(_.pen, { v: _.valueAt('v', t), a: _.valueAt('a', t), listenSet: false });
   }
 
+  // 区間 s を始めから聴く（区間方式の Enter／ボタン0）。最後の区間の次は無いので何もしない
+  function playBin(s) {
+    if (!waiting()) return false;
+    if (s < 0 || s >= nSec()) return true;
+    ownSeek = true; video.currentTime = binStart(s); target = null;
+    addLog('listen_next', { detail: `sec=${s}` });
+    video.play();
+    return true;
+  }
   // ---------- Enter／ボタン0：聴いた区間を始めから再生し直して記録する ----------
   function startRecord() {
     if (!waiting()) return false;
+    if (table()) return playBin(_.curSec() + 1);   // 区間方式：次の区間を聴く
     const s = inputSec(); if (s == null) return true;
     recStart = binStart(s);
     ownSeek = true; video.currentTime = recStart;
@@ -89,8 +102,9 @@
     const box = $('listenBox'); if (!box) return;
     box.hidden = !usable() || !video.src;
     if (box.hidden) return;
-    box.textContent = recording() ? `● ${_.secLabel(_.curSec())} 入力中` : waiting() ? `${_.secLabel(_.curSec())} を入力：Enter／ボタン0（R 再聴）` : '聴いてから入力：聴く';
-    box.title = '聴いてから入力：区間の終わりで止まる。Enter／ボタン0 で同じ区間を再生し直し、その間の入力を記録する。R でもう一度聴く';
+    box.textContent = recording() ? `● ${_.secLabel(_.curSec())} 入力中` : waiting() ? `${_.secLabel(_.curSec())} を入力：Enter／ボタン0${table() ? ' で次へ' : ''}（R 再聴）` : '聴いてから入力：聴く';
+    box.title = table() ? '聴いてから入力：区間の終わりで止まる。止まっている間にその区間の値を入れ、Enter／ボタン0 で次の区間を聴く。R でもう一度聴く'
+      : '聴いてから入力：区間の終わりで止まる。Enter／ボタン0 で同じ区間を再生し直し、その間の入力を記録する。R でもう一度聴く';
     box.classList.toggle('on', waiting());
     box.classList.toggle('rec', recording());
   }
@@ -106,6 +120,6 @@
   $('listenMode').checked = on;
   $('listenMode').addEventListener('change', e => { setOn(e.target.checked); e.target.blur(); });
 
-  Object.assign(_, { listenOn: () => on, listenUsable: usable, listenLive: live, listenRecording: recording, listenTakeStart: () => { const t = recStart; recStart = null; return t; },
+  Object.assign(_, { listenOn: () => on, listenUsable: usable, listenWaiting: waiting, listenPlayBin: playBin, listenLive: live, listenRecording: recording, listenTakeStart: () => { const t = recStart; recStart = null; return t; },
     listenTick: tick, listenRecord: startRecord, listenReplay: replay, listenStatus: status, setListen: setOn });
 })();

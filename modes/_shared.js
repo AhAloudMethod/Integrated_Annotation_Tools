@@ -190,6 +190,8 @@
             e.preventDefault();
             const nx = grid.querySelector(`input[data-ax="${axes[r + move[0]]}"][data-s="${s + move[1]}"]`);
             if (nx) { nx.focus(); nx.select(); }
+            // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
+            if (nx && e.key === 'Enter' && move[1] === 1 && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
           });
           inp.addEventListener('focus', () => AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }));
           td.appendChild(inp); tr.appendChild(td);
@@ -232,7 +234,12 @@
     panel.appendChild(box);
   }
   const setBoth = (s, v, a, how) => AH.setCells(s, { v, a }, how);
-  function autoNext(s) { if (opts().autoNext && s + 1 < AH.nSec()) AH.seekTo(AH.binStart(s + 1) + 0.001); }
+  // 入力後に次の区間へ。聴いてから入力で止まっているときは、次の区間を始めから聴く（シークだけだと Enter で 1 区間飛ばす）
+  function autoNext(s) {
+    if (!opts().autoNext || s + 1 >= AH.nSec()) return;
+    if (AH._.listenUsable() && AH._.listenWaiting()) AH._.listenPlayBin(s + 1);
+    else AH.seekTo(AH.binStart(s + 1) + 0.001);
+  }
 
   // SAM の絵：annotator/sam/ に原典の画像（valence_figure_1〜5.png、arousal_figure_1〜5.png）があればそれを使い、なければ簡略版を描く
   // 番号は 1＝不快・穏やか → 5＝快・興奮（ツールの1〜9と同じ向き）

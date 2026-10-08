@@ -148,7 +148,9 @@ npm run check      # 全 JS に node --check をかける
 
 ### 聴いてから入力
 
-連続の方式で，Excel のように「聴いて判断してから入れる」手順をとる機能である．「設定」の「1区間ずつ聴いてから入力する」でオンにする（既定はオフ，ブラウザに保存）．
+Excel のように「聴いて判断してから入れる」手順をとる機能である．連続の方式と区間方式で使える．「設定」の「1区間ずつ聴いてから入力する」でオンにする（既定はオフ，ブラウザに保存）．
+
+連続の方式では次のように進む．
 
 1. 再生すると，評価区間の 1 区間の終わり（2 ms 手前）で自動で止まる．この再生では記録しない．
 2. 止まっている間に考える．入力を動かすと画面の値は動くが，書き込まない．マウスのクリックも点を置かない．
@@ -159,7 +161,13 @@ npm run check      # 全 JS に node --check をかける
 - 記録中に Space を押すかシークすると，そこで記録を終える．
 - この機能がオンの間，ヘッダーの記録ボタンは出ない．
 - 書き込みは `_strokes` に `end_reason=listen` で残る．
-- 区間方式（Excel など）と相対の方式（AffectRank など）には効かない．
+- 区間方式（Excel，Affect Grid，SAM，カスタムの区間ごと）では，記録の段階がない．
+  1. 再生すると，区間の終わりで自動で止まる．
+  2. 止まっている間に，聴いた区間の値を入れる（セル，マス，絵などの入力は聴いた区間に入る）．
+  3. Enter（またはボタン 0）で次の区間を始めから聴き，その終わりでまた止まる．Excel では，聴いた区間の最後の行で Enter を押して次の列へ移ったときも次の区間を聴く．
+  - R でもう一度聴く．「入力後に次の区間へ」がオンなら，入れると次の区間を聴く．
+  - 操作ログに `listen_next`（次の区間を聴いた．detail は区間）を残し，書き出しの `meta.listen.flow` は `listen-pause-input` になる（連続の方式は `listen-pause-replay-record`）．
+- 相対の方式（AffectRank，変化ボタン）には効かない．
 
 ### 見返し
 
@@ -428,7 +436,7 @@ exp2/
 | `graphEdit` | `true` | グラフをなぞって値を編集する（`timeline` が `true` のときだけ効く） |
 | `grid` | `true` | グリッド線を表示する |
 | `f0` | `false` | 音声の F0 を表示する |
-| `listen` | `true` | 1 区間ずつ聴いてから入力する（連続の方式だけに効く） |
+| `listen` | `true` | 1 区間ずつ聴いてから入力する（連続の方式と区間方式に効く） |
 | `videoSize` | `55` | 動画の大きさ（25〜80％） |
 | `padJoy`・`padSlider`・`padSquare` | `true` | コントローラーの設定 |
 | `review`・`videoWindow` | `true` | 見返し・別ウィンドウのボタンを出すか |
@@ -583,7 +591,7 @@ exp2/
 | グラフ | `graph_edit`，`graph_draw`／`graph_cells` |
 | 取り消し | `undo`，`redo`（やり直し），`reset`（入力をリセットした） |
 | 設定 | `option`，`grid_display`（グリッド線），`pad_square`（スティックを四角に広げる） |
-| 聴いてから入力と見返し | `listen_mode`（設定），`listen_pause`（区間の終わりで止まった．detail は区間），`listen_record`／`listen_record_end`（区間を再生し直して記録した始めと終わり），`listen_replay`（R でもう一度聴いた），`review`（見返しの on／off） |
+| 聴いてから入力と見返し | `listen_mode`（設定），`listen_pause`（区間の終わりで止まった．detail は区間），`listen_record`／`listen_record_end`（区間を再生し直して記録した始めと終わり），`listen_replay`（R でもう一度聴いた），`listen_next`（区間方式で次の区間を聴いた），`review`（見返しの on／off） |
 | コントローラー | `pad_connect`／`pad_disconnect`（value は機器名，detail は番号と軸・ボタンの数），`pad_assign`（ジョイスティックかスライダーに使う機器が変わった），`pad_setting`（コントローラーの設定） |
 
 `_session.json` は `{ meta, data, log }` である．
