@@ -26,6 +26,7 @@ core/                 共通部分（読み込み順に依存するので，inde
   events.js           相対イベントモデル（AffectRank，変化ボタン）
   gamepad.js          ゲームパッドの読み取りと，設定の「コントローラー」の欄
   timeline.js         評価グラフ（シーク，直接編集）と画面の再描画 refresh
+  curve.js            区間内で変化（カスタムの Excel）：区間ごとの読み（始め→終わり・形）と形の記録
   modes-registry.js   方式の登録・切り替え，セッションの開始
   video.js            動画の読み込みと再生制御，ヘッダーのボタン
   frame.js            1 フレーム移動とフレームレートの推定
@@ -107,11 +108,11 @@ tests/                自動テスト（Playwright で Edge を動かす）
 ```
 npm install        # 初回のみ（playwright-core）
 npm test           # 全テストを実行する（tests/run-all.js．4 本ずつ並べて約 6 分．AH_JOBS=1 なら順に）
-npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom export experiment expcheck）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom curve export experiment expcheck）
 npm run check      # 全 JS に node --check をかける
 ```
 
-- テストは別々のブラウザで動くので，`AH_JOBS` 本（既定 4）を同時に走らせる．再生のタイミングを見るテスト（modes，listen，review，pad，controls，frame，vosk）は互いに重ねず 1 本ずつ走らせ，残りの 3 本の並びと同時に進める．各テストの所要時間を見出しに出す．
+- テストは別々のブラウザで動くので，`AH_JOBS` 本（既定 4）を同時に走らせる．再生のタイミングを見るテスト（modes，listen，review，pad，controls，frame，vosk，custom）は互いに重ねず 1 本ずつ走らせ，残りの 3 本の並びと同時に進める．各テストの所要時間を見出しに出す．
 - ブラウザの既定は `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe` である．環境変数 `AH_BROWSER` で変えられる．
 - スクリーンショットと各テストの出力（`*.log`）は `tests/out/` に保存する．保存先は `AH_OUT` で変えられる．
 - テスト動画は `tests/fixtures/test.mp4`（12 秒）である．消えたら `npm run fixture` で ffmpeg から作り直す．`npm test` も，無ければ自動で作る．
@@ -663,6 +664,11 @@ exp2/
 - 区間ごと：どのインタフェースでも，今の区間の値を設定する．値が連続値なら小数，9 段階なら整数になる．
 - Excel：Excel 方式と同じ表（行が軸，列が評価区間）のセルに 1〜9 を入れる．発声のない区間には 0 を入れる（専用の Excel 方式も同じ．下の「発声なし（0）」）．区間が多くて表がはみ出すときは横にスクロールでき，表の上でホイールを回すと横に送る．再生・シークで区間が変わると，その列を見える所に出す．値が連続値なら小数（小数第 1 位まで．全角の数字も可）も入る．グラフをなぞって入れた値も小数第 1 位に丸める．打ち途中を弾かないよう，Enter・Tab・セルの移動で確定するときに検査し，1〜9 の外は入れない．プリセットの Excel は 9 段階である．1 軸なら，その軸の行だけを出す．ラベル・プロット表とメモ欄も出す．評価グラフの右クリックで区切りを編集できる（実験モードを除く）．
   - 区切りを「自分で区切る」にすると，方式のパネルに「今の時間で区切る」「近くの区切りを消す」を出す．実験モードでも参加者が区切りを編集できる（右クリックも効く）．参加者に評価の粒度を決めさせる条件に使う．プリセットの判定には区切りの選び方を使わない．
+- Excel × 区間内で変化（値の「区間内で変化」）：Excel と同じ区間で，区間の中の値の動きを入れる．値は連続の方式と同じ変化点の系列に持つ（`model: 'series'`）．
+  - 評価グラフをなぞると，その範囲の動きを描く（連続の方式のグラフでの編集と同じ．「グラフをなぞって値を編集する」の設定に関わらず描ける）．
+  - 表のセルは表示だけで，区間の始めの値→終わりの値（整数に丸める．同じなら 1 つ）と形の印（直＝直線，前＝前半で変化，後＝後半で変化，描＝自由に描いた）を出す．書き込みが少しでもかかった区間を「入れた区間」とし，入れていない区間は空欄にする．セルをクリックすると，その区間の始めへ移る．
+  - 聴いてから入力は区間方式と同じ流れになる（区間の終わりで止まり，グラフで入れて Enter で次の区間を聴く）．
+  - 設計は `docs/superpowers/specs/2026-10-08-excel-curve-design.md`（git には入れない）．
 - 8 方向ボタン：変化を感じたときだけ方向を選ぶ．AffectRank と同じ相対イベントモデルで，書き出しは `_ranks.csv` になる．
 - 軌跡（フィードバック）は，実際に評価した範囲だけを描く．書き込み中はその書き始めから，再生だけのときは最初に記録した時刻から描く．書き始める前の値（初期値の 5・5 など）からは線を引かない．
 

@@ -124,7 +124,8 @@
 
   // グラフ直接編集：連続方式はなぞった範囲の値を描き換え、区間方式は区間の値を設定する
   let edit = null, seeking = false;
-  const graphEditable = () => $('graphEdit').checked && model() !== 'events' && !!video.src && !_.reviewing();
+  // 区間内で変化（core/curve.js）はグラフだけで入れるので、設定に関わらずいつも編集できる
+  const graphEditable = () => ($('graphEdit').checked || _.curveOn()) && model() !== 'events' && !!video.src && !_.reviewing();
   // なぞった範囲の値を描き換え、その直後は編集前の値に戻す（core/series.js の rewriteFrames）
   function editRebuild() { S.data.points[edit.axis] = _.rewriteFrames(edit.before.points[edit.axis], edit.samples); }
   function editAt(ev) {
@@ -211,6 +212,7 @@
         S.data.strokes.push({ id: S.data.strokes.length, source: 'graph', axes: e.axis, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: 'graph', wall_ms_end: wall(),
           samples: fs.map(f => [+(f / FPS).toFixed(4), e.axis === 'v' ? e.samples.get(f) : '', e.axis === 'a' ? e.samples.get(f) : '']) });
         addLog('graph_draw', { axis: e.axis, detail: `${(fs[0] / FPS).toFixed(3)}-${(fs[fs.length - 1] / FPS).toFixed(3)}` });
+        _.curveTrim(e.axis, fs[0] / FPS, (fs[fs.length - 1] + 1) / FPS);   // 描き直した範囲は形の記録から外す（区間内で変化）
       } else addLog('graph_cells', { axis: e.axis, detail: 'bins ' + [...e.bins].sort((a, b) => a - b).join(' ') });
     }
     refresh();

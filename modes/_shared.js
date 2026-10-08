@@ -150,14 +150,26 @@
   // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
   // 0 は「発声なし」（声の無い区間に付ける値）。どちらの値でも入る。0.5 のような 0 台の小数は入らない。
   // 発声なしは両軸そろうので、片方に 0 を入れたらもう片方も 0 にし、0 の区間で片方に 1〜9 を入れたらもう片方の 0 を空欄に戻す（取り消しは 1 回）
-  function xlTable(under, axes = ['v', 'a'], real = false) {
+  // 表の入れ物：区間が多くて表が横にはみ出すときは、ホイールの縦の回転で横に送る（表は 2〜3 行なので縦には送らない）。
+  // 返す follow(cur) は今の区間の列を見える所に出す（再生中と、シーク・聴いてから入力などで区間が変わったとき）
+  function xlWrap(under) {
     const grid = h('div', { class: 'xlWrap' }); under.appendChild(grid);
-    let sig = '', lastCur = -1;
-    // 区間が多くて表が横にはみ出すときは、ホイールの縦の回転で横に送る（表は 2〜3 行なので縦には送らない）
     grid.addEventListener('wheel', e => {
       if (grid.scrollWidth <= grid.clientWidth || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault(); grid.scrollLeft += e.deltaY;
     }, { passive: false });
+    let lastCur = -1;
+    const follow = cur => {
+      for (const cell of grid.querySelectorAll('[data-s]')) if (cell.tagName !== 'INPUT') cell.classList.toggle('cur', +cell.dataset.s === cur);
+      const th = grid.querySelector(`th[data-s="${cur}"]`);
+      if (th && (!video.paused || cur !== lastCur)) th.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      lastCur = cur;
+    };
+    return { grid, follow };
+  }
+  function xlTable(under, axes = ['v', 'a'], real = false) {
+    const { grid, follow } = xlWrap(under);
+    let sig = '';
     const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
     const put = (ax, s, v) => {
       const others = axes.filter(o => o !== ax), c = S.data.cells;
@@ -233,11 +245,39 @@
         const v = S.data.cells[inp.dataset.ax][+inp.dataset.s];
         if (document.activeElement !== inp && inp.value !== String(v ?? '')) inp.value = v ?? '';
       }
-      for (const cell of grid.querySelectorAll('[data-s]')) if (cell.tagName !== 'INPUT') cell.classList.toggle('cur', +cell.dataset.s === cur);
-      // 今の区間の列を見える所に出す：再生中と、シーク・聴いてから入力などで区間が変わったとき
-      const th = grid.querySelector(`th[data-s="${cur}"]`);
-      if (th && (!video.paused || cur !== lastCur)) th.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      lastCur = cur;
+      follow(cur);
+    };
+  }
+  // 区間内で変化の表（カスタムの Excel）：セルは表示だけ。区間の始めの値→終わりの値（整数に丸める）と形の印を出す。
+  // 入れていない区間は空欄、発声なしは 0。セルをクリックすると、その区間の始めへ移る
+  const SHAPE_MARK = { line: '直', early: '前', late: '後', free: '描' };
+  function curveTable(under, axes = ['v', 'a']) {
+    const { grid, follow } = xlWrap(under);
+    let sig = '';
+    function build() {
+      sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
+      const tb = h('table', { class: 'xl curve' });
+      const go = s => e => { AH.seekTo(AH.binStart(s) + 0.001); e.currentTarget.blur && e.currentTarget.blur(); };
+      let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s, onclick: go(s) }, AH.secLabel(s))); tb.appendChild(tr);
+      for (const ax of axes) {
+        const L = AH.ax(ax);
+        tr = h('tr', {}, `<th>${L.name}(1:${L.lo}ー9:${L.hi})</th>`);
+        for (let s = 0; s < n; s++) tr.appendChild(h('td', { 'data-s': s, 'data-ax': ax, onclick: go(s) }));
+        tb.appendChild(tr);
+      }
+      grid.appendChild(tb);
+    }
+    const text = c => {
+      if (!c || !c.entered) return '';
+      if (c.shape === 'zero') return '0';
+      const a = Math.round(c.from), b = Math.round(c.to);
+      return `${a === b ? a : a + '→' + b}<small>${SHAPE_MARK[c.shape] || ''}</small>`;
+    };
+    return () => {
+      if (!S.meta.duration) return;
+      if (sig !== AH.rangeSig()) build();
+      for (const td of grid.querySelectorAll('td[data-ax]')) { const x = text(AH.curveInfo(td.dataset.ax, +td.dataset.s)); if (td.innerHTML !== x) td.innerHTML = x; }
+      follow(AH.curSec());
     };
   }
   // Excel の右の欄：ラベル・プロット表（VA のときだけ）とメモ
@@ -436,6 +476,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, xlTable, curveTable, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

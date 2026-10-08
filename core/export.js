@@ -88,7 +88,7 @@
       out('_f0.csv', ['t', 'f0_hz', 'rms'], rows);
     }
     // 聴いてから入力で評価したか（連続の方式：区間を聴いて止め、再生し直して記録。区間方式：区間を聴いて止め、値を入れて次へ）
-    S.meta.listen = { on: _.listenUsable(), flow: model() === 'table' ? 'listen-pause-input' : 'listen-pause-replay-record' };
+    S.meta.listen = { on: _.listenUsable(), flow: model() === 'table' || _.curveOn() ? 'listen-pause-input' : 'listen-pause-replay-record' };
     S.meta.frame_rate = _.fpsMeta();   // 1フレーム移動に使ったフレームレート（source：default／auto／manual）
     S.meta.display = _.displayMeta();   // 区切りの線・スティックを四角に広げたか
     S.meta.f0 = { shown: !!(_.f0Shown && _.f0Shown()), method: 'YIN 16kHz win=40ms hop=10ms 70-1000Hz th=0.15' };
