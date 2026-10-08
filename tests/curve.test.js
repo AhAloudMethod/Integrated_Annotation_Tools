@@ -106,6 +106,26 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 5. 区切り：曲線の途中に区切りを置くと切り分ける。直線の半分は直線のまま、前半で変化の半分は「描」。Ctrl+Z で戻る
+  {
+    const p = await open();
+    await p.click('.curveBox .tool:text("テンプレート")');
+    const at = await graph(p);
+    await drag(p, at('v', 2.5, 2), at('v', 2.5, 8));
+    await p.evaluate(() => AH.seekTo(2.5)); await p.waitForTimeout(100);
+    await p.click('.curveBox .shape:text("前半で変化")');   // 区間 2 を前半で変化に
+    await p.evaluate(() => AH.seekTo(0.5)); await p.waitForTimeout(100);
+    await p.click('.curveBox .shape:text("直線")');   // 入れていない区間で押すと、次に入れる形だけが変わる
+    await drag(p, at('v', 6.5, 2), at('v', 6.5, 8));
+    await p.evaluate(() => { AH._.addCut(2.5); AH._.addCut(6.5); }); await p.waitForTimeout(150);   // 区間 2 と 6 の真ん中
+    const c = await cells(p, 'v');
+    check('曲線の途中で区切ると切り分け、直線の半分は直線、前半で変化の半分は「描」になる', /^2→[67]描$/.test(c[2]) && /^[67]→8描$/.test(c[3]) && /^2→[45]直$/.test(c[7]) && /^[45]→8直$/.test(c[8]), JSON.stringify(c));
+    await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(150);
+    const c2 = await cells(p, 'v');
+    check('区切りを Ctrl+Z で戻すと形の記録も戻る', /前$/.test(c2[2]) && /^2→8直$/.test(c2[6]), JSON.stringify(c2));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

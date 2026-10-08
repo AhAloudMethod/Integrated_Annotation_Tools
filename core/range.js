@@ -136,7 +136,7 @@
     if (t <= e[0] + tol || t >= e[e.length - 1] - tol) { hintMsg('評価区間の中で区切ってください'); return false; }
     if (e.some(x => Math.abs(x - t) < tol)) { hintMsg('すでに区切りがあります'); return false; }
     const s = e.findIndex(x => x > t) - 1;
-    e.splice(s + 1, 0, t); cellsSplit(s);
+    e.splice(s + 1, 0, t); cellsSplit(s); _.curveSplitAt(t);   // 区間内で変化の形の記録も切り分ける
     setEdges(e); addLog('range_cut', { value: 'add', detail: `t=${t} split=${s}` });
     return true;
   });

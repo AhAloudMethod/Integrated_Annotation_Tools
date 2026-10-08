@@ -41,6 +41,17 @@
     S.data.shapes = out;
   }
 
+  // 区切りを置いたとき（core/range.js）：形の記録を切り分ける。直線の半分は直線のまま、前半・後半で変化の半分は式の形ではないので外す（free）
+  function splitAt(t) {
+    if (!S.data || !S.data.shapes) return;
+    const out = [];
+    for (const r of S.data.shapes) {
+      if (!(r.t0 < t - EPS && r.t1 > t + EPS)) { out.push(r); continue; }
+      if (r.shape === 'line') out.push({ ...r, t1: t }, { ...r, t0: t });
+    }
+    S.data.shapes = out;
+  }
+
   // ---------- テンプレート ----------
   // 区間の中の位置 u（0〜1）での変わり方。前半で変化は始めに大きく動き、後半で変化は終わりに大きく動く
   const SHAPES = { line: u => u, early: u => 1 - (1 - u) ** 2, late: u => u * u };
@@ -111,5 +122,5 @@
     _.refresh(); return true;
   }
 
-  Object.assign(_, { curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
+  Object.assign(_, { curveSplitAt: splitAt, curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
 })();
