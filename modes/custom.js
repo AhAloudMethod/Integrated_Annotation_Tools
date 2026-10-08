@@ -1,7 +1,7 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
-  const { S, pen, video } = AH, _ = AH._;
-  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
+  const { S, pen, video } = AH;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, cutBox, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
   const o = () => opts();
   const follow = follower();
   // インタフェース（rep）。grid・sam・buttons・excel は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
@@ -283,13 +283,7 @@
       if (rank()) { this._rank = rankPad(panel, act()); return; }
       if (xl()) {
         table = xlTable(under, act());
-        if (o().cuts === 'self') {   // 区切りのボタン（実験モードでも出す）
-          const box = h('div', { class: 'planeBox cutBox' }, '<div class="refTitle">区間の区切り</div>');
-          const btn = (label, fn) => box.appendChild(h('button', { type: 'button', onclick: e => { e.currentTarget.blur(); if (!_.reviewing()) fn(); } }, label));
-          btn('今の時間で区切る', () => _.addCut(_.frameStart ? _.frameStart(video.currentTime) : video.currentTime));
-          btn('近くの区切りを消す', () => _.delCut(video.currentTime || 0));
-          panel.appendChild(box);
-        }
+        if (o().cuts === 'self') cutBox(panel);
         memo = xlRef(panel);
         return;
       }

@@ -209,6 +209,14 @@
     ref.appendChild(memo); panel.appendChild(ref);
     return () => { if (document.activeElement !== memo) memo.value = S.data.memo || ''; };
   }
+  // 区切りのボタン（Excel で「自分で区切る」のとき。実験モードでも出す）
+  function cutBox(panel) {
+    const box = h('div', { class: 'planeBox cutBox' }, '<div class="refTitle">区間の区切り</div>');
+    const btn = (label, fn) => box.appendChild(h('button', { type: 'button', onclick: e => { e.currentTarget.blur(); if (!AH._.reviewing()) fn(); } }, label));
+    btn('今の時間で区切る', () => AH._.addCut(AH._.frameStart ? AH._.frameStart(video.currentTime) : video.currentTime));
+    btn('近くの区切りを消す', () => AH._.delCut(video.currentTime || 0));
+    panel.appendChild(box);
+  }
   const setBoth = (s, v, a, how) => AH.setCells(s, { v, a }, how);
   function autoNext(s) { if (opts().autoNext && s + 1 < AH.nSec()) AH.seekTo(AH.binStart(s + 1) + 0.001); }
 
@@ -380,6 +388,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, xlRef, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, xlTable, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();
