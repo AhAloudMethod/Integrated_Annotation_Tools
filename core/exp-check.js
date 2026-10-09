@@ -123,6 +123,12 @@
         if (useVideos && !t.range && t.video && !videos[t.video]) noRange.add(t.video);
       });
     }
+    // アンケートの URL に {condition} があるのに、条件名の無い本番の試行があると、その欄は空になる
+    const usesCond = [cfg.survey].flat().some(u => String((typeof u === 'string' ? u : isObj(u) ? u.url : '') || '').includes('{condition}'));
+    if (usesCond) {
+      const miss = Object.entries(ps).flatMap(([pid, ts]) => (Array.isArray(ts) ? ts : []).map((t, k) => (isObj(t) && !t.practice && !conditionFor(cfg, t) ? `${pid} の ${k + 1} 番目` : null)).filter(Boolean));
+      if (miss.length) warnings.push(`アンケートの URL に {condition} がありますが、条件名の無い本番の試行があります（${miss.slice(0, 5).join('、')}${miss.length > 5 ? ` ほか ${miss.length - 5} 件` : ''}）。conditions か試行の condition を書いてください`);
+    }
     for (const v of noRange) errors.push(`動画「${v}」の評価区間がありません（通常の画面で評価区間を合わせ、setup.json を書き出し直してください）`);
     if (!useVideos) warnings.push('動画ごとの評価区間（setup.json の videos）がありません。どの動画も全体の range（無ければ動画全体を 1 秒ごと）で評価します');
     if (!errors.length) warnings.push(...orderWarnings(ps));
