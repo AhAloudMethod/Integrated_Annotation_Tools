@@ -92,6 +92,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const sw = await p.evaluate(() => ({ tool: AH.mode.curveTool(), lit: [...document.querySelectorAll('.curveBox .on')].map(b => b.textContent).join() }));
     check('描くのときに形のボタンを押すとテンプレートに切り替わり、その形が光る', sw.tool === 'template' && /テンプレート/.test(sw.lit) && /後半で変化/.test(sw.lit), JSON.stringify(sw));
     await p.click('.curveBox .tool:text("描く")');
+    await at(p, 3.2);
     await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
     const z = [(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]];
     const zon = await p.$eval('.curveBox .novoice', b => b.classList.contains('on'));
