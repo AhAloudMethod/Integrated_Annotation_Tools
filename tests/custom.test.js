@@ -177,6 +177,14 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.keyboard.type('0.5'); await p.keyboard.press('Escape'); await p.waitForTimeout(100);
     const rc = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));
     check('Excel＋連続値：小数が入り（全角も可）、1〜9 の外は入らない', realTb.values === 'real' && realTb.real && !realTb.int && JSON.stringify(rc) === '[[7.2,null],[3.5,null]]', JSON.stringify({ realTb, rc }));
+    // 数字を 2 つ続けて打つと小数で確定する（5、3 → 5.3）。1 つだけなら Enter で整数
+    await p.click('input[data-ax=v][data-s="2"]'); await p.keyboard.type('53');
+    const two = await p.evaluate(() => [AH.S.data.cells.v[2], document.activeElement.value]);
+    await p.keyboard.press('Escape'); await p.click('input[data-ax=v][data-s="3"]'); await p.keyboard.type('7'); await p.keyboard.press('Enter'); await p.waitForTimeout(100);
+    await p.click('input[data-ax=v][data-s="4"]'); await p.keyboard.type('05'); await p.waitForTimeout(450);
+    const one = await p.evaluate(() => [AH.S.data.cells.v[3], AH.S.data.cells.v[4] ?? null]);
+    await p.keyboard.press('Escape');
+    check('Excel＋連続値：数字を 2 つ続けて打つと小数（5.3）で確定し、1 つなら整数、0 から始まる 2 桁は入らない', JSON.stringify(two) === '[5.3,"5.3"]' && JSON.stringify(one) === '[7,null]', JSON.stringify({ two, one }));
     // 1軸：その軸の行だけ
     await pick(p, '次元', 'a');
     const ax1 = await p.evaluate(() => [...document.querySelectorAll('table.xl input[data-s="0"]')].map(i => i.dataset.ax));

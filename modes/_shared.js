@@ -147,7 +147,7 @@
     };
   }
   // Excel の評価シート（Excel 方式とカスタムの Excel）：行は軸、列は評価区間。セルに 1〜9 を入れる
-  // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する
+  // real：連続値（1〜9 の小数。小数第1位まで）。打ち途中（「5.」など）を弾かないよう、確定（Enter・Tab・移動）のときに検査する。数字を 2 つ続けて打つと小数で確定する
   // 0 は「発声なし」（声の無い区間に付ける値）。どちらの値でも入る。0.5 のような 0 台の小数は入らない。
   // 発声なしは両軸そろうので、片方に 0 を入れたらもう片方も 0 にし、0 の区間で片方に 1〜9 を入れたらもう片方の 0 を空欄に戻す（取り消しは 1 回）
   // 表の入れ物：区間が多くて表が横にはみ出すときは、ホイールの縦の回転で横に送る（表は 2〜3 行なので縦には送らない）。
@@ -186,7 +186,13 @@
     };
     const half = x => x.replace(/[０-９．]/g, c => (c === '．' ? '.' : String.fromCharCode(c.charCodeAt(0) - 0xFEE0)));   // 全角の数字と小数点を半角に
     function bindReal(inp, ax, s) {
-      inp.addEventListener('input', () => { const x = half(inp.value); if (x !== inp.value) inp.value = x; if (!/^\d*\.?\d*$/.test(x)) bad(inp, ax, s); });
+      inp.addEventListener('input', () => {
+        const x = half(inp.value); if (x !== inp.value) inp.value = x;
+        if (!/^\d*\.?\d*$/.test(x)) { bad(inp, ax, s); return; }
+        // 数字を 2 つ続けて打つと小数にして確定する（5、3 → 5.3）。値の範囲が 1〜9 なので、2 桁の整数にはならない
+        if (/^[1-9]\d$/.test(x)) { const v = +(x[0] + '.' + x[1]); inp.value = v; put(ax, s, v); }
+        else if (/^0\d$/.test(x)) bad(inp, ax, s);   // 0 は発声なしだけ（0.5 などは入らない）
+      });
       inp.addEventListener('change', () => {
         const x = half(inp.value).trim();
         if (x === '') { AH.setCell(ax, s, null, 'clear'); return; }
