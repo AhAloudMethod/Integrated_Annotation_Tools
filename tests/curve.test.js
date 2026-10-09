@@ -42,7 +42,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => document.activeElement.blur());
     await mark(p, 1.5);
     const c1 = await cells(p, 'v');
-    check('「この区間を変化にする」で今の区間を変化の区間にし、最初はセルの値のまま一定の線（6）になる。ほかのセルは入力欄のまま', c1[1] === '~6直' && c1[3] === '4' && c1[0] === '' && await p.evaluate(() => AH.valueAt('v', 1.5) === 6 && AH.S.data.cells.a[1] === 'curve'), JSON.stringify(c1));
+    check('「なぞって評価する」で今の区間を変化の区間にし、最初はセルの値のまま一定の線（6。形の印なし）になる。ほかのセルは入力欄のまま', c1[1] === '~6' && c1[3] === '4' && c1[0] === '' && await p.evaluate(() => AH.valueAt('v', 1.5) === 6 && AH.S.data.cells.a[1] === 'curve'), JSON.stringify(c1));
     const g = await graph(p);
     await drag(p, g('v', 1.3, 8), g('v', 2.5, 2), 20);   // 変化の区間から普通の区間へまたいでなぞる
     const c2 = await cells(p, 'v');
@@ -51,18 +51,18 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await drag(p, g('v', 3.5, 8), g('v', 3.5, 8), 1);   // 普通の区間を押すと、今までどおりセルの値になる
     check('普通の区間をグラフで押すと、今までどおりそのセルの値を置く', (await cells(p, 'v'))[3] === '8');
     await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
-    check('描いた分も Ctrl+Z の 1 回ずつで戻る', (await cells(p, 'v'))[1] === '~6直', JSON.stringify((await cells(p, 'v')).slice(0, 4)));
+    check('描いた分も Ctrl+Z の 1 回ずつで戻る', (await cells(p, 'v'))[1] === '~6', JSON.stringify((await cells(p, 'v')).slice(0, 4)));
     await p.click('table.xl td.cv[data-ax=v][data-s="1"]'); await p.waitForTimeout(100);
     check('変化の区間のセルをクリックするとその区間の始めへ移る', await p.evaluate(() => AH.curSec() === 1));
     await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.press('Tab');
     check('Tab の移動は変化の区間のセルを飛ばす', await p.evaluate(() => document.activeElement.dataset.ax + document.activeElement.dataset.s) === 'v2');
     await p.keyboard.press('Escape'); await p.evaluate(() => document.activeElement.blur());
     await at(p, 1.5); await p.keyboard.press('Digit3'); await p.waitForTimeout(100);
-    check('変化の区間では数字キーでセルの値にしない', (await cells(p, 'v'))[1] === '~6直');
+    check('変化の区間では数字キーでセルの値にしない', (await cells(p, 'v'))[1] === '~6');
     // 一定に戻す：区間の平均を丸めた値の普通のセルに戻る
     await drag(p, g('v', 1.01, 2), g('v', 1.99, 2), 6);
-    await at(p, 1.5); await p.click('.curveBox .unmark'); await p.waitForTimeout(100);
-    check('「一定に戻す」で区間の平均（2）を丸めた値の普通のセルに戻る', (await cells(p, 'v'))[1] === '2' && await p.evaluate(() => AH.S.data.cells.v[1] === 2), JSON.stringify((await cells(p, 'v')).slice(0, 3)));
+    await at(p, 1.5); await p.click('.curveBox .mark'); await p.waitForTimeout(100);
+    check('「なぞって評価する」をもう一度押すと区間の平均（2）を丸めた値の普通のセルに戻る', (await cells(p, 'v'))[1] === '2' && await p.evaluate(() => AH.S.data.cells.v[1] === 2), JSON.stringify((await cells(p, 'v')).slice(0, 3)));
     await p.close();
   }
 
@@ -83,11 +83,28 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.click('.curveBox .shape:text("前半で変化")');
     const c2 = (await cells(p, 'v'))[3], m2 = await p.evaluate(() => AH.valueAt('v', 3.5));
     check('形のボタンで今の区間を前半で変化にする（始めと終わりの値はそのまま）', c2 === c1.replace('直', '前') && m2 < m1 - 0.5, JSON.stringify({ c2, m1, m2 }));
+    // 描くでは、テンプレートで入れた区間を変えない。描くときは形のボタンを光らせない
+    await p.click('.curveBox .tool:text("描く")');
+    const lit = await p.$$eval('.curveBox .shape.on', bs => bs.length);
+    await drag(p, g('v', 3.2, 2), g('v', 3.8, 9));
+    check('描くでは、テンプレートで入れた区間を変えず、形のボタンを光らせない', (await cells(p, 'v'))[3] === c2 && lit === 0, JSON.stringify({ c: (await cells(p, 'v'))[3], lit }));
     await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
     const z = [(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]];
-    check('発声なしで変化の区間を両軸 0 にする（セルは 0）', z.join() === '~0,~0' && await p.evaluate(() => AH.valueAt('v', 3.5) === 0 && AH.valueAt('a', 3.5) === 0), JSON.stringify(z));
-    await p.click('.curveBox .unmark'); await p.waitForTimeout(100);
-    check('発声なしの変化の区間を一定に戻すと 0 の普通のセル', JSON.stringify([(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]]) === '["0","0"]');
+    const zon = await p.$eval('.curveBox .novoice', b => b.classList.contains('on'));
+    check('発声なしで変化の区間を両軸 0 にする（セルは 0、ボタンが光る）', z.join() === '~0,~0' && zon && await p.evaluate(() => AH.valueAt('v', 3.5) === 0 && AH.valueAt('a', 3.5) === 0), JSON.stringify(z));
+    await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
+    check('発声なしをもう一度押すと空欄（普通のセル）に戻る', JSON.stringify([(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]]) === '["",""]');
+    // 普通のセルでも効く。対象は直前にクリックしたセルの区間（動画の位置は動かない）
+    await at(p, 0.5);
+    await p.click('input[data-ax=a][data-s="7"]');
+    await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
+    const n7 = [(await cells(p, 'v'))[7], (await cells(p, 'a'))[7], (await cells(p, 'v'))[0]];
+    await p.click('input[data-ax=v][data-s="7"]'); await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
+    const n7off = [(await cells(p, 'v'))[7], (await cells(p, 'a'))[7]];
+    check('発声なしは普通のセルでも両軸 0 にし（対象は直前にクリックしたセルの区間）、もう一度で空欄に戻る', n7.join() === '0,0,' && n7off.join() === ',', JSON.stringify({ n7, n7off }));
+    // なぞって評価するボタンも、直前にクリックしたセルの区間が対象
+    await p.click('input[data-ax=v][data-s="9"]'); await p.keyboard.type('4'); await p.click('.curveBox .mark'); await p.waitForTimeout(100);
+    check('なぞって評価するの対象も、直前にクリックしたセルの区間', (await cells(p, 'v'))[9] === '~4' && await p.$eval('.curveBox .mark', b => b.classList.contains('on')));
     await p.close();
   }
 

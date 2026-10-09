@@ -51,13 +51,21 @@
   const CURVE_SHAPES = [['line', '直線'], ['early', '前半で変化'], ['late', '後半で変化']];
   let curveToolSel = 'draw', curveShapeSel = 'line';
   const curveTool = () => (o().curveInput === 'both' ? curveToolSel : o().curveInput);
-  // 区間内で変化のパネル：今の区間を変化にする・一定に戻すボタン、入れ方の切り替え（両方のときだけ）、形のボタン、発声なし。
-  // 形のボタンは、次に入れる形を選び、今の区間（変化の区間）に入れた値があればその形に変える
+  // 区間内で変化のパネル。対象の区間は、直前にクリックしたセルの区間（動画の位置が動いていなければ）か、今の区間（AH.ui.cellSec）。
+  //  - 「なぞって評価する」（トグル）：対象の区間を変化の区間にする／普通のセルに戻す（区間の平均を丸めた値）
+  //  - 「発声なし」（トグル）：対象の区間を両軸 0 にする／空欄に戻す（普通のセルでも、変化の区間でも）
+  //  - 入れ方の切り替え（両方のときだけ）と形のボタン。形のボタンは、次にテンプレートで入れる形を選び、対象の変化の区間に値があればその形に変える。
+  //    描くときは次に入れる形が無いので、形のボタンを光らせない
+  let curveSync = () => {};
   function curveBox(panel) {
     const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内で変化</div>');
-    const marks = h('div', { class: 'curveShapes' });
-    box.appendChild(marks);
-    const btn = (label, cls, fn) => { const b = h('button', { type: 'button', class: cls, onclick: e => { e.currentTarget.blur(); if (!AH.reviewing()) { fn(); sync(); } } }, label); return b; };
+    const btn = (label, cls, fn) => h('button', { type: 'button', class: cls, onclick: e => { e.currentTarget.blur(); if (!AH.reviewing()) { fn(); sync(); } } }, label);
+    const tgt = () => AH.ui.cellSec();
+    const isCv = s => act().some(ax => AH.curveIsCurve(ax, s));
+    const row = h('div', { class: 'curveShapes' });
+    const markB = btn('なぞって評価する', 'mark', () => { const s = tgt(); if (isCv(s)) AH.curveUnmark(s, act()); else AH.curveMark(s, act()); });
+    const nvB = btn('発声なし', 'novoice', () => AH.curveNoVoice(tgt(), act()));
+    row.appendChild(markB); row.appendChild(nvB); box.appendChild(row);
     let tools = null;
     if (o().curveInput === 'both') {
       tools = h('div', { class: 'curveTools' });
@@ -65,16 +73,17 @@
       box.appendChild(tools);
     }
     const shapes = h('div', { class: 'curveShapes' });
-    for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; AH.curveReshape(AH.curSec(), k, act()); })).dataset.k = k;
+    for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; AH.curveReshape(tgt(), k, act()); })).dataset.k = k;
     box.appendChild(shapes);
-    const nv = h('div', { class: 'curveShapes' }); nv.appendChild(btn('発声なし', 'novoice', () => AH.curveNoVoice(AH.curSec(), act()))); box.appendChild(nv);
-    marks.appendChild(btn('この区間を変化にする', 'mark', () => AH.curveMark(AH.curSec(), act())));
-    marks.appendChild(btn('一定に戻す', 'unmark', () => AH.curveUnmark(AH.curSec(), act())));
     const sync = () => {
+      const s = tgt();
+      markB.classList.toggle('on', isCv(s));
+      nvB.classList.toggle('on', AH.curveIsZero(s, act()));
       if (tools) for (const b of tools.children) b.classList.toggle('on', b.dataset.k === curveTool());
-      for (const b of shapes.children) b.classList.toggle('on', b.dataset.k === curveShapeSel);
+      const tpl = curveTool() === 'template';
+      for (const b of shapes.children) b.classList.toggle('on', tpl && b.dataset.k === curveShapeSel);
     };
-    sync(); panel.appendChild(box);
+    curveSync = sync; sync(); panel.appendChild(box);
   }
   const act = () => (o().dims === 'both' ? ['v', 'a'] : [o().dims]);
   const pointType = () => o().time === 'disc' || nine(o().rep);
@@ -301,7 +310,7 @@
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
-      if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、セルをクリックしてその区間へ移り、「この区間を変化にする」を押してから評価グラフで入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で今の区間を 0 にします。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。「一定に戻す」で、区間の平均を丸めた値の普通のセルに戻します。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
+      if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、そのセルをクリックしてから「なぞって評価する」を押し、評価グラフで入れます（もう一度押すと、区間の平均を丸めた値の普通のセルに戻ります）。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で区間を 0 にします（もう一度押すと空欄に戻ります）。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : o().cuts === 'sec1' ? '区切りは評価区間の開始から 1 秒ごとで、編集できません。' : '区切りは事前に設定したもので、編集できません。'}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
@@ -391,7 +400,7 @@
     onBlur() { kW.clear(); kUD.clear(); kAD.clear(); },
     update(t) {
       if (this._rank) { this._rank.update(); return; }
-      if (table) { table(); memo(); return; }
+      if (table) { table(); memo(); if (curve()) curveSync(); return; }
       const c0 = cur(t), cv = c0.v == null || c0.a == null ? { ...c0, ...(other() ? { [other()]: 5 } : {}) } : qv(c0);   // 区間の未入力（null）は刻みを合わせず固定だけ
       if (c && g) { if (o().rep === 'sliders') drawSliders(t, cv); else drawPlaneLike(t, cv); }
       if (rows) for (const ax of Object.keys(rows)) for (const b of rows[ax].children) b.classList.toggle('on', cv[ax] != null && +b.dataset.v === Math.round(cv[ax]));

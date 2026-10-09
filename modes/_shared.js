@@ -167,6 +167,10 @@
     };
     return { grid, follow };
   }
+  // 直前にクリックしたセルの区間（区間内で変化のパネルのボタンの対象）。セルにフォーカスしても動画は動かないので、
+  // 動画の位置がそのときのままなら、そのセルの区間を対象にする。動いていれば今の区間
+  let lastCell = null;
+  const cellSec = () => (lastCell && Math.abs(video.currentTime - lastCell.t) < 0.002 ? lastCell.s : AH.curSec());
   // curve：区間内で変化を使う（変化にした区間のセルは表示だけ。クリックでその区間へ移る）
   function xlTable(under, axes = ['v', 'a'], real = false, curve = false) {
     const { grid, follow } = xlWrap(under);
@@ -201,7 +205,7 @@
         const L = AH.ax(ax), name = `${L.name}(1:${L.lo}ー9:${L.hi})`;
         tr = h('tr', {}, `<th>${name}</th>`);
         for (let s = 0; s < n; s++) {
-          if (isCv(ax, s)) { tr.appendChild(h('td', { 'data-s': s, 'data-ax': ax, class: 'cv', title: '区間内で変化（グラフで入れる）', onclick: () => AH.seekTo(AH.binStart(s) + 0.001) })); continue; }
+          if (isCv(ax, s)) { tr.appendChild(h('td', { 'data-s': s, 'data-ax': ax, class: 'cv', title: '区間内で変化（グラフで入れる）', onclick: () => { lastCell = null; AH.seekTo(AH.binStart(s) + 0.001); } })); continue; }
           const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: real ? 'decimal' : 'numeric', maxlength: real ? '3' : '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
           if (real) bindReal(inp, ax, s);
           else inp.addEventListener('input', () => {
@@ -235,7 +239,7 @@
             // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
             if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
           });
-          inp.addEventListener('focus', () => AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }));
+          inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
           inp.addEventListener('mouseup', e => { if (inp.selectionStart === inp.selectionEnd) { e.preventDefault(); inp.select(); } });
           td.appendChild(inp); tr.appendChild(td);
@@ -465,6 +469,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, xlTable, cellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

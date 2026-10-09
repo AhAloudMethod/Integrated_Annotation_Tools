@@ -20,7 +20,12 @@
     const b0 = binStart(s), b1 = _.binEnd(s);
     return S.data.strokes.some(st => st.axes.includes(ax) && st.t_start < b1 - EPS && st.t_end >= b0 - EPS);
   };
-  // 区間 s・軸 ax の読み：{ entered, from, to, shape, mean? }。shape は line・early・late・free、どの値も 0 なら zero（発声なし）
+  // テンプレートで入れた区間か：区間をちょうど覆う形の記録がある。「描く」ではこの区間を変えない（core/timeline.js）
+  const record = (ax, s) => { const b0 = binStart(s), b1 = _.binEnd(s); return (S.data.shapes || []).find(r => r.axis === ax && Math.abs(r.t0 - b0) < TOL && Math.abs(r.t1 - b1) < TOL); };
+  // 自由に描いた区間か：グラフで描いた書き込みがかかっている
+  const drawn = (ax, s) => { const b0 = binStart(s), b1 = _.binEnd(s); return S.data.strokes.some(st => st.source === 'graph' && st.axes.includes(ax) && st.t_start < b1 - EPS && st.t_end >= b0 - EPS); };
+  // 区間 s・軸 ax の読み：{ entered, from, to, shape, mean? }。shape は line・early・late（テンプレート）、free（自由に描いた）、
+  // const（変化にしただけで、まだ動かしていない）、どの値も 0 なら zero（発声なし）
   function info(ax, s, withMean = false) {
     const [f0, f1] = frames(s); if (f1 <= f0) return null;
     const from = _.valueAt(ax, f0 / FPS), to = _.valueAt(ax, (f1 - 1) / FPS);
@@ -29,9 +34,10 @@
       let sum = 0, nz = 0; for (let f = f0; f < f1; f++) { const v = _.valueAt(ax, f / FPS); sum += v; if (v !== 0) nz++; }
       mean = sum / (f1 - f0); zero = nz === 0;
     }
-    const b0 = binStart(s), b1 = _.binEnd(s);
-    const rec = (S.data.shapes || []).find(r => r.axis === ax && Math.abs(r.t0 - b0) < TOL && Math.abs(r.t1 - b1) < TOL);
-    return { entered: entered(ax, s), from, to, mean, shape: zero ? 'zero' : rec ? rec.shape : 'free' };
+    const rec = record(ax, s);
+    // 形の記録も描いた書き込みも無い区間：値がずっと同じなら const、動いていれば free（テンプレートの区間を区切りで割った半分など）
+    const flat = () => { for (let f = f0; f < f1; f++) if (_.valueAt(ax, f / FPS) !== from) return false; return true; };
+    return { entered: entered(ax, s), from, to, mean, shape: zero ? 'zero' : rec ? rec.shape : drawn(ax, s) || !flat() ? 'free' : 'const' };
   }
   // 形の記録から [t0, t1) を除く（自由に描き直した範囲）。直線の残りは直線のまま、ほかの形の残りは式の形ではないので消す（free）
   function trim(ax, t0, t1) {
@@ -115,15 +121,20 @@
     _.refresh(); return true;
   }
 
-  // 発声なし（パネルのボタン）：変化の区間を両軸とも 0 で描き換える（形の記録は外す）。読みでは shape が zero になる。
-  // 普通のセルはセルに 0 を打つ（modes/_shared.js の xlTable）
+  // 区間 s が発声なし（どの軸も 0）か。普通のセルはセルの値、変化の区間は系列で見る
+  const isZero = (s, axes) => !!S.data && s >= 0 && s < nSec() && axes.every(ax => (isCurve(ax, s) ? (info(ax, s) || {}).shape === 'zero' : S.data.cells[ax][s] === 0));
+  // 発声なし（パネルのボタン。トグル）：区間を両軸とも 0 にする。普通のセルはセルを 0 に、変化の区間は系列を 0 で描き換える（形の記録は外す）。
+  // もう発声なしなら空欄に戻す（変化の区間は普通の空のセルに戻す）
   function noVoice(s, axes) {
     if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
-    const before = snapshot();
-    let ch = false; for (const ax of axes) if (isCurve(ax, s)) ch = put(S.data, ax, s, 0, 0, 'none', 'novoice', 'novoice') || ch;
-    if (!ch) return false;
+    const before = snapshot(), off = isZero(s, axes);
+    for (const ax of axes) {
+      if (off) { if (isCurve(ax, s)) trim(ax, binStart(s), _.binEnd(s)); S.data.cells[ax][s] = null; }
+      else if (isCurve(ax, s)) put(S.data, ax, s, 0, 0, 'none', 'novoice', 'novoice');
+      else S.data.cells[ax][s] = 0;
+    }
     pushUndo(before);
-    addLog('curve_novoice', { axis: axes.join(''), detail: 'bin ' + s });
+    addLog('curve_novoice', { axis: axes.join(''), value: off ? 'off' : 'on', detail: 'bin ' + s });
     _.refresh(); return true;
   }
 
@@ -134,7 +145,7 @@
     const before = snapshot(), done = [];
     for (const ax of axes) {
       const v = S.data.cells[ax][s]; if (v === CURVE) continue;
-      if (typeof v === 'number') put(S.data, ax, s, v, v, v === 0 ? 'none' : 'line', 'mark', 'cell');
+      if (typeof v === 'number') put(S.data, ax, s, v, v, 'none', 'mark', 'cell');   // 形の記録は置かない（const）
       else { const iv = _.M.init[ax]; S.data.points[ax] = _.rewriteFrames(S.data.points[ax], samples(s, iv, iv, 'line')); trim(ax, binStart(s), _.binEnd(s)); }
       S.data.cells[ax][s] = CURVE; done.push(ax);
     }
@@ -158,8 +169,10 @@
     addLog('curve_mark', { axis: done.join(''), value: 'off', detail: 'bin ' + s });
     _.refresh(); return true;
   }
-  // グラフで自由に描くとき（core/timeline.js）：押した所が変化の区間なら系列を描く。描くのは変化の区間のフレームだけ
-  const seriesAt = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s); };
+  // グラフで自由に描くとき（core/timeline.js）：押した所が変化の区間なら系列を描く。描くのは変化の区間のフレームだけで、
+  // テンプレートで入れた区間は変えない（テンプレートで入れ直すか、形のボタンで変える）
+  const seriesAt = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s) && !record(ax, s); };
+  const isTemplate = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s) && !!record(ax, s); };
 
-  Object.assign(_, { curveIsCurve: isCurve, curveSeriesAt: seriesAt, curveMark: mark, curveUnmark: unmark, curveSplitAt: splitAt, curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
+  Object.assign(_, { curveIsTemplate: isTemplate, curveIsZero: isZero, curveIsCurve: isCurve, curveSeriesAt: seriesAt, curveMark: mark, curveUnmark: unmark, curveSplitAt: splitAt, curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
 })();

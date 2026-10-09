@@ -209,6 +209,7 @@
     const tP = G.tOf(e.clientX - r.left);
     if (_.curveDown(axis, tP, LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
     // series：系列を描く（連続の方式と、区間内で変化で変化の区間を押したとき）。それ以外の区間方式はセルの値を置く
+    if (_.curveIsTemplate(axis, tP)) { _.hintMsg('テンプレートで入れた区間は「描く」では変えません（テンプレートか形のボタンで変えます）'); return; }
     edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set(), series: model() === 'series' || _.curveSeriesAt(axis, tP) };
     editAt(e);
   });
