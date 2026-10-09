@@ -132,7 +132,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.keyboard.press('Escape');
     const cells = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));
     check('セルに入れた値が区間の値になり、Enter で下・次の区間へ移り、1〜9 以外は入らない', JSON.stringify(cells) === '[[7,null],[3,null]]', JSON.stringify(cells));
-    // 評価区間に従う：実験モードでは右クリックで区切れない（実験の外では区切れる）
+    // 事前設定の区切り：実験の外でも中でも、右クリックと C キーで区切れない
     await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
     const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
     const rclick = async t => { await p.mouse.click(box.x + 44 + t / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100); };
@@ -143,8 +143,8 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const n2 = await p.evaluate(() => AH.nSec());
     await p.evaluate(() => { AH.seekTo(7.5); document.activeElement.blur(); }); await p.waitForTimeout(150);
     await p.keyboard.press('KeyC'); await p.waitForTimeout(100);
-    check('評価区間に従う：実験モードでは C キーでも区切れない', (await p.evaluate(() => AH.nSec())) === 13);
-    check('評価区間に従う：右クリックで区切れるが、実験モードでは区切れない', n1 === 13 && n2 === 13, JSON.stringify({ n1, n2 }));
+    check('事前設定の区切り：実験モードでは C キーでも区切れない', (await p.evaluate(() => AH.nSec())) === 12);
+    check('事前設定の区切り：右クリックで区切れない（実験の外でも中でも）', n1 === 12 && n2 === 12, JSON.stringify({ n1, n2 }));
     // 自分で区切る：区切りのボタンが出て、実験モードでも右クリックとボタンで区切れる
     await pick(p, '区切り', 'self');
     const self = await p.evaluate(() => ({ note: document.querySelector('.cfgNote').textContent, btns: [...document.querySelectorAll('.cutBox button')].map(b => b.textContent) }));
@@ -157,14 +157,14 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.click('.cutBox button:text("近くの区切りを消す")'); await p.waitForTimeout(100);
     const n5 = await p.evaluate(() => [AH.nSec(), AH.S.meta.range.edges.some(x => Math.abs(x - 8.5) < 0.05)]);
     check('自分で区切る：プリセットは Excel のまま、区切りのボタンを出す', /Excel/.test(self.note) && self.btns.join() === '今の時間で区切る,近くの区切りを消す', JSON.stringify(self));
-    check('自分で区切る：実験モードでも右クリックとボタンで区切りを置き、ボタンで消せる', n3 === 14 && n4[0] === 15 && n4[1] && n5[0] === 14 && !n5[1], JSON.stringify({ n3, n4, n5 }));
+    check('自分で区切る：実験モードでも右クリックとボタンで区切りを置き、ボタンで消せる', n3 === 13 && n4[0] === 14 && n4[1] && n5[0] === 13 && !n5[1], JSON.stringify({ n3, n4, n5 }));
     await p.evaluate(() => { AH.seekTo(9.5); document.activeElement.blur(); }); await p.waitForTimeout(150);
     await p.keyboard.press('KeyC'); await p.waitForTimeout(100);
     const c1 = await p.evaluate(() => [AH.nSec(), AH.S.meta.range.edges.some(x => Math.abs(x - 9.5) < 0.05)]);
     await p.click('input[data-ax=v][data-s="0"]'); await p.evaluate(() => AH.seekTo(10.5)); await p.waitForTimeout(150);
     await p.keyboard.press('KeyC'); await p.waitForTimeout(100);
     const c2 = await p.evaluate(() => [AH.nSec(), AH.S.meta.range.edges.some(x => Math.abs(x - 10.5) < 0.05), document.activeElement.value]);
-    check('自分で区切る：C キーで今の時間で区切る（セルに入れている間も効き、セルに C は入らない）', c1[0] === 15 && c1[1] && c2[0] === 16 && c2[1] && c2[2] === '7', JSON.stringify({ c1, c2 }));
+    check('自分で区切る：C キーで今の時間で区切る（セルに入れている間も効き、セルに C は入らない）', c1[0] === 14 && c1[1] && c2[0] === 15 && c2[1] && c2[2] === '7', JSON.stringify({ c1, c2 }));
     await p.keyboard.press('Escape');
     await p.evaluate(() => { AH._.expOn = AH._.__expOn; });
     // 値「連続値」：セルに小数（小数第1位まで）が入り、確定のときに 1〜9 の外を弾く。全角の数字も入る

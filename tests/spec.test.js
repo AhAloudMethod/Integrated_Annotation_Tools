@@ -296,7 +296,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   {
     const p = await open('excel'); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(150);
     await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
-    await p.evaluate(() => { AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.S.undo = []; for (const [s, v] of [[0, 1], [1, 2], [2, 3]]) AH.setCell('v', s, v); });
+    await p.evaluate(() => { AH.setOption('cuts', 'self'); AH.remount(); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.S.undo = []; for (const [s, v] of [[0, 1], [1, 2], [2, 3]]) AH.setCell('v', s, v); });   // 右クリックで区切れるのは「自分で区切る」のとき
     const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
     await p.mouse.click(box.x + 44 + 2.5 / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100);
     const xr = await p.evaluate(() => ({ e: AH.S.meta.range.edges, n: AH.nSec(), c: [0, 1, 2, 3, 4].map(i => AH.S.data.cells.v[i] ?? null), th: document.querySelectorAll('table.xl th[data-s]').length }));
@@ -336,10 +336,12 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const box = await p.evaluate(() => { const r = document.getElementById('tl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, D: AH.S.meta.duration }; });
     const rclick = async t => { await p.mouse.click(box.x + 44 + t / box.D * (box.w - 52), box.y + box.h * 0.2, { button: 'right' }); await p.waitForTimeout(100); };
     const fixed = await p.evaluate(() => ({ cuts: AH.S.meta.options.cuts, sel: document.querySelector('select[aria-label=区切り]').value, btn: !!document.querySelector('.cutBox') }));
+    await rclick(4.5);
+    const n0 = await p.evaluate(() => AH.nSec());
     await p.evaluate(() => { AH._.__expOn = AH._.expOn; AH._.expOn = () => true; });   // 実験モードの代わり
     await rclick(4.5);
     const n1 = await p.evaluate(() => AH.nSec());
-    check('Excel：既定は「評価区間に従う」で、区切りのボタンを出さず、実験モードでは右クリックで区切れない', fixed.cuts === 'fixed' && fixed.sel === 'fixed' && !fixed.btn && n1 === 12, JSON.stringify({ fixed, n1 }));
+    check('Excel：既定は「事前設定の区切り」で、区切りのボタンを出さず、実験の外でも中でも右クリックで区切れない', fixed.cuts === 'fixed' && fixed.sel === 'fixed' && !fixed.btn && n0 === 12 && n1 === 12, JSON.stringify({ fixed, n0, n1 }));
     await p.selectOption('select[aria-label=区切り]', 'self'); await p.waitForTimeout(150); await blur(p);
     const self = await p.evaluate(() => ({ cuts: AH.S.meta.options.cuts, btns: [...document.querySelectorAll('.cutBox button')].map(b => b.textContent), rows: document.querySelectorAll('table.xl tr').length }));
     await rclick(4.5);
