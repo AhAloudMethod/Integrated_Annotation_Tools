@@ -73,7 +73,7 @@ description: あアラウド アノテーションツールの実験モード用
   | `timeline` | `true` | 真偽（評価グラフ） |
   | `videoSize` | `55` | 25〜80 |
   | `padJoy`，`padSlider`，`padSquare` | `true` | 真偽 |
-  | `review`，`videoWindow` | `true` | 真偽（視聴，別ウィンドウのボタンを出すか） |
+  | `review`，`refAudio`，`videoWindow` | `true` | 真偽（視聴，基準音声，別ウィンドウのボタンを出すか） |
   | `voice` | `false` | 真偽（音声入力のボタンを出すか） |
 
   評価区間の変更（区切りの編集など）は，実験モードでは設定に関係なくできない．ただし Excel（専用とカスタム）で `options` の `cuts` を `"self"` にした試行では，参加者が区切りを編集できる．

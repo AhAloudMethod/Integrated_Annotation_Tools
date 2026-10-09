@@ -184,6 +184,7 @@
     fire('padSliderUse', 'checked', !!s.padSlider);
     _.setF0Shown(!!s.f0); _.setListen(!!s.listen); _.setTimeline(!!s.timeline); _.setVideoSize(+s.videoSize);
     document.body.classList.toggle('expReview', !!s.review);
+    document.body.classList.toggle('expRef', !!s.refAudio);
     document.body.classList.toggle('expVoice', !!s.voice);
     document.body.classList.toggle('expVwin', !!s.videoWindow);
   }
@@ -238,6 +239,8 @@
   function loaded(i) {
     const t = X.trials[i], log = S.log;
     const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
+    const vref = X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].ref;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
+    S.meta.ref = typeof vref === 'number' ? vref : null;
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
       name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
     if (!started) {   // 復元したときは、その時点の評価区間のまま続ける

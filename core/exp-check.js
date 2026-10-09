@@ -18,11 +18,12 @@
     { key: 'padSlider', label: 'スライダーを使う', type: 'check', def: true },
     { key: 'padSquare', label: '四角平面でスティックを角まで届かせる', type: 'check', def: true },
     { key: 'review', label: '「視聴」ボタンを出す', type: 'check', def: true, exp: true },
+    { key: 'refAudio', label: '「基準音声」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'videoWindow', label: '「別ウィンドウ」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true },
   ];
   const DEF = Object.fromEntries(SETTINGS.map(s => [s.key, s.def]));
-  const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration'];
+  const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref'];   // ref：基準音声の時刻（秒。無ければ最初の声）
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
 
   // experiment.json と setup.json を合わせる（settings と videos は experiment.json の値が優先）
@@ -35,7 +36,7 @@
     const spec = t.range || (cfg.videos && cfg.videos[t.video]) || {};
     const r = { ...(cfg.range || {}), ...spec };
     if (!spec.edges) delete r.edges;
-    delete r.duration;
+    delete r.duration; delete r.ref;
     return r;
   }
 
@@ -74,6 +75,7 @@
       if (r.bin != null && !(r.bin > 0)) errors.push(`${where}：bin は正の数です`);
       if (r.start != null && !(r.start >= 0)) errors.push(`${where}：start は 0 以上です`);
       if (r.end != null && !(r.end > (r.start || 0))) errors.push(`${where}：end は start より後です`);
+      if (r.ref != null && !(typeof r.ref === 'number' && r.ref >= 0 && !(r.duration > 0 && r.ref > r.duration))) errors.push(`${where}：ref（基準音声の秒）は 0 以上、動画の長さ以下の数です`);
       if (r.label != null && !['countdown', 'elapsed'].includes(r.label)) errors.push(`${where}：label は countdown か elapsed です`);
       if (r.edges != null && !(Array.isArray(r.edges) && r.edges.length >= 2 && r.edges.every((x, i) => typeof x === 'number' && x >= 0 && (i === 0 || x > r.edges[i - 1]))))
         errors.push(`${where}：edges は 2 つ以上の増えていく秒の配列です`);

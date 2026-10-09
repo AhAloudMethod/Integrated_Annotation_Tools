@@ -83,6 +83,24 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     }
   }
 
+  // ---- 基準音声：最初に声が入る所（F0）の 0.2 秒前から声の終わりまで再生し、止めて押す前の位置に戻る。setup.json の ref があればそこから
+  {
+    const q = await ctx.newPage(); q.on('pageerror', e => errs.push(e.message));
+    await q.goto(URL); await q.setInputFiles('#file', VID); await q.waitForFunction(() => AH._.F0.status === 'ready', null, { timeout: 30000 });
+    await q.evaluate(() => { const F = AH._.F0; F.f0 = new Float32Array(F.f0.length).fill(NaN); for (let k = 100; k < 150; k++) F.f0[k] = 300; AH.seekTo(6); });   // 声は 1.0〜1.5 秒
+    await q.waitForTimeout(150);
+    const span = await q.evaluate(() => AH._.refSpan());
+    await q.click('#refBtn');
+    const mid = await q.waitForFunction(() => !AH.video.paused && AH.video.currentTime > 0.8 && AH.video.currentTime < 2, null, { timeout: 3000 }).then(() => true).catch(() => false);
+    await q.waitForFunction(() => !AH._.refPlaying(), null, { timeout: 5000 }).catch(() => {});
+    await q.waitForTimeout(200);
+    const after = await q.evaluate(() => ({ t: AH.video.currentTime, paused: AH.video.paused, log: AH.S.log.filter(l => l.type === 'ref_audio').map(l => l.value).join() }));
+    check('基準音声：最初の声（1.0〜1.5 秒）の前から再生し、終わると止めて押す前の位置（6 秒）に戻る', Math.abs(span.t0 - 1) < 0.02 && Math.abs(span.t1 - 1.54) < 0.02 && mid && after.paused && Math.abs(after.t - 6) < 0.01 && after.log === 'play,end', JSON.stringify({ span, mid, after }));
+    await q.evaluate(() => { AH.S.meta.ref = 3; });
+    const span2 = await q.evaluate(() => AH._.refSpan());
+    check('基準音声：setup.json の ref（3 秒）があればそこから、最初の声の長さだけ', Math.abs(span2.t0 - 3) < 1e-9 && Math.abs(span2.t1 - 3.54) < 0.02, JSON.stringify(span2));
+    await q.close();
+  }
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

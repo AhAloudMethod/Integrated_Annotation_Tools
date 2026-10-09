@@ -31,7 +31,7 @@ input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);borde
 header{flex-wrap:nowrap}
 header>*{flex:0 0 auto}
 header .status{flex:0 1 auto}
-@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:180px} header{gap:6px} header button{padding:4px 8px}}
+@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:150px} header{gap:5px} header button{padding:4px 6px}}
 @media (max-width:1180px){header{flex-wrap:wrap}}
 select,textarea{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
 button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);cursor:pointer}
@@ -43,6 +43,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visib
 /* 案内は画面上部に重ねて出す（レイアウトを動かさない） */
 .hint.ok{color:var(--ink);border-color:var(--val)}
 .hint{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:30;font-size:13px;color:var(--pen);background:var(--panel);border:1px solid var(--pen);border-radius:4px;padding:4px 14px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+#refBtn.on{background:var(--f0);border-color:var(--f0);color:#fff}
 #reviewBtn.on{background:var(--val);border-color:var(--val);color:#fff}
 body.review #panel,body.review #under{pointer-events:none;opacity:.75}
 /* 視聴（視聴のみ）：編集できないことが分かるよう、画面の地の色と枠を変え、上端に札を出す */
@@ -160,7 +161,7 @@ canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 
 /* 実験モード：参加者が選べる要素を隠す。開始前・完了後は全画面の覆いで操作を止める */
 body.exp header .inline,body.exp #openBtn,body.exp #expBtn,body.exp header .rgWrap,body.exp #tlBtn,body.exp #exportBtn{display:none}
-body.exp:not(.expReview) #reviewBtn,body.exp:not(.expVoice) #voiceBtn,body.exp:not(.expVwin) #vwinBtn{display:none}
+body.exp:not(.expReview) #reviewBtn,body.exp:not(.expRef) #refBtn,body.exp:not(.expVoice) #voiceBtn,body.exp:not(.expVwin) #vwinBtn{display:none}
 body.exp .optCtl{display:none}
 .expInfo{font-size:13px;color:var(--muted);white-space:nowrap}
 .expDone{font-weight:700;border-color:var(--hit)}
