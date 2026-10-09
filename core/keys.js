@@ -22,6 +22,7 @@
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;   // 入力欄（Excel方式のセル等）は各自で処理
     if ((e.code === 'Comma' || e.code === 'Period') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _.frameStep(e.code === 'Comma' ? -1 : 1); return; }   // 1フレーム移動
     if (e.code === 'KeyV' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _.setReview(!_.reviewing()); return; }
+    if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); _.setVoicedShown(!_.voicedShown(), 'key'); return; }   // 発声の区間の表示（core/voiced.js）
     if (_.reviewing()) {   // 視聴の間は再生・移動だけ（方式のキー入力は渡さない）
       if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
       else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') { e.preventDefault(); arrow(e); }

@@ -10,7 +10,7 @@
   const { $, video, S, modes, addLog, endStroke, setArmed, pen } = _;
   // 設定の項目・既定値（書いていない項目はこれ。参加者のブラウザに残った値は使わない）と検査は core/exp-check.js
   const E = _.expCheck, { DEF } = E;
-  const LS_KEYS = ['ahann_axes', 'ahann_after', 'ahann_grid', 'ahann_pad_square', 'ahann_f0', 'ahann_listen', 'ahann_tl', 'ahann_vidsize', 'ahann_pad_joy', 'ahann_pad_slider'];
+  const LS_KEYS = ['ahann_axes', 'ahann_after', 'ahann_grid', 'ahann_pad_square', 'ahann_f0', 'ahann_voiced', 'ahann_listen', 'ahann_tl', 'ahann_vidsize', 'ahann_pad_joy', 'ahann_pad_slider'];
   const SUM_COLS = ['trial', 'practice', 'mode', 'condition', 'video', 'start_iso', 'end_iso', 'task_ms', 'play_ms', 'review_ms', 'n_play', 'n_seek', 'n_undo', 'n_redo',
     'n_strokes', 'n_events', 'bins', 'filled_v', 'filled_a', 'n_restore', 'partial', 'survey_opened'];
   const VIDEO_RE = /\.(mp4|m4v|mov|webm|mkv|avi|ogv|mpe?g|wmv)$/i;
@@ -182,9 +182,10 @@
     fire('padSquare', 'checked', !!s.padSquare);
     fire('padJoyUse', 'checked', !!s.padJoy);
     fire('padSliderUse', 'checked', !!s.padSlider);
-    _.setF0Shown(!!s.f0); _.setListen(!!s.listen); _.setTimeline(!!s.timeline); _.setVideoSize(+s.videoSize);
+    _.setF0Shown(!!s.f0); _.setVoicedShown(!!s.voiced, 'exp'); _.setListen(!!s.listen); _.setTimeline(!!s.timeline); _.setVideoSize(+s.videoSize);
     document.body.classList.toggle('expReview', !!s.review);
     document.body.classList.toggle('expRef', !!s.refAudio);
+    document.body.classList.toggle('expVoicedBtn', !!s.voicedBtn);
     document.body.classList.toggle('expVoice', !!s.voice);
     document.body.classList.toggle('expVwin', !!s.videoWindow);
   }
@@ -363,7 +364,7 @@
   // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。区間の無い動画は「未設定」と出し、書き出さない
   function currentSettings() {
     return { ...DEF, axes: _.axesId(), rate: +$('rate').value, afterWrite: $('afterWrite').value, timeline: !document.body.classList.contains('noTl'),
-      graphEdit: $('graphEdit').checked, grid: _.gridShown(), f0: _.f0Shown(), listen: _.listenOn(), videoSize: +$('vidSize').value,
+      graphEdit: $('graphEdit').checked, grid: _.gridShown(), f0: _.f0Shown(), voiced: _.voicedShown(), listen: _.listenOn(), videoSize: +$('vidSize').value,
       padJoy: $('padJoyUse').checked, padSlider: $('padSliderUse').checked, padSquare: _.padSquare() };
   }
   function durationOf(file) {
@@ -437,6 +438,7 @@
     // 覆いの中（「開始」ボタンなど）では既定の動作（Space・Enter で押す）だけを残し、再生などのツールの操作には渡さない
     if (X.state !== 'running') { if (inCover) e.stopImmediatePropagation(); else block(); return; }
     if (e.code === 'KeyV' && !X.set.review && !e.ctrlKey && !e.metaKey) block();
+    if (e.code === 'KeyH' && !X.set.voicedBtn && !e.ctrlKey && !e.metaKey) block();   // 「発声」ボタンを出さない試行では H も効かない
   }, true);
 
   $('expBtn').addEventListener('click', e => { e.currentTarget.blur(); $('expDir').click(); });

@@ -32,6 +32,12 @@
       if (RG().start > 0) g.fillRect(PAD_L, 0, xOf(Math.min(RG().start, D)) - PAD_L, h - RULER);
       if (rangeEnd() < D) g.fillRect(xOf(rangeEnd()), 0, xOf(D) - xOf(rangeEnd()), h - RULER);
       g.globalAlpha = 1;
+      // 発声の区間（core/voiced.js）：声のある所を快度・覚醒度の欄に薄い色で塗る
+      if (_.voicedShown()) {
+        const lanes0 = geom().lanes; g.fillStyle = css('--f0'); g.globalAlpha = 0.13;
+        for (const [t0, t1] of _.voicedSpans()) for (const L of lanes0) g.fillRect(xOf(t0), L.y0, Math.max(1, xOf(Math.min(t1, D)) - xOf(t0)), L.y1 - L.y0);
+        g.globalAlpha = 1;
+      }
       // 区間の境界（評価区間に合わせた格子）と動画時刻の目盛り。自分で置いた区切り（不揃いの区間）は濃く引く
       const own = !!RG().edges;
       for (let s = 0; s <= nSec(); s++) {

@@ -99,7 +99,7 @@ const BAD = makeFolder('exp_bad', {
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(await text('setup.json'));
   check('setup.json に欄の値と動画ごとの評価区間（長さつき）を書く', su.settings.voice === true && su.settings.axes === 'va' && su.videos['a.mp4'].start === 2 && su.videos['a.mp4'].end === 10 && su.videos['a.mp4'].bin === 1
-    && Math.abs(su.videos['a.mp4'].duration - 12) < 0.1 && Object.keys(su.settings).length === 16, JSON.stringify(su));
+    && Math.abs(su.videos['a.mp4'].duration - 12) < 0.1 && Object.keys(su.settings).length === 18, JSON.stringify(su));
   await p.click('#esClose');
 
   // ---- 誤りのある設定ファイル：誤りを一覧で出して始めない

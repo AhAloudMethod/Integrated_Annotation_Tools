@@ -101,6 +101,30 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('基準音声：setup.json の ref（3 秒）があればそこから、最初の声の長さだけ', Math.abs(span2.t0 - 3) < 1e-9 && Math.abs(span2.t1 - 3.54) < 0.02, JSON.stringify(span2));
     await q.close();
   }
+  // ---- 発声の区間：声のある所（短い切れ目はつなぎ、短すぎる声は除く）を評価グラフに薄い色で出す。ボタンと H キーで切り替える（既定はオン）
+  {
+    const q = await ctx.newPage(); q.on('pageerror', e => errs.push(e.message));
+    await q.goto(URL); await q.evaluate(() => { localStorage.removeItem('ahann_voiced'); localStorage.setItem('ahann_tl', '1'); }); await q.reload();
+    await q.setInputFiles('#file', VID); await q.waitForFunction(() => AH._.F0.status === 'ready', null, { timeout: 30000 });
+    const sp = await q.evaluate(() => {
+      const F = AH._.F0; F.f0 = new Float32Array(F.f0.length).fill(NaN);
+      for (let k = 100; k < 150; k++) F.f0[k] = 300; for (let k = 155; k < 200; k++) F.f0[k] = 300;   // 1.0〜2.0 秒（0.05 秒の切れ目はつなぐ）
+      for (let k = 400; k < 402; k++) F.f0[k] = 300;                                                  // 0.02 秒だけの声は除く
+      AH.refresh(); return AH._.voicedSpans().map(([a, b]) => [+a.toFixed(2), +b.toFixed(2)]);
+    });
+    const tint = await q.evaluate(() => { const c = document.getElementById('tl'), g = c.getContext('2d'), d = devicePixelRatio || 1, x = t => Math.round((44 + t / AH.S.meta.duration * (c.clientWidth - 52)) * d), y = Math.round(20 * d);
+      const px = t => [...g.getImageData(x(t), y, 1, 1).data].join(); return [px(1.5), px(6)]; });
+    const on0 = await q.evaluate(() => [AH._.voicedShown(), document.getElementById('voicedBtn').classList.contains('on')]);
+    check('発声の区間：既定はオンで、声のある所（1.0〜2.04 秒。短い切れ目はつなぎ、短すぎる声は除く）をグラフに薄い色で出す', JSON.stringify(sp) === '[[1,2.04]]' && on0.join() === 'true,true' && tint[0] !== tint[1], JSON.stringify({ sp, on0, tint }));
+    await q.evaluate(() => document.activeElement && document.activeElement.blur());
+    await q.keyboard.press('KeyH'); await q.waitForTimeout(100);
+    const off = await q.evaluate(() => [AH._.voicedShown(), document.getElementById('voicedBtn').classList.contains('on'), localStorage.getItem('ahann_voiced')]);
+    await q.click('#voicedBtn'); await q.waitForTimeout(100);
+    const back = await q.evaluate(() => [AH._.voicedShown(), AH.S.log.filter(l => l.type === 'voiced_display').map(l => l.value + ':' + l.detail).join()]);
+    check('H キーとボタンで切り替え、ブラウザに保存し、操作ログに残す', off.join() === 'false,false,0' && back[0] === true && back[1] === 'off:key,on:button', JSON.stringify({ off, back }));
+    await q.evaluate(() => localStorage.removeItem('ahann_voiced'));
+    await q.close();
+  }
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

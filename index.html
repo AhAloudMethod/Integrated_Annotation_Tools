@@ -116,7 +116,7 @@
     <button id="helpBtn" title="操作の説明">？</button>
     <div id="helpPanel" class="rgPanel right help" hidden>
       <div id="modeHelp"></div>
-      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 前・次の区間へ　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>+<kbd>←</kbd><kbd>→</kbd> または <kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>C</kbd> 今の時間で区切る（区切れるとき）　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</p>
+      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 前・次の区間へ　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>+<kbd>←</kbd><kbd>→</kbd> または <kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>C</kbd> 今の時間で区切る（区切れるとき）　<kbd>H</kbd> 発声の区間の表示　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</p>
       <p>視聴（視聴ボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更はできません。</p>
       <p>聴いてから入力：1区間を再生すると区間の終わりで止まります。<kbd>Enter</kbd>またはボタン0で同じ区間を始めから再生し直し、その間の入力を記録します。区間の終わりで記録を終え、そのまま次の区間に移ります。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
       <p>別ウィンドウ：動画だけを別のウィンドウに出します。ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作できます。</p>
@@ -145,7 +145,7 @@
     </div>
     <div id="panel"></div>
   </div>
-  <div class="tl"><canvas id="tl" tabindex="0" aria-label="タイムライン。クリックでその時刻に移動"></canvas></div>
+  <div class="tl"><button id="voicedBtn" type="button" class="tlToggle" title="発声の区間（声のある所）を評価グラフに薄い色で出す（H キー）">発声</button><canvas id="tl" tabindex="0" aria-label="タイムライン。クリックでその時刻に移動"></canvas></div>
 </main>
 
 <!-- 共通部分（core/）：読み込み順に依存する。最初が state.js、最後が init.js（公開 API AH.* を作る） -->
@@ -174,6 +174,7 @@
 <script src="core/vwin.js"></script>
 <script src="core/colors.js"></script>
 <script src="core/f0.js"></script>
+<script src="core/voiced.js"></script>
 <script src="core/ref.js"></script>
 <script src="core/voice.js"></script>
 <script src="core/exp-check.js"></script>

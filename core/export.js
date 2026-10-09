@@ -112,7 +112,7 @@
     // 聴いてから入力で評価したか（連続の方式：区間を聴いて止め、再生し直して記録。区間方式：区間を聴いて止め、値を入れて次へ）
     S.meta.listen = { on: _.listenUsable(), flow: model() === 'table' ? 'listen-pause-input' : 'listen-pause-replay-record' };
     S.meta.frame_rate = _.fpsMeta();   // 1フレーム移動に使ったフレームレート（source：default／auto／manual）
-    S.meta.display = _.displayMeta();   // 区切りの線・スティックを四角に広げたか
+    S.meta.display = { ..._.displayMeta(), voiced: _.voicedShown() };   // 区切りの線・スティックを四角に広げたか・発声の区間を出したか
     S.meta.f0 = { shown: !!(_.f0Shown && _.f0Shown()), method: 'YIN 16kHz win=40ms hop=10ms 70-1000Hz th=0.15' };
     out('_events.csv', ['wall_ms', 'video_t', 'type', 'axis', 'value', 'detail'], S.log.map(e => [e.wall_ms, e.video_t, e.type, e.axis, e.value, e.detail]));
     files.push({ name: base + '_session.json', text: JSON.stringify({ meta: S.meta, data: S.data, log: S.log }, null, 1), type: 'application/json' });

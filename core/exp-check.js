@@ -12,6 +12,7 @@
     { key: 'graphEdit', label: 'グラフをなぞって値を編集する', type: 'check', def: true },
     { key: 'grid', label: 'グリッド線を表示する', type: 'check', def: true },
     { key: 'f0', label: '音声の F0（声の高さ）を表示する', type: 'check', def: false },
+    { key: 'voiced', label: '発声の区間を評価グラフに表示する', type: 'check', def: true },
     { key: 'listen', label: '1区間ずつ聴いてから入力する', type: 'check', def: true },
     { key: 'videoSize', label: '動画の大きさ（％）', type: 'number', min: 25, max: 80, def: 55 },
     { key: 'padJoy', label: 'ジョイスティックを使う', type: 'check', def: true },
@@ -19,6 +20,7 @@
     { key: 'padSquare', label: '四角平面でスティックを角まで届かせる', type: 'check', def: true },
     { key: 'review', label: '「視聴」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'refAudio', label: '「基準音声」ボタンを出す', type: 'check', def: true, exp: true },
+    { key: 'voicedBtn', label: '「発声」ボタン（H キー）を出す', type: 'check', def: true, exp: true },
     { key: 'videoWindow', label: '「別ウィンドウ」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true },
   ];
