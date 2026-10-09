@@ -55,7 +55,7 @@
   //  - 「なぞって評価する」（トグル）：対象の区間を変化の区間にする／普通のセルに戻す（区間の平均を丸めた値）
   //  - 「発声なし」（トグル）：対象の区間を両軸 0 にする／空欄に戻す（普通のセルでも、変化の区間でも）
   //  - 入れ方の切り替え（両方のときだけ）と形のボタン。形のボタンは、次にテンプレートで入れる形を選び、対象の変化の区間に値があればその形に変える。
-  //    描くときは次に入れる形が無いので、形のボタンを光らせない
+  //    描くときは次に入れる形が無いので、形のボタンを光らせない。描くときに形のボタンを押すと、テンプレートに切り替える
   let curveSync = () => {};
   function curveBox(panel) {
     const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内で変化</div>');
@@ -73,7 +73,8 @@
       box.appendChild(tools);
     }
     const shapes = h('div', { class: 'curveShapes' });
-    for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; AH.curveReshape(tgt(), k, act()); })).dataset.k = k;
+    // 「描く」のときに形を押したら「テンプレート」に切り替える（両方使えるとき）
+    for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; if (o().curveInput === 'both' && curveToolSel !== 'template') { curveToolSel = 'template'; AH.addLog('option', { detail: 'curveTool=template' }); } AH.curveReshape(tgt(), k, act()); })).dataset.k = k;
     box.appendChild(shapes);
     const sync = () => {
       const s = tgt();

@@ -88,6 +88,10 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const lit = await p.$$eval('.curveBox .shape.on', bs => bs.length);
     await drag(p, g('v', 3.2, 2), g('v', 3.8, 9));
     check('描くでは、テンプレートで入れた区間を変えず、形のボタンを光らせない', (await cells(p, 'v'))[3] === c2 && lit === 0, JSON.stringify({ c: (await cells(p, 'v'))[3], lit }));
+    await at(p, 0.5); await p.click('.curveBox .shape:text("後半で変化")');
+    const sw = await p.evaluate(() => ({ tool: AH.mode.curveTool(), lit: [...document.querySelectorAll('.curveBox .on')].map(b => b.textContent).join() }));
+    check('描くのときに形のボタンを押すとテンプレートに切り替わり、その形が光る', sw.tool === 'template' && /テンプレート/.test(sw.lit) && /後半で変化/.test(sw.lit), JSON.stringify(sw));
+    await p.click('.curveBox .tool:text("描く")');
     await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
     const z = [(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]];
     const zon = await p.$eval('.curveBox .novoice', b => b.classList.contains('on'));
