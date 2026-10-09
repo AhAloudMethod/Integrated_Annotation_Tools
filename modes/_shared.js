@@ -297,6 +297,7 @@
     const box = h('div', { class: 'planeBox cutBox' }, '<div class="refTitle">区間の区切り（<kbd>C</kbd> で今の時間で区切る）</div>');
     const btn = (label, fn) => box.appendChild(h('button', { type: 'button', onclick: e => { e.currentTarget.blur(); if (!AH._.reviewing()) fn(); } }, label));
     btn('今の時間で区切る', () => AH._.addCut(AH._.frameStart ? AH._.frameStart(video.currentTime) : video.currentTime));
+    box.lastChild.dataset.key = 'C';   // ショートカットキー（右下に出す）
     btn('近くの区切りを消す', () => AH._.delCut(video.currentTime || 0));
     panel.appendChild(box);
   }

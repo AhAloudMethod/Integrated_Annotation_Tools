@@ -23,6 +23,9 @@ header button{padding:4px 10px}
 header .sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
 header .time{min-width:8.6em}
 #playBtn{position:relative}
+/* ショートカットキーのあるボタン：右下に小さくキーを出す（文字の幅を変えない。再生速度の札は ::after なので ::before を使う） */
+button[data-key]{position:relative}
+button[data-key]::before{content:attr(data-key);position:absolute;right:2px;bottom:0;font-size:8px;line-height:1;opacity:.55;pointer-events:none}
 #clock{position:relative}
 #clock[data-out]:not([data-out=""])::after{content:attr(data-out);position:absolute;top:-8px;right:-4px;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--pen);color:#fff;white-space:nowrap}
 #playBtn[data-rate]:not([data-rate=""])::after{content:attr(data-rate);position:absolute;top:-6px;right:-8px;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--pen);color:#fff}
