@@ -3,7 +3,16 @@
   const _ = AH._;
   const { $, video, S, clamp, addLog, syncRangeUI, pen, endStroke, setArmed, refresh, selectMode, switchMode, newSession } = _;
   // ---------- 動画 ----------
-  function seekTo(t) { if (S.meta.duration) video.currentTime = clamp(t, 0, S.meta.duration); }
+  // シーク：前のシーク（フレームの読み込み）が終わる前に来た指示は最後の 1 つだけ残し、終わったらそこへ移る。
+  // グラフのシークの帯をドラッグすると指示が続けて来るので、そのたびに位置を変えると詰まってカクカクする（止まっているときに目立つ）
+  let pending = null;
+  function seekTo(t) {
+    if (!S.meta.duration) return;
+    t = clamp(t, 0, S.meta.duration);
+    if (video.seeking) { pending = t; refresh(); return; }
+    pending = null; video.currentTime = t;
+  }
+  const seekTarget = () => (pending != null ? pending : video.currentTime);   // 向かっている位置（再生位置の線と時刻の表示に使う）
   function togglePlay() { if (!video.src) return; video.paused ? video.play() : video.pause(); }
 
   $('openBtn').addEventListener('click', () => $('file').click());
@@ -40,7 +49,10 @@
   video.addEventListener('play', () => { pen.clickEdit = false; addLog('play'); refresh(); });
   video.addEventListener('pause', () => { endStroke('pause'); addLog('pause'); refresh(); });
   video.addEventListener('seeking', () => endStroke('seek'));
-  video.addEventListener('seeked', () => { addLog('seek', { detail: 'from ' + S.lastTime.toFixed(4) }); S.lastTime = video.currentTime; refresh(); });
+  video.addEventListener('seeked', () => {
+    if (pending != null) { const t = pending; pending = null; video.currentTime = t; return; }   // 待っていた指示へ移る（途中の位置はログに残さない）
+    addLog('seek', { detail: 'from ' + S.lastTime.toFixed(4) }); S.lastTime = video.currentTime; refresh();
+  });
   video.addEventListener('ended', () => { endStroke('ended'); addLog('ended'); });
   $('rate').addEventListener('change', e => { video.playbackRate = +e.target.value; addLog('rate', { value: e.target.value }); e.target.blur(); refresh(); });
   $('pid').addEventListener('change', e => {
@@ -49,8 +61,8 @@
   });
   $('mode').addEventListener('change', e => { switchMode(e.target.value); e.target.blur(); });
   $('playBtn').addEventListener('click', e => { togglePlay(); e.target.blur(); });
-  $('backBtn').addEventListener('click', e => { seekTo(video.currentTime - 1); e.target.blur(); });
-  $('fwdBtn').addEventListener('click', e => { seekTo(video.currentTime + 1); e.target.blur(); });
+  $('backBtn').addEventListener('click', e => { seekTo(seekTarget() - 1); e.target.blur(); });
+  $('fwdBtn').addEventListener('click', e => { seekTo(seekTarget() + 1); e.target.blur(); });
   $('armBtn').addEventListener('click', e => { setArmed(!S.armed); e.target.blur(); });
   $('resetBtn').addEventListener('click', e => {
     e.currentTarget.blur();
@@ -59,5 +71,5 @@
   });
   $('graphEdit').addEventListener('change', e => { addLog('graph_edit', { value: e.target.checked }); e.target.blur(); });
 
-  Object.assign(_, { seekTo, togglePlay, openVideoFile });
+  Object.assign(_, { seekTo, seekTarget, togglePlay, openVideoFile });
 })();

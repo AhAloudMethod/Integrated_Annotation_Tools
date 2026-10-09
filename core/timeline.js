@@ -99,7 +99,7 @@
         g.fillStyle = css('--pen'); g.globalAlpha = 0.15;
         g.fillRect(xOf(_.stroke.t0), 2, Math.max(1, xOf(_.stroke.lastT) - xOf(_.stroke.t0)), h - RULER - 2); g.globalAlpha = 1;
       }
-      const x = xOf(video.currentTime);
+      const x = xOf(_.seekTarget());   // シークの途中は向かっている位置（core/video.js）
       g.strokeStyle = _.stroke ? css('--pen') : css('--head'); g.lineWidth = 1.5;
       g.beginPath(); g.moveTo(x, 2); g.lineTo(x, h); g.stroke();
     }
@@ -266,7 +266,10 @@
   function refresh() {
     const t = video.currentTime || 0;
     if (_.renderF0) _.renderF0();
-    $('clock').textContent = fmt(t) + ' / ' + fmt(S.meta.duration) + (S.meta.duration && !inRange(t) ? '（区間外）' : '');
+    // 区間外は時刻の右上の札にする（文字に足すと幅が変わり、右のボタンがずれる）
+    const ct = _.seekTarget ? _.seekTarget() : t;
+    $('clock').textContent = fmt(ct) + ' / ' + fmt(S.meta.duration);
+    $('clock').dataset.out = S.meta.duration && !inRange(ct) ? '区間外' : '';
     $('playBtn').textContent = video.paused ? '再生' : '停止';
     $('playBtn').dataset.rate = video.playbackRate !== 1 ? '×' + video.playbackRate : '';   // 1 以外の再生速度はボタンの角に出す
     $('armBox').hidden = writeMode() !== 'armed' || _.listenUsable();

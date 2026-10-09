@@ -146,6 +146,20 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => localStorage.clear()); await p.close();
   }
 
+  // 8. シーク：前のシークが終わる前の指示は最後の 1 つだけ残す（シークの帯のドラッグで詰まらない）。区間外の札で時刻の幅が変わらない
+  {
+    const p = await open('key');
+    await p.evaluate(() => { AH._.setRange({ start: 2, bin: 1, count: 6, target: 8, edges: null }); AH.seekTo(5); });
+    await p.waitForFunction(() => !AH.video.seeking); await p.waitForTimeout(100);
+    const w0 = await p.evaluate(() => document.getElementById('clock').getBoundingClientRect().width);
+    const n0 = await p.evaluate(() => AH.S.log.filter(l => l.type === 'seek').length);
+    await p.evaluate(() => { for (let k = 0; k < 40; k++) AH.seekTo(0.2 + k * 0.02); });   // 0.2〜0.98 秒へ続けて
+    await p.waitForFunction(() => !AH.video.seeking); await p.waitForTimeout(200);
+    const r = await p.evaluate(() => ({ t: AH.video.currentTime, n: AH.S.log.filter(l => l.type === 'seek').length, out: document.getElementById('clock').dataset.out, w: document.getElementById('clock').getBoundingClientRect().width, txt: document.getElementById('clock').textContent }));
+    check('続けてシークすると最後の位置へ移り、途中の位置は飛ばす。区間外は札で出し、時刻の幅は変わらない', Math.abs(r.t - 0.98) < 0.01 && r.n - n0 <= 3 && r.out === '区間外' && Math.abs(r.w - w0) < 1 && !/区間外/.test(r.txt), JSON.stringify({ ...r, n0, w0 }));
+    await p.evaluate(() => localStorage.clear()); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

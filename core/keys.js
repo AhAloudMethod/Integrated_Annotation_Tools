@@ -6,8 +6,8 @@
   function arrow(e) {
     const d = e.code === 'ArrowLeft' ? -1 : 1;
     if (e.ctrlKey || e.metaKey) { _.frameStep(d); return; }
-    if (e.shiftKey) { seekTo(video.currentTime + 0.1 * d); return; }
-    const n = _.nSec(), b = _.binAt(video.currentTime || 0);
+    if (e.shiftKey) { seekTo(_.seekTarget() + 0.1 * d); return; }
+    const n = _.nSec(), b = _.binAt(_.seekTarget() || 0);   // シークの途中なら向かっている位置から
     const s = b < 0 ? (d > 0 ? 0 : -1) : b >= n ? (d < 0 ? n - 1 : n) : b + d;
     if (s >= 0 && s < n) seekTo(_.binStart(s) + 0.001);
   }
