@@ -127,6 +127,11 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
    例：`…/viewform?usp=pp_url&entry.179614842=PID&entry.1486397855=COND` → `…/viewform?usp=pp_url&entry.179614842={pid}&entry.1486397855={condition}`
 3. `{pid}` が無い URL は検査で警告になる．外部のサイト（NASA-TLX など）で事前入力ができないものは，警告が残ることを報告で伝える．
 4. `finalSurvey` で使える置き換えは `{pid}` と `{name}` だけである（実験全体の 1 回なので，条件は無い）．
+5. NASA-TLX は，外部のページ（keithv.com）だと結果が保存されない．実験フォルダに置いた改変版 `tlx/nasatlx-ja.html`（最後に結果を CSV で自動保存する）を使う．URL は絶対パスの `file:///` で書き，参加者・試行・条件を渡す．
+   `{ "url": "file:///C:/My works/あアラウド法/EC2026/実験2/分析用動画/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}", "label": "NASA-TLX" }`
+   - 実験フォルダが違えば，`tlx/nasatlx-ja.html` をその実験フォルダに写し，パスを合わせる（無ければユーザに場所を聞く）．
+   - 保存されるファイルは，ブラウザのダウンロード先の `<pid>_t<試行 2 桁>_tlx.csv` である（6 尺度の評価・選ばれた回数・重み・総合点・一対比較の答え）．
+   - 改変版はライセンスの記載が無い元のページを写したものなので，annotator のリポジトリには入れない．
 
 ## 条件名の振り方
 
