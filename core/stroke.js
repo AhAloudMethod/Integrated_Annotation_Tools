@@ -32,7 +32,7 @@
     _.stroke.lastT = t;
   }
   function startStroke(t0 = vt()) {
-    if (_.reviewing()) return;   // 見返しの間は書き込まない
+    if (_.reviewing()) return;   // 視聴の間は書き込まない
     const axes = _.M.writeAxes(); if (!axes.length) return;
     _.stroke = { before: snapshot(), axes, t0, lastT: t0, raw: [], pad: {} };
     strokeSample();

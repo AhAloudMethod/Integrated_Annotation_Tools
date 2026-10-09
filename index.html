@@ -19,7 +19,7 @@
   <button id="playBtn" title="再生／停止（Space）">再生</button>
   <button id="fwdBtn" title="1秒進む（→）">＋1秒</button>
   <span class="time" id="clock">0:00.00 / 0:00.00</span>
-  <button id="reviewBtn" title="見返し（V キー）：止まらずに再生して記録を見返す。値は変えられない。">見返し</button>
+  <button id="reviewBtn" title="視聴（V キー）：止まらずに再生して記録を見る。値は変えられない。">視聴</button>
   <span id="listenBox" class="listenBox" hidden></span>
   <span id="armBox" hidden><button id="armBtn" title="記録のオン／オフ（R キー）">記録オフ R</button></span>
   <button id="voiceBtn" title="音声入力：「15秒快度7」「覚醒度3」「7 3」など">音声入力</button>
@@ -116,7 +116,7 @@
     <div id="helpPanel" class="rgPanel right help" hidden>
       <div id="modeHelp"></div>
       <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 前・次の区間へ　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>+<kbd>←</kbd><kbd>→</kbd> または <kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>C</kbd> 今の時間で区切る（区切れるとき）　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</p>
-      <p>見返し（見返しボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更はできません。</p>
+      <p>視聴（視聴ボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更はできません。</p>
       <p>聴いてから入力：1区間を再生すると区間の終わりで止まります。<kbd>Enter</kbd>またはボタン0で同じ区間を始めから再生し直し、その間の入力を記録します。区間の終わりで記録を終え、そのまま次の区間に移ります。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
       <p>別ウィンドウ：動画だけを別のウィンドウに出します。ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作できます。</p>
       <p>音声入力：音声で値を入力します。Chromeの方はネット接続が必要です。「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも認識します。「再生」「停止」でも操作できます。値は話し始めた時刻に入力されます。「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入ります。</p>

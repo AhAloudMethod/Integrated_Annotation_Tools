@@ -326,7 +326,7 @@
   }
 
   // ---------- 要約 ----------
-  // 最後の task_start から task_end（なければ今）までの操作ログを数える。再生・見返しの時間は、開始と終わりの組の間の合計。
+  // 最後の task_start から task_end（なければ今）までの操作ログを数える。再生・視聴の時間は、開始と終わりの組の間の合計。
   // 途中で抜けて（task_abort）再開した試行も、抜けていた間は経過時間に入らない（再開すると操作ログの経過時間が続きから数える）
   function summarize() {
     const log = S.log, t = X.trials[X.i];
@@ -424,7 +424,7 @@
   }
 
   // ---------- 操作の制限 ----------
-  // 開始前・完了後はキーを効かせない（覆いの中の欄とボタンは除く）。見返しを許していなければ V も効かせない。
+  // 開始前・完了後はキーを効かせない（覆いの中の欄とボタンは除く）。視聴を許していなければ V も効かせない。
   // 他のキー操作（core/keys.js）より先に受け取るため、window の捕捉段階で止める
   window.addEventListener('keydown', e => {
     if (e.code === 'KeyE' && e.ctrlKey && e.shiftKey) { if (X && X.state !== 'setup') { e.preventDefault(); exit(); } return; }

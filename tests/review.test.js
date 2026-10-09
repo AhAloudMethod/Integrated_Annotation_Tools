@@ -1,4 +1,4 @@
-// 見返し（core/review.js）：止まらずに再生して記録済みの値を追い、値は変えない
+// 視聴（core/review.js）：止まらずに再生して記録済みの値を追い、値は変えない
 const { chromium } = require('playwright-core');
 const { URL, VID, BROWSER } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
@@ -26,12 +26,12 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
   const nowTxt = p => p.evaluate(() => [...document.querySelectorAll('.nowRow b')].map(b => b.textContent).join('/'));
   const at = (p, t) => p.evaluate(t => { AH.seekTo(t); }, t).then(() => p.waitForTimeout(150));
 
-  // ---- 聴いてから入力の中でも、見返しなら止まらずに再生する
+  // ---- 聴いてから入力の中でも、視聴なら止まらずに再生する
   {
     const p = await open('emujoy', true);
     await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
     const ui = await p.evaluate(() => ({ btn: document.getElementById('reviewBtn').textContent, listen: !document.getElementById('listenBox').hidden, body: document.body.classList.contains('review') }));
-    check('V で見返しになり、ボタンが「見返し中」・聴いてから入力の案内は消える', ui.btn === '見返し中' && !ui.listen && ui.body, JSON.stringify(ui));
+    check('V で視聴になり、ボタンが「視聴中」・聴いてから入力の案内は消える', ui.btn === '視聴中' && !ui.listen && ui.body, JSON.stringify(ui));
     const before = await pts(p);
     await p.keyboard.press('Space'); await p.waitForTimeout(1500);
     const r = await p.evaluate(() => ({ t: AH.video.currentTime, playing: !AH.video.paused }));
@@ -41,10 +41,10 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     const b = await p.locator('canvas.plane').boundingBox();
     await p.mouse.move(b.x + b.width * 0.2, b.y + b.height * 0.2); await p.mouse.down(); await p.waitForTimeout(300); await p.mouse.up();
     await p.keyboard.press('Space');
-    check('見返しの間は平面を押しても書き込まれない', (await pts(p)) === before);
+    check('視聴の間は平面を押しても書き込まれない', (await pts(p)) === before);
     await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
     const off = await p.evaluate(() => ({ btn: document.getElementById('reviewBtn').textContent, listen: !document.getElementById('listenBox').hidden, log: AH.S.log.filter(l => l.type === 'review').map(l => l.value).join(',') }));
-    check('もう一度 V で戻る（聴いてから入力の案内も戻る・操作ログ review）', off.btn === '見返し' && off.listen && off.log === 'on,off', JSON.stringify(off));
+    check('もう一度 V で戻る（聴いてから入力の案内も戻る・操作ログ review）', off.btn === '視聴' && off.listen && off.log === 'on,off', JSON.stringify(off));
     await p.close();
   }
 
@@ -57,7 +57,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.keyboard.down('KeyW'); await p.waitForTimeout(300); await p.keyboard.up('KeyW');
     await p.keyboard.press('KeyR'); await p.keyboard.press('Space'); await p.waitForTimeout(400); await p.keyboard.press('Space');
     const peek = await p.evaluate(() => ({ ...AH.mode.peek(), armed: AH.S.armed }));
-    check('スロットル：見返しではキーでレバーが動かず、記録オンにもならず、記録済みの値（3・7）を追う', peek.v === 3 && peek.a === 7 && !peek.armed && (await pts(p)) === before, JSON.stringify(peek));
+    check('スロットル：視聴ではキーでレバーが動かず、記録オンにもならず、記録済みの値（3・7）を追う', peek.v === 3 && peek.a === 7 && !peek.armed && (await pts(p)) === before, JSON.stringify(peek));
     await p.close();
   }
 
@@ -72,21 +72,21 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await btn(); const playing = await p.evaluate(() => !AH.video.paused);
     await p.waitForTimeout(300); await btn();
     const r = await p.evaluate(() => ({ paused: AH.video.paused, armed: AH.S.armed }));
-    check('DARMA：見返しではボタン0で再生／停止し、スティックを倒しても書き込まれない', playing && r.paused && !r.armed && (await pts(p)) === before, JSON.stringify(r));
+    check('DARMA：視聴ではボタン0で再生／停止し、スティックを倒しても書き込まれない', playing && r.paused && !r.armed && (await pts(p)) === before, JSON.stringify(r));
     await p.close();
   }
 
-  // ---- SAM（区間の方式）：見返しの間は絵を押しても値が入らない。グラフの編集もしない
+  // ---- SAM（区間の方式）：視聴の間は絵を押しても値が入らない。グラフの編集もしない
   {
     const p = await open('sam');
     await p.click('#reviewBtn');
     await p.evaluate(() => document.querySelector('.samRow.v button[data-v="9"]').click()); await p.waitForTimeout(100);
     const cells = await p.evaluate(() => JSON.stringify(AH.S.data.cells));
-    check('SAM：見返しの間は値が入らない', cells === '{"v":[],"a":[]}', cells);
+    check('SAM：視聴の間は値が入らない', cells === '{"v":[],"a":[]}', cells);
     await p.close();
   }
 
-  // ---- Excel：見返しの間は画面の色が変わり、セルに打てない（入れている途中のセルからもフォーカスを外す）
+  // ---- Excel：視聴の間は画面の色が変わり、セルに打てない（入れている途中のセルからもフォーカスを外す）
   {
     const p = await open('excel');
     await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('6');
@@ -96,10 +96,10 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.evaluate(() => document.querySelector('input[data-ax=v][data-s="2"]').focus()); await p.keyboard.type('8');
     const rv = await p.evaluate(() => ({ cells: [0, 1, 2].map(s => AH.S.data.cells.v[s] ?? null), ro: document.querySelector('input[data-ax=v][data-s="2"]').readOnly,
       shadow: getComputedStyle(document.querySelector('main')).boxShadow, tag: getComputedStyle(document.querySelector('main'), '::before').content }));
-    check('Excel：見返しの間は画面の枠と札が出て、セルに打てない', JSON.stringify(rv.cells) === '[6,null,null]' && rv.ro && rv.shadow !== 'none' && /見返し中/.test(rv.tag), JSON.stringify(rv));
+    check('Excel：視聴の間は画面の枠と札が出て、セルに打てない', JSON.stringify(rv.cells) === '[6,null,null]' && rv.ro && rv.shadow !== 'none' && /視聴中/.test(rv.tag), JSON.stringify(rv));
     await p.evaluate(() => AH._.setReview(false)); await p.waitForTimeout(100);
     const back = await p.evaluate(() => ({ ro: document.querySelector('input[data-ax=v][data-s="2"]').readOnly, shadow: getComputedStyle(document.querySelector('main')).boxShadow }));
-    check('Excel：見返しを終えるとセルに打てて、枠も消える', !back.ro && back.shadow === 'none', JSON.stringify(back));
+    check('Excel：視聴を終えるとセルに打てて、枠も消える', !back.ro && back.shadow === 'none', JSON.stringify(back));
     await p.close();
   }
 

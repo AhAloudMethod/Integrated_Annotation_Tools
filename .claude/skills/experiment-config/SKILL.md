@@ -59,7 +59,7 @@ description: あアラウド アノテーションツールの実験モード用
 - `name`（必須）：実験名．英数字と `-`，`_` にする（書き出しのファイル名に入る）．
 - `participants`（必須）：参加者 ID ごとの試行の配列．試行は `mode`（必須），`video`（必須），`practice`，`condition`，`options`，`settings`，`survey`，`range` を持つ．
 - 同じ参加者の中で，`mode` と `video` の組を重複させない（自動保存のキーが衝突するので誤りになる）．練習の動画を全方式で共有するのはよい（方式が違えば組が違う）．
-- `settings`：ふつうは `setup.json` に任せて書かない．ユーザが「この試行だけ見返しを出さない」のように試行ごとに変えたいときだけ，試行の `settings` に書く（`setup.json` より優先する）．使える項目と既定値は次のとおりである（`core/exp-check.js` の `SETTINGS`）．ほかの項目は誤りになる．
+- `settings`：ふつうは `setup.json` に任せて書かない．ユーザが「この試行だけ視聴を出さない」のように試行ごとに変えたいときだけ，試行の `settings` に書く（`setup.json` より優先する）．使える項目と既定値は次のとおりである（`core/exp-check.js` の `SETTINGS`）．ほかの項目は誤りになる．
 
   | 項目 | 既定値 | 値 |
   |---|---|---|
@@ -73,7 +73,7 @@ description: あアラウド アノテーションツールの実験モード用
   | `timeline` | `true` | 真偽（評価グラフ） |
   | `videoSize` | `55` | 25〜80 |
   | `padJoy`，`padSlider`，`padSquare` | `true` | 真偽 |
-  | `review`，`videoWindow` | `true` | 真偽（見返し，別ウィンドウのボタンを出すか） |
+  | `review`，`videoWindow` | `true` | 真偽（視聴，別ウィンドウのボタンを出すか） |
   | `voice` | `false` | 真偽（音声入力のボタンを出すか） |
 
   評価区間の変更（区切りの編集など）は，実験モードでは設定に関係なくできない．ただし Excel（専用とカスタム）で `options` の `cuts` を `"self"` にした試行では，参加者が区切りを編集できる．

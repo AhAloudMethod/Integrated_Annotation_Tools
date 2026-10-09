@@ -12,7 +12,7 @@
     let last = NaN, touched = false, wasArmed = false;
     video.addEventListener('seeking', () => { touched = false; last = NaN; });   // 次のフレームで必ず追従させる
     const f = () => {
-      if (AH.reviewing()) { last = NaN; touched = false; return AH.hasVideo(); }   // 見返し：いつも記録済みの値に追従
+      if (AH.reviewing()) { last = NaN; touched = false; return AH.hasVideo(); }   // 視聴：いつも記録済みの値に追従
       if (wasArmed && !S.armed) touched = false;
       wasArmed = S.armed;
       const t = video.currentTime || 0, moved = t !== last; last = t;
@@ -255,7 +255,7 @@
       if (sig !== sigNow()) build();
       const cur = AH.curSec();
       for (const td of grid.querySelectorAll('td.cv')) { const x = curveText(AH.curveInfo(td.dataset.ax, +td.dataset.s)); if (td.innerHTML !== x) td.innerHTML = x; }
-      const ro = AH.reviewing();   // 見返しの間はセルに打てない
+      const ro = AH.reviewing();   // 視聴の間はセルに打てない
       for (const inp of grid.querySelectorAll('input')) {
         inp.readOnly = ro;
         const v = S.data.cells[inp.dataset.ax][+inp.dataset.s];

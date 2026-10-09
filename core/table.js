@@ -4,7 +4,7 @@
   const { S, addLog, pushUndo, secLabel } = _;
   // ---------- 区間表モデル ----------
   function setCell(axis, s, val, how = 'input') {
-    if (_.reviewing()) return false;   // 見返しの間は値を変えない
+    if (_.reviewing()) return false;   // 視聴の間は値を変えない
     const c = S.data.cells[axis];
     if (c[s] === 'curve') return false;   // 区間内で変化の変化の区間（core/curve.js）はセルの値で上書きしない（音声入力・数字キーなど）
     if ((c[s] ?? null) === (val ?? null)) return false;   // 未入力（undefined）と空欄（null）は同じ扱い

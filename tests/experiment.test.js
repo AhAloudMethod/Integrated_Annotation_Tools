@@ -94,7 +94,7 @@ const BAD = makeFolder('exp_bad', {
   const rows = await p.$$eval('.expVids tr', trs => trs.map(t => t.textContent));
   check('setup.json の画面：フォルダの動画と、覚えてある評価区間を並べる', rows.some(r => r.includes('a.mp4') && r.includes('2〜10 秒，1 秒ごと')), JSON.stringify(rows));
   const form = await p.evaluate(() => ({ grid: document.getElementById('es_grid').checked, axes: document.getElementById('es_axes').value, review: document.getElementById('es_review').checked, voice: document.getElementById('es_voice').checked }));
-  check('設定の欄は今の画面の値（評価軸は PANA）で、ボタンの欄は既定（見返しは出す・音声入力は出さない）', form.axes === 'pana' && form.review && !form.voice, JSON.stringify(form));
+  check('設定の欄は今の画面の値（評価軸は PANA）で、ボタンの欄は既定（視聴は出す・音声入力は出さない）', form.axes === 'pana' && form.review && !form.voice, JSON.stringify(form));
   await p.check('#es_voice'); await p.selectOption('#es_axes', 'va');
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(await text('setup.json'));
@@ -122,7 +122,7 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const hidden = {};
   for (const s of ['#pid', '#mode', '#openBtn', '#expBtn', '#setBtn', '#rgBtn', '#helpBtn', '#tlBtn', '#exportBtn', '#reviewBtn', '#voiceBtn', '#vwinBtn']) hidden[s] = !(await vis(s));
-  check('参加者 ID・方式・設定・評価区間・グラフの開閉・書き出し・見返し・音声入力・別ウィンドウを隠す', Object.values(hidden).every(Boolean), JSON.stringify(hidden));
+  check('参加者 ID・方式・設定・評価区間・グラフの開閉・書き出し・視聴・音声入力・別ウィンドウを隠す', Object.values(hidden).every(Boolean), JSON.stringify(hidden));
   const r1 = await p.evaluate(() => ({ mode: AH.S.meta.mode, pid: AH.S.meta.participant, face: AH.S.meta.options.face, axes: AH._.axesId(), f0: AH._.f0Shown(),
     tl: !document.body.classList.contains('noTl'), grid: AH._.gridShown(), edit: document.getElementById('graphEdit').checked,
     opt: [...document.querySelectorAll('#panel .optCtl')].every(e => getComputedStyle(e).display === 'none') }));
@@ -148,7 +148,7 @@ const BAD = makeFolder('exp_bad', {
   await p.mouse.click(tb.x + tb.width * 0.5, tb.y + tb.height * 0.3, { button: 'right' }); await p.waitForTimeout(100);
   check('グラフを出していても、右クリックで評価区間の区切りを置けない', await p.evaluate(() => !AH.S.meta.range.edges && !AH.S.log.some(l => l.type === 'range_cut')));
   await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
-  check('見返しを許していない試行では V が効かない', !(await p.evaluate(() => AH._.reviewing())));
+  check('視聴を許していない試行では V が効かない', !(await p.evaluate(() => AH._.reviewing())));
   await p.click('#expDoneBtn');
   await p.waitForFunction(() => AH._.expState() === 'done');
   await p.waitForTimeout(500);
@@ -175,7 +175,7 @@ const BAD = makeFolder('exp_bad', {
   check('2 つ目の試行：Excel・a.mp4 の評価区間（1〜11 秒、2 秒ごと → 5 区間）を当て、ログは新しく始まる', r2.n === 5 && r2.s0 === 1 && Math.abs(r2.end - 11) < 1e-6 && r2.log === 0 && r2.file === 'a.mp4', JSON.stringify(r2));
   const info2 = await p.evaluate(() => [document.getElementById('expInfo').textContent, document.querySelector('.expProg').textContent]);
   await p.click('#expStart');
-  check('見返しを許した試行では見返しボタンが出る', await vis('#reviewBtn'));
+  check('視聴を許した試行では視聴ボタンが出る', await vis('#reviewBtn'));
   check('条件名（全体の conditions）を進行の表示と開始の覆いに出す', info2[0] === '2 / 2　条件B' && info2[1] === '2 / 2　条件B', JSON.stringify(info2));
   await p.click('#expDoneBtn');
   await p.waitForFunction(() => AH._.expState() === 'finished');

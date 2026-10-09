@@ -1,5 +1,5 @@
-// 見返し：評価し終えた記録を、止まらずに再生しながら追う。見返しの間は値を変えない（書き込み・区間の値・変化の入力・グラフの編集・声の入力を止め、
-// 入力面は操作できなくする）。聴いてから入力の自動停止もしない。画面は記録済みの値を映す。ヘッダーの「見返し」か V キーで切り替え、操作ログに review を残す
+// 視聴：評価し終えた記録を、止まらずに再生しながら追う。視聴の間は値を変えない（書き込み・区間の値・変化の入力・グラフの編集・声の入力を止め、
+// 入力面は操作できなくする）。聴いてから入力の自動停止もしない。画面は記録済みの値を映す。ヘッダーの「視聴」か V キーで切り替え、操作ログに review を残す
 (() => {
   const _ = AH._;
   const { $, addLog } = _;
@@ -12,7 +12,7 @@
     if (on && $('under').contains(document.activeElement)) document.activeElement.blur();   // Excel のセルに入れている途中なら外す
     document.body.classList.toggle('review', on);
     $('reviewBtn').classList.toggle('on', on);
-    $('reviewBtn').textContent = on ? '見返し中' : '見返し';
+    $('reviewBtn').textContent = on ? '視聴中' : '視聴';
     addLog('review', { value: on ? 'on' : 'off' }); _.refresh();
   }
   $('reviewBtn').addEventListener('click', e => { setReview(!on); e.currentTarget.blur(); });

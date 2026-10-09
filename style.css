@@ -45,10 +45,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visib
 .hint{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:30;font-size:13px;color:var(--pen);background:var(--panel);border:1px solid var(--pen);border-radius:4px;padding:4px 14px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
 #reviewBtn.on{background:var(--val);border-color:var(--val);color:#fff}
 body.review #panel,body.review #under{pointer-events:none;opacity:.75}
-/* 見返し（視聴のみ）：編集できないことが分かるよう、画面の地の色と枠を変え、上端に札を出す */
+/* 視聴（視聴のみ）：編集できないことが分かるよう、画面の地の色と枠を変え、上端に札を出す */
 main{position:relative}
 body.review main{background:color-mix(in srgb,var(--val) 12%,var(--bg));box-shadow:inset 0 0 0 3px var(--val)}
-body.review main::before{content:'見返し中（視聴のみ・値は変えられません）';position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:5;
+body.review main::before{content:'視聴中（値は変えられません）';position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:5;
   font-size:12px;color:#fff;background:var(--val);padding:1px 14px;border-radius:0 0 4px 4px;pointer-events:none;white-space:nowrap}
 .listenBox{font-size:12px;white-space:nowrap;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:3px 8px}
 .listenBox.on{color:var(--ink);border-color:var(--pen)}

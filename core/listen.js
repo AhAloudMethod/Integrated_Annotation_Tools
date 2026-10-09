@@ -14,7 +14,7 @@
 
   // この方式で使えるか：時間系列（変化点）モデルで書き込みのある方式（連続の方式）か、表のモデル（区間方式）。変化の方式には効かない
   const table = () => model() === 'table';
-  const usable = () => on && !_.reviewing() && !!_.M && ((model() === 'series' && !!_.M.writeMode) || table());   // 見返しの間は止めない
+  const usable = () => on && !_.reviewing() && !!_.M && ((model() === 'series' && !!_.M.writeMode) || table());   // 視聴の間は止めない
   let phase = 'listen';   // listen＝聴く（記録しない）／record＝聴いた区間を再生し直して記録している
   let recStart = null;    // 記録する区間の始め（最初の書き込みだけここから。takeStart で受け取る）
   const recording = () => usable() && phase === 'record';

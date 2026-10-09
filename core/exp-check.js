@@ -17,7 +17,7 @@
     { key: 'padJoy', label: 'ジョイスティックを使う', type: 'check', def: true },
     { key: 'padSlider', label: 'スライダーを使う', type: 'check', def: true },
     { key: 'padSquare', label: '四角平面でスティックを角まで届かせる', type: 'check', def: true },
-    { key: 'review', label: '「見返し」ボタンを出す', type: 'check', def: true, exp: true },
+    { key: 'review', label: '「視聴」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'videoWindow', label: '「別ウィンドウ」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true },
   ];
