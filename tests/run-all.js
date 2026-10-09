@@ -1,6 +1,6 @@
 // npm test：全テストを実行する。各テストの出力は tests/out/<名前>.log にも保存する。
 // テストは別々のブラウザで動くので、AH_JOBS 本（既定 4）ずつ並べて走らせる。AH_JOBS=1 なら順に走らせる。
-// 再生のタイミングを見るテスト（SERIAL）は互いに重ねず 1 本ずつ走らせる（残りの AH_JOBS−1 本の並びと同時に走る）。
+// 再生のタイミングを見るテスト（SERIAL）は、ほかのテストと重なると CPU が混んで結果が揺れるので、並列の分が終わった後に 1 本ずつ走らせる。
 // 失敗の判定：終了コードが0以外、または出力に FAIL・ERR・エラー（none 以外）が出たとき
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs');
@@ -44,7 +44,7 @@ async function pool(names, jobs) {
   // 長いテスト（vwin・features・spec）を先に始めると、最後に 1 本だけ残って待つ時間が減る
   const LONG = ['vwin', 'features', 'spec'], par = names.filter(n => !SERIAL.includes(n)).sort((a, b) => (LONG.includes(b) ? 1 : 0) - (LONG.includes(a) ? 1 : 0));
   const failed = JOBS === 1 ? await pool(names, 1)
-    : (await Promise.all([pool(par, JOBS - 1), pool(names.filter(n => SERIAL.includes(n)), 1)])).reduce((a, b) => a + b, 0);
+    : (await pool(par, JOBS)) + (await pool(names.filter(n => SERIAL.includes(n)), 1));
   console.log(`\n${failed ? `${failed} 件のテストで問題がありました` : 'すべて ok'}（${((Date.now() - t0) / 1000).toFixed(0)} 秒）`);
   process.exit(failed ? 1 : 0);
 })();

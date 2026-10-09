@@ -107,12 +107,12 @@ tests/                自動テスト（Playwright で Edge を動かす）
 
 ```
 npm install        # 初回のみ（playwright-core）
-npm test           # 全テストを実行する（tests/run-all.js．4 本ずつ並べて約 6 分．AH_JOBS=1 なら順に）
+npm test           # 全テストを実行する（tests/run-all.js．4 本ずつ並べて約 8 分．AH_JOBS=1 なら順に）
 npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom curve export experiment expcheck）
 npm run check      # 全 JS に node --check をかける
 ```
 
-- テストは別々のブラウザで動くので，`AH_JOBS` 本（既定 4）を同時に走らせる．再生のタイミングを見るテスト（modes，listen，review，pad，controls，frame，vosk，custom）は互いに重ねず 1 本ずつ走らせ，残りの 3 本の並びと同時に進める．各テストの所要時間を見出しに出す．
+- テストは別々のブラウザで動くので，`AH_JOBS` 本（既定 4）を同時に走らせる．再生のタイミングを見るテスト（modes，listen，review，pad，controls，frame，vosk，custom）は，ほかのテストと重なると CPU が混んで結果が揺れるので，並列の分が終わった後に 1 本ずつ走らせる．各テストの所要時間を見出しに出す．
 - ブラウザの既定は `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe` である．環境変数 `AH_BROWSER` で変えられる．
 - スクリーンショットと各テストの出力（`*.log`）は `tests/out/` に保存する．保存先は `AH_OUT` で変えられる．
 - テスト動画は `tests/fixtures/test.mp4`（12 秒）である．消えたら `npm run fixture` で ffmpeg から作り直す．`npm test` も，無ければ自動で作る．
