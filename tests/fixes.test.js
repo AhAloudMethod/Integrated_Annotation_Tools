@@ -110,7 +110,8 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const wb = await p.locator('.xlWrap').boundingBox();
     await p.mouse.move(wb.x + wb.width / 2, wb.y + wb.height / 2); await p.mouse.wheel(0, 300); await p.waitForTimeout(200);
     const sl = await p.evaluate(() => document.querySelector('.xlWrap').scrollLeft);
-    await p.evaluate(() => { document.querySelector('.xlWrap').scrollLeft = 0; AH.seekTo(11.9); }); await p.waitForTimeout(300);
+    await p.evaluate(() => { document.querySelector('.xlWrap').scrollLeft = 0; AH.seekTo(11.9); });
+    await p.waitForFunction(() => { const w = document.querySelector('.xlWrap').getBoundingClientRect(), c = document.querySelector('table.xl th[data-s="59"]').getBoundingClientRect(); return c.left >= w.left - 1 && c.right <= w.right + 1; }, null, { timeout: 3000 }).catch(() => {});   // 負荷が高いとスクロールが遅れる
     const vis = await p.evaluate(() => { const w = document.querySelector('.xlWrap').getBoundingClientRect(), c = document.querySelector('table.xl th[data-s="59"]').getBoundingClientRect(); return c.left >= w.left - 1 && c.right <= w.right + 1; });
     check('Excel：はみ出した表はホイールで横に送り、シークした区間の列を出す', sl > 100 && vis, JSON.stringify({ sl, vis }));
     await p.evaluate(() => localStorage.clear()); await p.close();
