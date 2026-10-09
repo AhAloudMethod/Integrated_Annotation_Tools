@@ -57,15 +57,13 @@
       if (!D || !S.data) continue;
       g.strokeStyle = L.col; g.fillStyle = L.col; g.lineWidth = 2;
       if (model() === 'series') {
-        // 区間内で変化（core/curve.js）の 0 は発声なし：線ではなく、欄の高さの灰色の帯にする
-        const ps = S.data.points[L.ax], zero = i => _.curveOn() && ps[i].val === 0;
-        g.beginPath(); let on = false;
+        const ps = S.data.points[L.ax];
+        g.beginPath();
         ps.forEach((p, i) => {
-          const nx = i + 1 < ps.length ? xOf(ps[i + 1].t) : xOf(D);
-          if (zero(i)) { g.fillStyle = css('--muted'); g.globalAlpha = 0.25; g.fillRect(xOf(p.t), L.y0, nx - xOf(p.t), L.y1 - L.y0); g.globalAlpha = 1; g.fillStyle = L.col; on = false; return; }
           const y = L.yOf(p.val);
-          if (!on) { g.moveTo(xOf(p.t), y); on = true; } else g.lineTo(xOf(p.t), y);
-          g.lineTo(nx, y); if (i + 1 < ps.length && !zero(i + 1)) g.lineTo(nx, L.yOf(ps[i + 1].val));
+          if (i === 0) g.moveTo(xOf(p.t), y); else g.lineTo(xOf(p.t), y);
+          const nx = i + 1 < ps.length ? xOf(ps[i + 1].t) : xOf(D);
+          g.lineTo(nx, y); if (i + 1 < ps.length) g.lineTo(nx, L.yOf(ps[i + 1].val));
         });
         g.stroke();
         if (isInt() && ps.length < 400) for (const p of ps) if (!p.init) { g.beginPath(); g.arc(xOf(p.t), L.yOf(p.val), 2.5, 0, 7); g.fill(); }
@@ -73,6 +71,7 @@
         const c = S.data.cells[L.ax];
         for (let s = 0; s < nSec(); s++) {
           if (c[s] == null) continue;
+          if (_.curveIsCurve(L.ax, s)) { drawCurveSec(g, L, s, xOf, D); continue; }   // 変化の区間（core/curve.js）は系列の線
           const x0 = xOf(binStart(s)) + 1, bw = xOf(Math.min(_.binEnd(s), D)) - xOf(binStart(s)) - 2;
           if (c[s] === 0) {   // 0 は発声なし：値の線ではなく、欄の高さの灰色の帯にする
             g.fillStyle = css('--muted'); g.globalAlpha = 0.25; g.fillRect(x0, L.y0, bw, L.y1 - L.y0); g.globalAlpha = 1; g.fillStyle = L.col;
@@ -98,6 +97,22 @@
       g.strokeStyle = _.stroke ? css('--pen') : css('--head'); g.lineWidth = 1.5;
       g.beginPath(); g.moveTo(x, 2); g.lineTo(x, h); g.stroke();
     }
+  }
+
+  // 区間内で変化（core/curve.js）の変化の区間：系列の線を区間の中だけ描く。0（発声なし）の所は欄の高さの灰色の帯にする
+  function drawCurveSec(g, L, s, xOf, D) {
+    const ps = S.data.points[L.ax], b0 = binStart(s), b1 = Math.min(_.binEnd(s), D), segs = [];
+    let t = b0, v = valueIn(ps, b0);
+    for (const p of ps) if (p.t > b0 + 1e-4 && p.t < b1 - 1e-6) { segs.push([t, p.t, v]); t = p.t; v = p.val; }
+    segs.push([t, b1, v]);
+    g.beginPath(); let on = false;
+    for (const [t0, t1, val] of segs) {
+      if (val === 0) { g.save(); g.fillStyle = css('--muted'); g.globalAlpha = 0.25; g.fillRect(xOf(t0), L.y0, xOf(t1) - xOf(t0), L.y1 - L.y0); g.restore(); on = false; continue; }
+      const y = L.yOf(val);
+      if (!on) { g.moveTo(xOf(t0), y); on = true; } else g.lineTo(xOf(t0), y);
+      g.lineTo(xOf(t1), y);
+    }
+    g.stroke();
   }
 
   // F0 の欄：声ありの区間を線でつなぐ（縦軸は対数。範囲はその動画の F0 の分布から）
@@ -128,21 +143,34 @@
   let edit = null, seeking = false;
   // 区間内で変化（core/curve.js）はグラフだけで入れるので、設定に関わらずいつも編集できる
   const graphEditable = () => ($('graphEdit').checked || _.curveOn()) && model() !== 'events' && !!video.src && !_.reviewing();
-  // なぞった範囲の値を描き換え、その直後は編集前の値に戻す（core/series.js の rewriteFrames）
-  function editRebuild() { S.data.points[edit.axis] = _.rewriteFrames(edit.before.points[edit.axis], edit.samples); }
+  // なぞった範囲の値を描き換え、その直後は編集前の値に戻す（core/series.js の rewriteFrames）。
+  // フレームが続いている所ごとに描き換える（区間内で変化では、変化の区間のフレームだけを描くので、間が空くことがある）
+  function editRebuild() {
+    let ps = edit.before.points[edit.axis], run = new Map(), prev = null;
+    for (const f of [...edit.samples.keys()].sort((a, b) => a - b)) {
+      if (prev != null && f !== prev + 1) { ps = _.rewriteFrames(ps, run); run = new Map(); }
+      run.set(f, edit.samples.get(f)); prev = f;
+    }
+    if (run.size) ps = _.rewriteFrames(ps, run);
+    S.data.points[edit.axis] = ps;
+  }
   function editAt(ev) {
     const r = tl.getBoundingClientRect(), G = geom(), L = G.lanes.find(l => l.ax === edit.axis);
     const t = G.tOf(ev.clientX - r.left);
     let v = L.vOf(clamp(ev.clientY - r.top, L.y0, L.y1));
     if (!(_.M && _.M.unbounded)) v = clamp(v, 1, 9);
-    v = isInt() ? Math.round(v) : _.M && _.M.decimals === 1 ? Math.round(v * 10) / 10 : r2(v);   // Excel の連続値は小数第1位まで
-    if (model() === 'table') {
-      const s = binAt(t); if (s < 0 || s >= nSec()) return;
+    v = edit.series && model() === 'table' ? r2(v) : isInt() ? Math.round(v) : _.M && _.M.decimals === 1 ? Math.round(v * 10) / 10 : r2(v);   // Excel の連続値は小数第1位まで（変化の区間は連続の方式と同じ）
+    if (!edit.series) {
+      const s = binAt(t); if (s < 0 || s >= nSec() || _.curveIsCurve(edit.axis, s)) return;   // 変化の区間のセルは、セルの値で上書きしない
       if (S.data.cells[edit.axis][s] !== v) { if (!edit.changed) pushUndo(edit.before); edit.changed = true; S.data.cells[edit.axis][s] = v; edit.bins.add(s); }
     } else {
-      const f = Math.round(t * FPS);
-      if (edit.lastF != null) { const d = f - edit.lastF, v0 = edit.lastV; for (let k = 1; k < Math.abs(d); k++) { const ff = edit.lastF + Math.sign(d) * k, vv = v0 + (v - v0) * k / Math.abs(d); edit.samples.set(ff, isInt() ? Math.round(vv) : r2(vv)); } }
-      edit.samples.set(f, v); edit.lastF = f; edit.lastV = v; edit.changed = true;
+      const f = Math.round(t * FPS), q = x => (isInt() && model() === 'series' ? Math.round(x) : r2(x));
+      const ok = ff => model() === 'series' || _.curveSeriesAt(edit.axis, ff / FPS + 1e-4);   // 区間内で変化：変化の区間のフレームだけ描く
+      if (edit.lastF != null) { const d = f - edit.lastF, v0 = edit.lastV; for (let k = 1; k < Math.abs(d); k++) { const ff = edit.lastF + Math.sign(d) * k, vv = v0 + (v - v0) * k / Math.abs(d); if (ok(ff)) edit.samples.set(ff, q(vv)); } }
+      if (ok(f)) edit.samples.set(f, v);
+      edit.lastF = f; edit.lastV = v;
+      if (!edit.samples.size) return;
+      edit.changed = true;
       editRebuild();
     }
     refresh();
@@ -178,8 +206,10 @@
     const G = geom(), axis = y < (G.lanes[0].y1 + G.lanes[1].y0) / 2 ? 'v' : 'a';
     // 区間内で変化のテンプレート（core/curve.js）：押した区間に、押した高さから離した高さへの曲線を入れる
     const LA = G.lanes.find(l => l.ax === axis);
-    if (_.curveDown(axis, G.tOf(e.clientX - r.left), LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
-    edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set() };
+    const tP = G.tOf(e.clientX - r.left);
+    if (_.curveDown(axis, tP, LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
+    // series：系列を描く（連続の方式と、区間内で変化で変化の区間を押したとき）。それ以外の区間方式はセルの値を置く
+    edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set(), series: model() === 'series' || _.curveSeriesAt(axis, tP) };
     editAt(e);
   });
   tl.addEventListener('pointermove', e => {
@@ -213,7 +243,7 @@
     if (!edit) return;
     const e = edit; edit = null;
     if (e.changed) {
-      if (model() === 'series') {
+      if (e.series) {
         pushUndo(e.before);
         const fs = [...e.samples.keys()].sort((a, b) => a - b);
         S.data.strokes.push({ id: S.data.strokes.length, source: 'graph', axes: e.axis, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: 'graph', wall_ms_end: wall(),

@@ -1,18 +1,18 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
   const { S, pen, video } = AH;
-  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, curveTable, xlRef, cutBox, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, cutBox, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
   const o = () => opts();
   const follow = follower();
   // インタフェース（rep）。grid・sam・buttons は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
   // excel は Excel の評価シート（区間ごとのセルにキーボードで入れる。値は整数か小数を選ぶ）
   const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', excel: 'Excel（セル）', sliders: 'スライダー2本', rank8: '8方向ボタン（変化の方向）' };
   const nine = r => ['grid', 'sam', 'buttons'].includes(r);
-  // values：値の刻み（real＝連続。1〜9 の小数、int＝離散。1〜9 の整数）。インタフェースとは別に選ぶ。
-  //   Excel だけ curve（区間内で変化）も選べる：値は連続の方式と同じ系列に持ち、グラフで描くかテンプレートで入れる（core/curve.js）
+  // values：値の刻み（real＝連続。1〜9 の小数、int＝離散。1〜9 の整数）。インタフェースとは別に選ぶ
   // cuts：区間の区切り（fixed＝評価区間に従う、self＝自分で区切る。Excel だけ）
+  // curve：区間内で変化を使うか（on／off。Excel だけ）。選んだ区間だけ、区間の中の動きをグラフで入れる（core/curve.js）
   // curveInput：区間内で変化の入れ方（both＝描く・テンプレートの両方、draw＝描くだけ、template＝テンプレートだけ）
-  const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false, cuts: 'fixed', curveInput: 'both' };
+  const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false, cuts: 'fixed', curve: 'off', curveInput: 'both' };
   const P = (t, r, i, extra = {}) => ({ ...DEF, time: t, rep: r, input: i, ...extra });
   const PRESETS = {
     emujoy: ['EMuJoy', P('cont', 'plane', 'mouse', { face: true })],
@@ -28,7 +28,7 @@
     affectrank: ['AffectRank', P('cont', 'rank8', 'mouse', { trail: false })],
     excel: ['Excel', P('disc', 'excel', 'keyboard', { values: 'int', trail: false })],
   };
-  const KEYS = Object.keys(DEF).filter(k => k !== 'autoNext' && k !== 'cuts' && k !== 'curveInput');   // 区切りの選び方・区間内で変化の入れ方はプリセットの判定に使わない
+  const KEYS = Object.keys(DEF).filter(k => !['autoNext', 'cuts', 'curve', 'curveInput'].includes(k));   // 区切りの選び方・区間内で変化はプリセットの判定に使わない
   function normalize(x) {
     const n = { ...DEF, ...x };
     if ((nine(n.rep) || n.time === 'disc') && n.input === 'gamepad') n.input = 'mouse';
@@ -38,20 +38,24 @@
     else n.cuts = 'fixed';
     if (nine(n.rep) || n.rep === 'rank8') n.values = 'int';
     if (n.scale === 'rel') n.values = 'real';
-    if (n.values === 'curve' && n.rep !== 'excel') n.values = 'real';
+    if (n.values === 'curve') Object.assign(n, { values: 'real', curve: 'on' });   // 前の版の書き方（値の「区間内で変化」）
+    if (n.rep !== 'excel') n.curve = 'off';
     if (!['both', 'draw', 'template'].includes(n.curveInput)) n.curveInput = 'both';
     return n;
   }
   const rank = () => o().rep === 'rank8';
   const xl = () => o().rep === 'excel';
-  const curve = () => xl() && o().values === 'curve';
+  const curve = () => xl() && o().curve === 'on';
   // 区間内で変化：今の入れ方（draw＝描く、template＝テンプレート）と、テンプレートで入れる形
   const CURVE_SHAPES = [['line', '直線'], ['early', '前半で変化'], ['late', '後半で変化']];
   let curveToolSel = 'draw', curveShapeSel = 'line';
   const curveTool = () => (o().curveInput === 'both' ? curveToolSel : o().curveInput);
-  // 区間内で変化のパネル：入れ方の切り替え（両方のときだけ）と形のボタン。形のボタンは、次に入れる形を選び、今の区間に入れた値があればその形に変える
+  // 区間内で変化のパネル：今の区間を変化にする・一定に戻すボタン、入れ方の切り替え（両方のときだけ）、形のボタン、発声なし。
+  // 形のボタンは、次に入れる形を選び、今の区間（変化の区間）に入れた値があればその形に変える
   function curveBox(panel) {
-    const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内の動き</div>');
+    const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内で変化</div>');
+    const marks = h('div', { class: 'curveShapes' });
+    box.appendChild(marks);
     const btn = (label, cls, fn) => { const b = h('button', { type: 'button', class: cls, onclick: e => { e.currentTarget.blur(); if (!AH.reviewing()) { fn(); sync(); } } }, label); return b; };
     let tools = null;
     if (o().curveInput === 'both') {
@@ -63,6 +67,8 @@
     for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; AH.curveReshape(AH.curSec(), k, act()); })).dataset.k = k;
     box.appendChild(shapes);
     const nv = h('div', { class: 'curveShapes' }); nv.appendChild(btn('発声なし', 'novoice', () => AH.curveNoVoice(AH.curSec(), act()))); box.appendChild(nv);
+    marks.appendChild(btn('この区間を変化にする', 'mark', () => AH.curveMark(AH.curSec(), act())));
+    marks.appendChild(btn('一定に戻す', 'unmark', () => AH.curveUnmark(AH.curSec(), act())));
     const sync = () => {
       if (tools) for (const b of tools.children) b.classList.toggle('on', b.dataset.k === curveTool());
       for (const b of shapes.children) b.classList.toggle('on', b.dataset.k === curveShapeSel);
@@ -150,7 +156,8 @@
     box.appendChild(ps);
     sel('インタフェース', 'rep', Object.entries(REPS));
     if (!rank() && !xl()) sel('時間', 'time', [['cont', '連続'], ['disc', '区間ごと']]);
-    if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '連続値'], ['int', '9段階'], ...(xl() ? [['curve', '区間内で変化']] : [])]);
+    if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '連続値'], ['int', '9段階']]);
+    if (xl()) sel('区間内で変化', 'curve', [['off', '使わない'], ['on', '使う']]);
     if (curve()) sel('入れ方', 'curveInput', [['both', '描く・テンプレート'], ['draw', '描くだけ'], ['template', 'テンプレートだけ']]);
     const inputs = rank() ? [['mouse', 'マウス'], ['keyboard', 'テンキー']] : nine(o().rep) || o().time === 'disc' ? [['mouse', 'マウス'], ['keyboard', 'キーボード（数字）']] : [['mouse', 'マウス'], ['keyboard', 'キーボード'], ['gamepad', 'ゲームパッド']];
     if (!xl()) sel('入力', 'input', inputs);
@@ -281,17 +288,17 @@
   AH.register({
     id: 'custom', group: 'カスタム', label: 'カスタム', init: { v: 5, a: 5 }, side: 'wide', animate: true,
     options: { ...DEF },
-    get model() { return rank() ? 'events' : curve() ? 'series' : o().time === 'disc' ? 'table' : 'series'; },
+    get model() { return rank() ? 'events' : o().time === 'disc' ? 'table' : 'series'; },
     get curve() { return curve(); },   // 区間内で変化（core/curve.js）
     curveTool, curveShape: () => curveShapeSel,
     get unbounded() { return o().time === 'cont' && rel(); },
     get graphCuts() { return xl(); },   // Excel：評価グラフの右クリックで区切りを編集する
-    get decimals() { return xl() && !curve() ? 1 : 2; },   // Excel の連続値は小数第1位まで（グラフでの編集も）。区間内で変化は連続の方式と同じ
+    get decimals() { return xl() ? 1 : 2; },   // Excel の連続値は小数第1位まで（グラフでの編集も。区間内で変化の変化の区間は連続の方式と同じ）
     selfCuts: () => xl() && o().cuts === 'self',   // 自分で区切る：実験モードでも参加者が区切れる
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
-      if (curve()) return `<p>Excel の評価シートと同じ区間で、区間の中の値の動きを評価グラフに入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で今の区間を 0（発声なし）にします。表のセルは表示だけで、区間の始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。セルをクリックするとその区間へ移ります。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${other() ? AH.ax(other()).name + 'は5に固定します。' : ''}</p>`;
+      if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、セルをクリックしてその区間へ移り、「この区間を変化にする」を押してから評価グラフで入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で今の区間を 0 にします。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。「一定に戻す」で、区間の平均を丸めた値の普通のセルに戻します。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。${o().cuts === 'self' ? '「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
@@ -315,15 +322,9 @@
       config(panel);
       rows = null; c = null; g = null; this._rank = null; this._now = null; strip = null; table = null; memo = null;
       if (rank()) { this._rank = rankPad(panel, act()); return; }
-      if (curve()) {
-        table = curveTable(under, act());
-        curveBox(panel);
-        if (o().cuts === 'self') cutBox(panel);
-        memo = xlRef(panel);
-        return;
-      }
       if (xl()) {
-        table = xlTable(under, act(), o().values === 'real');
+        table = xlTable(under, act(), o().values === 'real', curve());
+        if (curve()) curveBox(panel);
         if (o().cuts === 'self') cutBox(panel);
         memo = xlRef(panel);
         return;
@@ -369,7 +370,7 @@
     },
     onKey(e) {
       if (this._rank) return this._rank.onKey(e);
-      if (curve()) return false;   // 区間内で変化はグラフだけで入れる（数字キーは使わない）
+      if (curve() && act().some(ax => AH.curveIsCurve(ax, AH.curSec()))) return false;   // 変化の区間はグラフだけで入れる（数字キーでセルの値にしない）
       const m = e.code.match(/^(Digit|Numpad)([1-9])$/);
       if (m && pointType()) { const ax = act().length === 1 ? act()[0] : (m[1] === 'Numpad' || e.shiftKey ? 'a' : 'v'); pointAction({ [ax]: +m[2] }); return true; }
       if (e.code === 'Backspace' && pointType()) {

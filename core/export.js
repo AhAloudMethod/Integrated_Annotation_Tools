@@ -42,18 +42,7 @@
       out('_60hz.csv', rot ? ['frame', 't', 'valence', 'arousal', 'va_valence', 'va_arousal'] : ['frame', 't', 'valence', 'arousal'], smp);
       // 区間系列。整数値の方式：各区間で最も長く続いた値（同数なら先）。連続値：各区間の平均（有界なら9段階丸めも）
       const rows = [];
-      if (_.curveOn()) {
-        // 区間内で変化（core/curve.js）：軸ごとに区間の始めの値・終わりの値・平均・形（入れていない区間は形が空欄。発声なしは 4 列とも 0）
-        for (let s = 0; s < n; s++) {
-          const row = binCols(s);
-          for (const ax of ['v', 'a']) {
-            const c = _.curveInfo(ax, s, true);
-            row.push(...(!c ? ['', '', '', ''] : c.shape === 'zero' ? [0, 0, 0, 0] : [c.from, c.to, c.mean.toFixed(3), c.entered ? c.shape : '']));
-          }
-          rows.push(row);
-        }
-      }
-      for (let s = 0; s < (_.curveOn() ? 0 : n); s++) {
+      for (let s = 0; s < n; s++) {
         const k0 = Math.round(binStart(s) * FPS), k1 = Math.min(Math.round(_.binEnd(s) * FPS), N + 1);
         const ks = []; for (let k = k0; k < k1; k++) ks.push(k);
         const row = binCols(s);
@@ -72,12 +61,33 @@
         rows.push(row);
       }
       const vaH = rot && !_.M.unbounded ? ['va_valence', 'va_arousal'] : [];
-      const curveH = ['valence', 'arousal'].flatMap(a => ['from', 'to', 'mean', 'shape'].map(k => `${a}_${k}`));
-      out('_bins.csv', _.curveOn() ? [...binHead, ...curveH] : isInt() ? [...binHead, 'valence', 'arousal', ...vaH] : _.M.unbounded ? [...binHead, 'valence_mean', 'arousal_mean']
+      out('_bins.csv', isInt() ? [...binHead, 'valence', 'arousal', ...vaH] : _.M.unbounded ? [...binHead, 'valence_mean', 'arousal_mean']
         : [...binHead, 'valence_mean', 'arousal_mean', 'valence_r9', 'arousal_r9', ...vaH], rows);
       const cps = [];
       for (const ax of ['v', 'a']) for (const p of S.data.points[ax]) cps.push([colName(ax === 'v' ? 'valence' : 'arousal'), p.t, p.val, p.init ? 1 : 0]);
       out('_changepoints.csv', ['axis', 't', 'value', 'initial'], cps);
+      if (S.data.strokes.length) {
+        const rs = []; for (const s of S.data.strokes) for (const [t, v, a] of s.samples) rs.push([s.id, s.source || 'input', s.axes, t, v, a]);
+        out('_strokes.csv', ['stroke', 'source', 'axes', 't', 'valence', 'arousal'], rs);
+      }
+    } else if (model() === 'table' && _.curveOn()) {
+      // 区間内で変化（core/curve.js）：軸ごとに区間の始めの値・終わりの値・平均・形。普通のセルは from＝to＝mean で形は const、
+      // 入れていない区間は空欄、発声なしは 4 列とも 0。変化の区間は系列から読む（入れていない変化の区間は形だけ空欄）
+      const cell = (ax, s) => {
+        const x = S.data.cells[ax][s];
+        if (x === 'curve') { const c = _.curveInfo(ax, s, true); return !c ? ['', '', '', ''] : c.shape === 'zero' ? [0, 0, 0, 0] : [c.from, c.to, c.mean.toFixed(3), c.entered ? c.shape : '']; }
+        return x == null ? ['', '', '', ''] : x === 0 ? [0, 0, 0, 0] : [x, x, (+x).toFixed(3), 'const'];
+      };
+      out('_bins.csv', [...binHead, ...['valence', 'arousal'].flatMap(a => ['from', 'to', 'mean', 'shape'].map(k => `${a}_${k}`))],
+        [...Array(n).keys()].map(s => [...binCols(s), ...cell('v', s), ...cell('a', s)]));
+      // 連続の方式と比べるための 60 Hz の系列：普通のセルはその値、変化の区間は系列の値、評価区間の外と入れていない区間は空欄
+      const smp = [];
+      for (let k = 0; k <= N; k++) {
+        const t = k / FPS, s = _.binAt(t + 1e-6), inside = s >= 0 && s < n;
+        const val = ax => { if (!inside) return ''; const x = S.data.cells[ax][s]; return x === 'curve' ? (_.curveInfo(ax, s).entered ? valueAt(ax, t) : '') : x ?? ''; };
+        smp.push([k, t.toFixed(4), val('v'), val('a')]);
+      }
+      out('_60hz.csv', ['frame', 't', 'valence', 'arousal'], smp);
       if (S.data.strokes.length) {
         const rs = []; for (const s of S.data.strokes) for (const [t, v, a] of s.samples) rs.push([s.id, s.source || 'input', s.axes, t, v, a]);
         out('_strokes.csv', ['stroke', 'source', 'axes', 't', 'valence', 'arousal'], rs);
@@ -100,7 +110,7 @@
       out('_f0.csv', ['t', 'f0_hz', 'rms'], rows);
     }
     // 聴いてから入力で評価したか（連続の方式：区間を聴いて止め、再生し直して記録。区間方式：区間を聴いて止め、値を入れて次へ）
-    S.meta.listen = { on: _.listenUsable(), flow: model() === 'table' || _.curveOn() ? 'listen-pause-input' : 'listen-pause-replay-record' };
+    S.meta.listen = { on: _.listenUsable(), flow: model() === 'table' ? 'listen-pause-input' : 'listen-pause-replay-record' };
     S.meta.frame_rate = _.fpsMeta();   // 1フレーム移動に使ったフレームレート（source：default／auto／manual）
     S.meta.display = _.displayMeta();   // 区切りの線・スティックを四角に広げたか
     S.meta.f0 = { shown: !!(_.f0Shown && _.f0Shown()), method: 'YIN 16kHz win=40ms hop=10ms 70-1000Hz th=0.15' };

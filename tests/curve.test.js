@@ -1,164 +1,155 @@
-// 区間内で変化（カスタムの Excel で値を「区間内で変化」。core/curve.js）：値は連続の方式と同じ系列に持ち、
-// 表のセルは区間の始め→終わりと形を出すだけ。グラフで描く・テンプレート・形の変更・発声なし・区切りでの切り分け・書き出し
+// 区間内で変化（カスタムの Excel で「区間内で変化」を使う。core/curve.js）：普通のセルは今までの Excel のまま。
+// 選んだ区間だけ「この区間を変化にする」で変化の区間にし、値を連続の方式と同じ系列に持つ。セルは区間の始め→終わりと形を出すだけ。
+// 変化にする・一定に戻す、グラフで描く（変化の区間の中だけ）、テンプレート、形の変更、発声なし、区切りでの切り分け、聴いてから入力、書き出し
 const { chromium } = require('playwright-core');
 const { URL, VID, BROWSER } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
 
 (async () => {
   const browser = await chromium.launch({ executablePath: BROWSER, headless: true });
-  const ctx = await browser.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true });
+  const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   const errs = [];
   const open = async (opts = {}) => {
     const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.dismiss());
-    await p.goto(URL); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('ahann_tl', '1'); }); await p.reload();
+    await p.goto(URL); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('ahann_tl', '1'); localStorage.setItem('ahann_f0', '0'); }); await p.reload();
     await p.selectOption('#mode', 'custom');
     await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0); await p.waitForTimeout(150);
-    await p.evaluate(o => { Object.assign(AH.S.meta.options, { rep: 'excel', values: 'curve', ...o }); AH.remount(); AH.refresh(); }, opts);
+    await p.evaluate(o => { Object.assign(AH.S.meta.options, { rep: 'excel', time: 'disc', values: 'int', curve: 'on', ...o }); AH.remount(); AH.refresh(); }, opts);
     await p.waitForTimeout(150);
     return p;
   };
-  // グラフの座標：時刻 t・値 v（lane は v か a）の画面上の位置（core/timeline.js の geom と同じ計算）
+  // グラフの座標：時刻 t・値 v（lane は v か a）の画面上の位置（core/timeline.js の geom と同じ計算。F0 の欄は出さない）
   const graph = async p => {
-    const g = await p.evaluate(() => { const c = document.getElementById('tl'), r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: c.clientWidth, h: c.clientHeight, D: AH.S.meta.duration, f0: !!document.body.classList.contains('f0') }; });
-    const H2 = g.h - 28 - (g.f0 ? 56 : 0);
-    const lane = ax => (ax === 'v' ? { y0: 8, y1: H2 / 2 - 8 } : { y0: H2 / 2 + 8, y1: H2 - 8 });
+    const g = await p.evaluate(() => { const c = document.getElementById('tl'), r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: c.clientWidth, h: c.clientHeight, D: AH.S.meta.duration }; });
+    const H2 = g.h - 28, lane = ax => (ax === 'v' ? { y0: 8, y1: H2 / 2 - 8 } : { y0: H2 / 2 + 8, y1: H2 - 8 });
     return (ax, t, v) => { const L = lane(ax); return [g.x + 44 + t / g.D * (g.w - 52), g.y + L.y1 - (v - 1) / 8 * (L.y1 - L.y0)]; };
   };
-  const cells = (p, ax) => p.evaluate(ax => [...document.querySelectorAll(`table.xl.curve td[data-ax=${ax}]`)].map(td => td.textContent), ax);
+  // セルの表示（区間の順）：入力欄なら値、変化の区間なら「~」と表示の文字
+  const cells = (p, ax) => p.evaluate(ax => [...Array(AH.nSec()).keys()].map(s => {
+    const cv = document.querySelector(`table.xl td.cv[data-ax="${ax}"][data-s="${s}"]`), inp = document.querySelector(`table.xl input[data-ax="${ax}"][data-s="${s}"]`);
+    return cv ? '~' + cv.textContent : inp ? inp.value : '?';
+  }), ax);
   const drag = async (p, a, b, steps = 12) => { await p.mouse.move(...a); await p.mouse.down(); await p.mouse.move(...b, { steps }); await p.mouse.up(); await p.waitForTimeout(150); };
+  const at = (p, t) => p.evaluate(t => AH.seekTo(t), t).then(() => p.waitForTimeout(120));
+  const mark = async (p, t) => { await at(p, t); await p.click('.curveBox .mark'); await p.waitForTimeout(100); };
 
-  // ---- 1. 土台：系列のモデル、表は表示だけ、グラフで描くと区間の始め→終わりと「描」を出す
+  // ---- 1. 普通のセルは今までの Excel。変化にした区間だけ表示だけのセルになり、グラフで描くのはその区間の中だけ
   {
     const p = await open();
-    const st = await p.evaluate(() => ({ model: AH.mode.model, inputs: document.querySelectorAll('table.xl.curve input').length, cols: document.querySelectorAll('table.xl.curve td[data-ax=v]').length, wm: AH.mode.writeMode() }));
-    check('区間内で変化：系列のモデルで、表のセルは表示だけ（入力欄が無い）、書き込みは記録オン・押している間ではない', st.model === 'series' && st.inputs === 0 && st.cols === 12 && st.wm === null, JSON.stringify(st));
-    await p.evaluate(() => { document.getElementById('graphEdit').checked = false; });   // グラフの編集の設定をオフにしても描ける
-    const at = await graph(p);
-    await drag(p, at('v', 1.005, 8), at('v', 1.99, 3));   // 区間 1（1〜2 秒）の始めから終わりまで
-    const c = await cells(p, 'v');
-    const src = await p.evaluate(() => AH.S.data.strokes.map(s => s.source).join());
-    check('グラフをなぞると系列を描き、区間のセルに始め→終わりと「描」を出す（設定のグラフ編集がオフでも描ける）', /^[78]→[34]描$/.test(c[1]) && c[0] === '' && src === 'graph', JSON.stringify({ c: c.slice(0, 3), src }));
-    await p.click('table.xl.curve td[data-ax=v][data-s="5"]'); await p.waitForTimeout(150);
-    check('セルをクリックするとその区間の始めへ移る', await p.evaluate(() => AH.curSec() === 5 && Math.abs(AH.video.currentTime - 5.001) < 0.01));
-    await p.keyboard.press('Digit7'); await p.waitForTimeout(100);
-    check('数字キーでは何も入らない', (await cells(p, 'v'))[5] === '');
+    await p.click('input[data-ax=v][data-s="1"]'); await p.keyboard.type('6');
+    await p.click('input[data-ax=v][data-s="3"]'); await p.keyboard.type('4');
+    await p.evaluate(() => document.activeElement.blur());
+    await mark(p, 1.5);
+    const c1 = await cells(p, 'v');
+    check('「この区間を変化にする」で今の区間を変化の区間にし、最初はセルの値のまま一定の線（6）になる。ほかのセルは入力欄のまま', c1[1] === '~6直' && c1[3] === '4' && c1[0] === '' && await p.evaluate(() => AH.valueAt('v', 1.5) === 6 && AH.S.data.cells.a[1] === 'curve'), JSON.stringify(c1));
+    const g = await graph(p);
+    await drag(p, g('v', 1.3, 8), g('v', 2.5, 2), 20);   // 変化の区間から普通の区間へまたいでなぞる
+    const c2 = await cells(p, 'v');
+    const v0 = await p.evaluate(() => [AH.S.data.cells.v[2] ?? null, AH.valueAt('v', 2.5)]);
+    check('変化の区間からまたいでなぞると、変化の区間の中だけ描き（「描」）、普通の区間のセルと系列は変えない', /^~6→[45]描$/.test(c2[1]) && JSON.stringify(v0) === '[null,5]', JSON.stringify({ c2: c2.slice(0, 3), v0 }));
+    await drag(p, g('v', 3.5, 8), g('v', 3.5, 8), 1);   // 普通の区間を押すと、今までどおりセルの値になる
+    check('普通の区間をグラフで押すと、今までどおりそのセルの値を置く', (await cells(p, 'v'))[3] === '8');
+    await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('描いた分も Ctrl+Z の 1 回ずつで戻る', (await cells(p, 'v'))[1] === '~6直', JSON.stringify((await cells(p, 'v')).slice(0, 4)));
+    await p.click('table.xl td.cv[data-ax=v][data-s="1"]'); await p.waitForTimeout(100);
+    check('変化の区間のセルをクリックするとその区間の始めへ移る', await p.evaluate(() => AH.curSec() === 1));
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.press('Tab');
+    check('Tab の移動は変化の区間のセルを飛ばす', await p.evaluate(() => document.activeElement.dataset.ax + document.activeElement.dataset.s) === 'v2');
+    await p.keyboard.press('Escape'); await p.evaluate(() => document.activeElement.blur());
+    await at(p, 1.5); await p.keyboard.press('Digit3'); await p.waitForTimeout(100);
+    check('変化の区間では数字キーでセルの値にしない', (await cells(p, 'v'))[1] === '~6直');
+    // 一定に戻す：区間の平均を丸めた値の普通のセルに戻る
+    await drag(p, g('v', 1.01, 2), g('v', 1.99, 2), 6);
+    await at(p, 1.5); await p.click('.curveBox .unmark'); await p.waitForTimeout(100);
+    check('「一定に戻す」で区間の平均（2）を丸めた値の普通のセルに戻る', (await cells(p, 'v'))[1] === '2' && await p.evaluate(() => AH.S.data.cells.v[1] === 2), JSON.stringify((await cells(p, 'v')).slice(0, 3)));
     await p.close();
   }
 
-  // ---- 2. テンプレート：区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形の曲線が入る。形のボタンで形を変える
+  // ---- 2. 値が空の区間を変化にすると、入れていない区間（空欄）になる。テンプレート・形の変更・発声なし
   {
     const p = await open();
+    await mark(p, 3.5);
+    const e0 = (await cells(p, 'v'))[3];
     const tools = await p.$$eval('.curveBox .tool', bs => bs.map(b => b.textContent));
     await p.click('.curveBox .tool:text("テンプレート")');
-    const at = await graph(p);
-    await drag(p, at('v', 3.5, 7), at('v', 3.6, 3));
-    const mid = () => p.evaluate(() => AH.valueAt('v', 3.5));
-    const c1 = (await cells(p, 'v'))[3], m1 = await mid();
-    const sh1 = await p.evaluate(() => JSON.stringify(AH.S.data.shapes) + '|' + AH.S.data.strokes.map(s => s.source + ':' + s.shape).join());
-    check('両方のときは入れ方の切り替えを出し、テンプレートは押した高さ→離した高さの直線を区間に入れる', tools.join() === '描く,テンプレート' && /^[67]→[34]直$/.test(c1) && m1 > 4.5 && m1 < 5.5 && /"shape":"line"/.test(sh1) && /template:line/.test(sh1), JSON.stringify({ tools, c1, m1, sh1 }));
-    await p.evaluate(() => AH.seekTo(3.2)); await p.waitForTimeout(100);
+    const g = await graph(p);
+    await drag(p, g('v', 3.5, 7), g('v', 3.6, 3));
+    const c1 = (await cells(p, 'v'))[3], m1 = await p.evaluate(() => AH.valueAt('v', 3.5));
+    check('空の区間を変化にすると空欄のまま。テンプレートは押した高さ→離した高さの直線を入れる（両方のときは入れ方の切り替えを出す）', e0 === '~' && tools.join() === '描く,テンプレート' && /^~[67]→[34]直$/.test(c1) && m1 > 4.5 && m1 < 5.5, JSON.stringify({ e0, tools, c1, m1 }));
+    await drag(p, g('v', 5.5, 7), g('v', 5.5, 3));
+    check('テンプレートでも普通の区間を押すとセルの値になる', /^[34]$/.test((await cells(p, 'v'))[5]), (await cells(p, 'v'))[5]);
+    await at(p, 3.2);
     await p.click('.curveBox .shape:text("前半で変化")');
-    const c2 = (await cells(p, 'v'))[3], m2 = await mid();
+    const c2 = (await cells(p, 'v'))[3], m2 = await p.evaluate(() => AH.valueAt('v', 3.5));
     check('形のボタンで今の区間を前半で変化にする（始めと終わりの値はそのまま）', c2 === c1.replace('直', '前') && m2 < m1 - 0.5, JSON.stringify({ c2, m1, m2 }));
-    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
-    check('形の変更は Ctrl+Z の 1 回で戻る', (await cells(p, 'v'))[3] === c1 && Math.abs((await mid()) - m1) < 1e-9);
-    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
-    check('テンプレートの入力も Ctrl+Z の 1 回で戻る', (await cells(p, 'v'))[3] === '' && (await mid()) === 5);
-    // 後半で変化を選んでから入れる。自由に描き直すと、重なった区間は「描」になる
-    await p.click('.curveBox .shape:text("後半で変化")');
-    await drag(p, at('v', 6.5, 3), at('v', 6.5, 8));
-    const c3 = (await cells(p, 'v'))[6], m3 = await p.evaluate(() => AH.valueAt('v', 6.5));
-    await p.click('.curveBox .tool:text("描く")');
-    await drag(p, at('v', 6.4, 5), at('v', 6.6, 6), 4);
-    const c4 = (await cells(p, 'v'))[6];
-    check('後半で変化の曲線が入り、その区間を自由に描き直すと「描」になる', /^3→8後$/.test(c3) && m3 < 5 && /描$/.test(c4), JSON.stringify({ c3, m3, c4 }));
+    await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
+    const z = [(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]];
+    check('発声なしで変化の区間を両軸 0 にする（セルは 0）', z.join() === '~0,~0' && await p.evaluate(() => AH.valueAt('v', 3.5) === 0 && AH.valueAt('a', 3.5) === 0), JSON.stringify(z));
+    await p.click('.curveBox .unmark'); await p.waitForTimeout(100);
+    check('発声なしの変化の区間を一定に戻すと 0 の普通のセル', JSON.stringify([(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]]) === '["0","0"]');
     await p.close();
   }
-  // ---- 3. 入れ方の設定：テンプレートだけなら切り替えを出さず、ドラッグはテンプレート。描くだけならドラッグは描く
+
+  // ---- 3. 区切り：変化の区間の途中に区切りを置くと、両方とも変化の区間のまま曲線を切り分ける（直線の半分は直線、前半で変化の半分は「描」）
   {
     const p = await open({ curveInput: 'template' });
-    const at = await graph(p);
-    const t1 = await p.$$eval('.curveBox .tool', bs => bs.length);
-    await drag(p, at('a', 2.5, 2), at('a', 2.5, 8));
-    const ca = (await cells(p, 'a'))[2];
+    await mark(p, 2.5); await mark(p, 6.5);
+    const g = await graph(p);
+    await at(p, 0.5); await p.click('.curveBox .shape:text("前半で変化")');
+    await drag(p, g('v', 2.5, 2), g('v', 2.5, 8));
+    await at(p, 0.5); await p.click('.curveBox .shape:text("直線")');
+    await drag(p, g('v', 6.5, 2), g('v', 6.5, 8));
+    await p.evaluate(() => { AH._.addCut(2.5); AH._.addCut(6.5); }); await p.waitForTimeout(150);
+    const c = await cells(p, 'v');
+    check('変化の区間の途中で区切ると両方とも変化の区間で、直線の半分は直線、前半で変化の半分は「描」', /^~2→[67]描$/.test(c[2]) && /^~[67]→8描$/.test(c[3]) && /^~2→[45]直$/.test(c[7]) && /^~[45]→8直$/.test(c[8]), JSON.stringify(c));
     await p.close();
-    const q = await open({ curveInput: 'draw' });
-    const at2 = await graph(q);
-    await drag(q, at2('a', 2.2, 2), at2('a', 2.8, 8));
-    const cb = (await cells(q, 'a'))[2];
-    check('テンプレートだけ／描くだけでは切り替えを出さず、ドラッグはその入れ方になる', t1 === 0 && /^2→8直$/.test(ca) && /描$/.test(cb) && (await q.$$eval('.curveBox .tool', bs => bs.length)) === 0, JSON.stringify({ t1, ca, cb }));
+  }
+
+  // ---- 4. 入れ方の設定：描くだけなら切り替えを出さない。区間内で変化を使わなければ今までの Excel
+  {
+    const p = await open({ curveInput: 'draw' });
+    const d = await p.evaluate(() => ({ tools: document.querySelectorAll('.curveBox .tool').length, tool: AH.mode.curveTool() }));
+    await p.close();
+    const q = await open({ curve: 'off' });
+    const off = await q.evaluate(() => ({ box: !!document.querySelector('.curveBox'), curve: AH.mode.curve, sels: [...document.querySelectorAll('.cfgGrid > span')].map(x => x.textContent).join() }));
+    check('描くだけでは切り替えを出さない。使わないなら区間内で変化の欄を出さず、設定の欄には「区間内で変化」だけ出る', d.tools === 0 && d.tool === 'draw' && !off.box && !off.curve && /区間内で変化/.test(off.sels) && !/入れ方/.test(off.sels), JSON.stringify({ d, off }));
     await q.close();
   }
 
-  // ---- 4. 発声なし：今の区間を両軸 0 にし、セルは 0、形のボタンでは変わらない。Ctrl+Z の 1 回で戻る
+  // ---- 5. 聴いてから入力：区間の終わりで止まり、変化の区間ならグラフで入れて Enter で次の区間を聴く
   {
-    const p = await open();
-    await p.evaluate(() => AH.seekTo(4.5)); await p.waitForTimeout(100);
-    await p.click('.curveBox .novoice');
-    const z = await p.evaluate(() => ({ v: AH.valueAt('v', 4.5), a: AH.valueAt('a', 4.99), b: AH.valueAt('v', 5.0), log: AH.S.log.some(l => l.type === 'curve_novoice') }));
-    const cz = [(await cells(p, 'v'))[4], (await cells(p, 'a'))[4]];
-    await p.click('.curveBox .shape:text("直線")');
-    const cz2 = (await cells(p, 'v'))[4];
-    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
-    const back = await p.evaluate(() => AH.valueAt('v', 4.5));
-    check('発声なしは今の区間を両軸 0 にしてセルに 0 を出し、形のボタンでは変わらず、Ctrl+Z で戻る', z.v === 0 && z.a === 0 && z.b === 5 && z.log && cz.join() === '0,0' && cz2 === '0' && back === 5, JSON.stringify({ z, cz, cz2, back }));
+    const p = await open({ curveInput: 'template' });
+    await p.evaluate(() => { AH._.setListen(true); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); });
+    await mark(p, 0.5); await at(p, 0); await p.evaluate(() => document.activeElement.blur());
+    await p.keyboard.press('Space');
+    const stop0 = await p.waitForFunction(() => AH.video.paused && AH.video.currentTime > 0.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    const g = await graph(p);
+    await drag(p, g('v', 0.5, 3), g('v', 0.5, 7));
+    await p.keyboard.press('Enter');
+    const stop1 = await p.waitForFunction(() => AH.video.paused && AH.curSec() === 1 && AH.video.currentTime > 1.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    const r = await p.evaluate(() => ({ c: AH.curveInfo('v', 0), next: AH.S.log.some(l => l.type === 'listen_next') }));
+    check('聴いてから入力：区間の終わりで止まり、変化の区間にグラフで入れて Enter で次の区間を聴く', stop0 && stop1 && r.c.entered && r.c.from === 3 && r.c.to === 7 && r.next, JSON.stringify({ stop0, stop1, r }));
+    await p.evaluate(() => AH._.setListen(false));
     await p.close();
   }
 
-  // ---- 5. 区切り：曲線の途中に区切りを置くと切り分ける。直線の半分は直線のまま、前半で変化の半分は「描」。Ctrl+Z で戻る
-  {
-    const p = await open();
-    await p.click('.curveBox .tool:text("テンプレート")');
-    const at = await graph(p);
-    await drag(p, at('v', 2.5, 2), at('v', 2.5, 8));
-    await p.evaluate(() => AH.seekTo(2.5)); await p.waitForTimeout(100);
-    await p.click('.curveBox .shape:text("前半で変化")');   // 区間 2 を前半で変化に
-    await p.evaluate(() => AH.seekTo(0.5)); await p.waitForTimeout(100);
-    await p.click('.curveBox .shape:text("直線")');   // 入れていない区間で押すと、次に入れる形だけが変わる
-    await drag(p, at('v', 6.5, 2), at('v', 6.5, 8));
-    await p.evaluate(() => { AH._.addCut(2.5); AH._.addCut(6.5); }); await p.waitForTimeout(150);   // 区間 2 と 6 の真ん中
-    const c = await cells(p, 'v');
-    check('曲線の途中で区切ると切り分け、直線の半分は直線、前半で変化の半分は「描」になる', /^2→[67]描$/.test(c[2]) && /^[67]→8描$/.test(c[3]) && /^2→[45]直$/.test(c[7]) && /^[45]→8直$/.test(c[8]), JSON.stringify(c));
-    await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(150);
-    const c2 = await cells(p, 'v');
-    check('区切りを Ctrl+Z で戻すと形の記録も戻る', /前$/.test(c2[2]) && /^2→8直$/.test(c2[6]), JSON.stringify(c2));
-    await p.close();
-  }
-
-  // ---- 6. 書き出し：_bins.csv は軸ごとに from・to・mean・shape。入れていない区間は形が空欄、発声なしは 4 列とも 0。_60hz.csv は連続の方式と同じ
+  // ---- 6. 書き出し：_bins.csv は軸ごとに from・to・mean・shape。普通のセルは const、変化の区間は系列から、発声なしは 4 列とも 0
   {
     const p = await open({ curveInput: 'template' });
     await p.evaluate(() => {
       AH._.setRange({ start: 0, bin: 1, count: 4, target: 4, edges: null });
-      AH._.curveDown('v', 1.5, 2); AH._.curveMove(8); AH._.curveUp();       // 区間 1：快度 2→8 の直線
-      AH._.curveNoVoice(2, ['v', 'a']);                                      // 区間 2：発声なし
+      AH.setCells(0, { v: 7, a: 3 });
+      AH._.curveMark(1, ['v', 'a']); AH._.curveDown('v', 1.5, 2); AH._.curveMove(8); AH._.curveUp();   // 区間 1：快度 2→8 の直線、覚醒度は空
+      AH._.curveMark(2, ['v', 'a']); AH._.curveNoVoice(2, ['v', 'a']);                                    // 区間 2：発声なし
     });
     const f = await p.evaluate(() => Object.fromEntries(AH._.buildFiles().map(x => [x.name.replace(/^.*?_custom/, ''), x.text])));
     const bins = f['_bins.csv'].trim().split(String.fromCharCode(10)).map(r => r.split(','));
-    const hz = f['_60hz.csv'].trim().split(String.fromCharCode(10));
-    check('_bins.csv：軸ごとに from・to・mean・shape（直線 2→8 の平均は 5、入れていない区間は形が空欄、発声なしは 0）', bins[0].join() === 'bin,label,t_start,t_end,valence_from,valence_to,valence_mean,valence_shape,arousal_from,arousal_to,arousal_mean,arousal_shape'
-      && bins[2].slice(4).join() === '2,8,5.000,line,5,5,5.000,' && bins[3].slice(4).join() === '0,0,0,0,0,0,0,0' && bins[1].slice(4).join() === '5,5,5.000,,5,5,5.000,', JSON.stringify(bins));
-    check('_60hz.csv・_changepoints.csv・_strokes.csv を連続の方式と同じく書き出す', hz.length === 12 * 60 + 2 && hz[0] === 'frame,t,valence,arousal' && !!f['_changepoints.csv'] && /template/.test(f['_strokes.csv']) && /novoice/.test(f['_strokes.csv']), hz.slice(0, 2).join(' | '));
-    const ses = JSON.parse(f['_session.json']);
-    check('_session.json に形の記録（shapes）が残る', JSON.stringify(ses.data.shapes) === '[{"axis":"v","t0":1,"t1":2,"shape":"line"}]', JSON.stringify(ses.data.shapes));
-    await p.close();
-  }
-
-  // ---- 7. 聴いてから入力：区間方式と同じく区間の終わりで止まり、止まっている間にグラフで入れ、Enter で次の区間を聴く
-  {
-    const p = await open({ curveInput: 'template' });
-    await p.evaluate(() => { AH._.setListen(true); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); document.activeElement.blur(); });
-    await p.keyboard.press('Space');
-    const stop0 = await p.waitForFunction(() => AH.video.paused && AH.video.currentTime > 0.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
-    await p.waitForTimeout(150); const box = await p.evaluate(() => document.getElementById('listenBox').textContent);
-    const at = await graph(p);
-    await drag(p, at('v', 0.5, 3), at('v', 0.5, 7));
-    await p.keyboard.press('Enter');
-    const stop1 = await p.waitForFunction(() => AH.video.paused && AH.curSec() === 1 && AH.video.currentTime > 1.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
-    const r = await p.evaluate(() => ({ c: AH.curveInfo('v', 0), armed: AH.S.armed, rec: AH.S.log.some(l => l.type === 'listen_record'), next: AH.S.log.some(l => l.type === 'listen_next') }));
-    check('聴いてから入力：区間の終わりで止まり（「次へ」の案内）、グラフで入れて Enter で次の区間を聴く（記録の段階は無い）', stop0 && /次へ/.test(box) && stop1 && r.c.entered && r.c.from === 3 && r.c.to === 7 && !r.armed && !r.rec && r.next, JSON.stringify({ stop0, stop1, box, r }));
-    await p.evaluate(() => AH._.setListen(false));
+    const hz = f['_60hz.csv'].trim().split(String.fromCharCode(10)).map(r => r.split(','));
+    check('_bins.csv：軸ごとに from・to・mean・shape（普通のセルは const、直線 2→8 の平均は 5、入れていない区間は空欄、発声なしは 0）',
+      bins[0].join() === 'bin,label,t_start,t_end,valence_from,valence_to,valence_mean,valence_shape,arousal_from,arousal_to,arousal_mean,arousal_shape'
+      && bins[1].slice(4).join() === '7,7,7.000,const,3,3,3.000,const' && bins[2].slice(4).join() === '2,8,5.000,line,5,5,5.000,' && bins[3].slice(4).join() === '0,0,0,0,0,0,0,0' && bins[4].slice(4).join() === ',,,,,,,', JSON.stringify(bins));
+    check('_60hz.csv：普通のセルはその値、変化の区間は系列の値、入れていない区間と評価区間の外は空欄', hz[31].slice(2).join() === '7,3' && hz[61][2] === '2' && hz[61][3] === '' && hz[211].slice(2).join() === ',' && hz[301].slice(2).join() === ',', JSON.stringify([hz[31], hz[61], hz[211], hz[301]]));
     await p.close();
   }
 

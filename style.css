@@ -232,9 +232,8 @@ table.xl .cur{background:color-mix(in srgb,var(--val) 16%,transparent)}
 /* 区間内で変化：入れ方と形のボタン */
 .curveBox .curveTools,.curveBox .curveShapes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .curveBox button.on{background:var(--val);border-color:var(--val);color:#fff}
-table.xl.curve td{min-width:46px;height:28px;font-size:14px;cursor:pointer;white-space:nowrap;padding:0 4px}
-table.xl.curve th[data-s]{cursor:pointer}
-table.xl.curve td small{font-size:10px;color:var(--muted);margin-left:2px}
+table.xl td.cv{min-width:46px;height:28px;font-size:14px;cursor:pointer;white-space:nowrap;padding:0 4px;background:color-mix(in srgb,var(--f0) 10%,transparent)}
+table.xl td.cv small{font-size:10px;color:var(--muted);margin-left:2px}
 table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
 .refTitle{font-size:13px;font-weight:600;margin-bottom:4px}
 .cutBox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}

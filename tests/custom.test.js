@@ -127,7 +127,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
       rows: document.querySelectorAll('table.xl tr').length, cutBox: !!document.querySelector('.cutBox') }));
     check('プリセット「Excel」：区間ごと・整数・キーボードで、表を出し、時間・値・入力・フィードバックの欄を出さない',
       st.o.rep === 'excel' && st.o.time === 'disc' && st.o.values === 'int' && st.o.input === 'keyboard' && st.model === 'table' && /Excel/.test(st.note)
-      && st.sels.join() === 'インタフェース,値,次元,区切り' && !st.fb && st.rows === 3 && !st.cutBox, JSON.stringify(st));
+      && st.sels.join() === 'インタフェース,値,区間内で変化,次元,区切り' && !st.fb && st.rows === 3 && !st.cutBox, JSON.stringify(st));
     await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.type('7'); await p.keyboard.press('Enter'); await p.keyboard.type('3'); await p.keyboard.press('Enter'); await p.keyboard.type('x');
     await p.keyboard.press('Escape');
     const cells = await p.evaluate(() => ['v', 'a'].map(ax => [0, 1].map(i => AH.S.data.cells[ax][i] ?? null)));

@@ -45,7 +45,7 @@ const GOOD = makeFolder('exp_good', {
       P02: [{ mode: 'sam', video: 'a.mp4' }],
       P03: [{ mode: 'sam', video: 'c.mp4' }],
       P04: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'self' } }],
-      P05: [{ mode: 'custom', video: 'a.mp4', options: { rep: 'excel', values: 'curve', curveInput: 'draw' } }],
+      P05: [{ mode: 'custom', video: 'a.mp4', options: { rep: 'excel', values: 'int', curve: 'on', curveInput: 'draw' } }],
     },
   },
   // 動画ごとの評価区間。c.mp4 は動画（12 秒）より長い終了にして、試行を始められないことを確かめる

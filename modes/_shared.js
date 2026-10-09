@@ -167,9 +167,12 @@
     };
     return { grid, follow };
   }
-  function xlTable(under, axes = ['v', 'a'], real = false) {
+  // curve：区間内で変化を使う（変化にした区間のセルは表示だけ。クリックでその区間へ移る）
+  function xlTable(under, axes = ['v', 'a'], real = false, curve = false) {
     const { grid, follow } = xlWrap(under);
     let sig = '';
+    const isCv = (ax, s) => curve && S.data.cells[ax][s] === 'curve';
+    const sigNow = () => AH.rangeSig() + (curve ? '|' + axes.map(ax => [...Array(AH.nSec()).keys()].map(s => (isCv(ax, s) ? 1 : 0)).join('')).join('|') : '');
     const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
     const put = (ax, s, v) => {
       const others = axes.filter(o => o !== ax), c = S.data.cells;
@@ -191,13 +194,14 @@
     function build() {
       // 区切りを変えると表を作り直す。セルに入れている途中なら、同じ軸・番号のセルにフォーカスを戻す（C キーで区切ったときなど）
       const fo = grid.contains(document.activeElement) ? document.activeElement.dataset : null, keep = fo && { ax: fo.ax, s: fo.s };
-      sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
-      const tb = h('table', { class: 'xl' + (real ? ' real' : '') });
+      sig = sigNow(); const n = AH.nSec(); grid.innerHTML = '';
+      const tb = h('table', { class: 'xl' + (real ? ' real' : '') + (curve ? ' curve' : '') });
       let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s }, AH.secLabel(s))); tb.appendChild(tr);
       axes.forEach((ax, r) => {
         const L = AH.ax(ax), name = `${L.name}(1:${L.lo}ー9:${L.hi})`;
         tr = h('tr', {}, `<th>${name}</th>`);
         for (let s = 0; s < n; s++) {
+          if (isCv(ax, s)) { tr.appendChild(h('td', { 'data-s': s, 'data-ax': ax, class: 'cv', title: '区間内で変化（グラフで入れる）', onclick: () => AH.seekTo(AH.binStart(s) + 0.001) })); continue; }
           const td = h('td', { 'data-s': s }), inp = h('input', { type: 'text', inputmode: real ? 'decimal' : 'numeric', maxlength: real ? '3' : '1', 'data-ax': ax, 'data-s': s, 'aria-label': `${name} ${AH.secLabel(s)}` });
           if (real) bindReal(inp, ax, s);
           else inp.addEventListener('input', () => {
@@ -219,10 +223,17 @@
             if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.cutNow(); return; }   // 今の時間で区切る（区切れるときだけ）
             if (!move) return;
             e.preventDefault();
-            const nx = grid.querySelector(`input[data-ax="${axes[r + move[0]]}"][data-s="${s + move[1]}"]`);
+            // 次のセル。変化の区間のセル（入力欄が無い）は飛ばして、同じ向きに進む
+            let rr = r, ss = s, nx = null;
+            for (let k = 0; k < axes.length * n && !nx; k++) {
+              if (e.key === 'Enter') { rr += move[0] === 0 ? 0 : back; if (rr < 0 || rr > last) { rr = rr < 0 ? last : 0; ss += back; } }
+              else { rr += move[0]; ss += move[1]; }
+              if (rr < 0 || rr > last || ss < 0 || ss >= n) break;
+              nx = grid.querySelector(`input[data-ax="${axes[rr]}"][data-s="${ss}"]`);
+            }
             if (nx) { nx.focus(); nx.select(); }
             // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
-            if (nx && e.key === 'Enter' && move[1] === 1 && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
+            if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
           });
           inp.addEventListener('focus', () => AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }));
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
@@ -237,8 +248,9 @@
     }
     return () => {
       if (!S.meta.duration) return;
-      if (sig !== AH.rangeSig()) build();
+      if (sig !== sigNow()) build();
       const cur = AH.curSec();
+      for (const td of grid.querySelectorAll('td.cv')) { const x = curveText(AH.curveInfo(td.dataset.ax, +td.dataset.s)); if (td.innerHTML !== x) td.innerHTML = x; }
       const ro = AH.reviewing();   // 見返しの間はセルに打てない
       for (const inp of grid.querySelectorAll('input')) {
         inp.readOnly = ro;
@@ -248,38 +260,15 @@
       follow(cur);
     };
   }
-  // 区間内で変化の表（カスタムの Excel）：セルは表示だけ。区間の始めの値→終わりの値（整数に丸める）と形の印を出す。
-  // 入れていない区間は空欄、発声なしは 0。セルをクリックすると、その区間の始めへ移る
+  // 区間内で変化（カスタムの Excel。core/curve.js）の変化の区間のセル：表示だけ。区間の始めの値→終わりの値（整数に丸める）と形の印を出す。
+  // 入れていない区間は空欄、発声なしは 0
   const SHAPE_MARK = { line: '直', early: '前', late: '後', free: '描' };
-  function curveTable(under, axes = ['v', 'a']) {
-    const { grid, follow } = xlWrap(under);
-    let sig = '';
-    function build() {
-      sig = AH.rangeSig(); const n = AH.nSec(); grid.innerHTML = '';
-      const tb = h('table', { class: 'xl curve' });
-      const go = s => e => { AH.seekTo(AH.binStart(s) + 0.001); e.currentTarget.blur && e.currentTarget.blur(); };
-      let tr = h('tr', {}, '<th>秒数</th>'); for (let s = 0; s < n; s++) tr.appendChild(h('th', { 'data-s': s, onclick: go(s) }, AH.secLabel(s))); tb.appendChild(tr);
-      for (const ax of axes) {
-        const L = AH.ax(ax);
-        tr = h('tr', {}, `<th>${L.name}(1:${L.lo}ー9:${L.hi})</th>`);
-        for (let s = 0; s < n; s++) tr.appendChild(h('td', { 'data-s': s, 'data-ax': ax, onclick: go(s) }));
-        tb.appendChild(tr);
-      }
-      grid.appendChild(tb);
-    }
-    const text = c => {
-      if (!c || !c.entered) return '';
-      if (c.shape === 'zero') return '0';
-      const a = Math.round(c.from), b = Math.round(c.to);
-      return `${a === b ? a : a + '→' + b}<small>${SHAPE_MARK[c.shape] || ''}</small>`;
-    };
-    return () => {
-      if (!S.meta.duration) return;
-      if (sig !== AH.rangeSig()) build();
-      for (const td of grid.querySelectorAll('td[data-ax]')) { const x = text(AH.curveInfo(td.dataset.ax, +td.dataset.s)); if (td.innerHTML !== x) td.innerHTML = x; }
-      follow(AH.curSec());
-    };
-  }
+  const curveText = c => {
+    if (!c || !c.entered) return '';
+    if (c.shape === 'zero') return '0';
+    const a = Math.round(c.from), b = Math.round(c.to);
+    return `${a === b ? a : a + '→' + b}<small>${SHAPE_MARK[c.shape] || ''}</small>`;
+  };
   // Excel の右の欄：ラベル・プロット表（VA のときだけ）とメモ
   const XL_LABELS = [['ストレス', 1, 9], ['覚醒', 5, 9], ['興奮', 9, 9], ['快', 9, 5], ['不快', 1, 5], ['憂鬱', 1, 1], ['眠気', 5, 1], ['安堵', 9, 1]];   // [ラベル, 快度, 覚醒度]
   function xlRef(panel) {
@@ -476,6 +465,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, curveTable, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, xlTable, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

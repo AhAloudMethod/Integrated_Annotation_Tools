@@ -1,10 +1,15 @@
-// 区間内で変化（カスタムの Excel で値を「区間内で変化」にしたとき）：値は連続の方式と同じ変化点の系列に持ち、区間ごとに読む。
-// 自由に描くのはグラフでの編集（core/timeline.js）と同じ。表のセルは表示だけで、区間の始めの値→終わりの値と形を出す。
-// 形（テンプレート）の記録は系列とは別に S.data.shapes（{ axis, t0, t1, shape }）に持つ。区間をちょうど覆う記録があればその形、無ければ free
+// 区間内で変化（カスタムの Excel で「区間内で変化」を使うとき）：選んだ区間だけ、区間の中で値が動いてよいことにする。
+// 普通のセルは今までの Excel（表のモデル）のまま。変化にした区間はセルに印 'curve' を置き、値は連続の方式と同じ変化点の系列（S.data.points）に持つ。
+// 細かい区切りをたくさん入れる手間を省くための入れ方である。変化の区間のセルは表示だけで、区間の始めの値→終わりの値と形を出す。
+// 自由に描くのはグラフでの編集（core/timeline.js）と同じ。形（テンプレート）の記録は S.data.shapes（{ axis, t0, t1, shape }）に持ち、
+// 区間をちょうど覆う記録があればその形、無ければ free
 (() => {
   const _ = AH._;
   const { FPS, S, binStart, binAt, nSec, r2, clamp, snapshot, pushUndo, addLog, wall } = _;
   const on = () => !!(_.M && _.M.curve);
+  const CURVE = 'curve';   // 変化にした区間のセルの印
+  const isCurve = (ax, s) => on() && !!S.data && S.data.cells[ax][s] === CURVE;
+  const secOf = t => { const s = binAt(t); return s >= 0 && s < nSec() ? s : -1; };
   const EPS = 1e-6, TOL = 1.5 / FPS;   // 記録が区間をちょうど覆うとみなす幅
   const frames = s => {   // 区間 s のフレーム [f0, f1)（動画の最後のフレームまで）
     const N = Math.floor((S.meta.duration || 0) * FPS);
@@ -76,9 +81,8 @@
   // グラフのドラッグ（core/timeline.js）：区間の中で押した高さが始めの値、離した高さが終わりの値。ドラッグの間は曲線を予覧する
   let drag = null;
   function down(axis, t, v) {
-    if (!on() || _.M.curveTool() !== 'template') return false;
-    const s = binAt(t);
-    if (s < 0 || s >= nSec()) { _.hintMsg('評価区間の中で入れてください'); return true; }
+    const s = secOf(t);
+    if (s < 0 || !isCurve(axis, s) || _.M.curveTool() !== 'template') return false;   // 変化の区間でなければ、普通のグラフでの編集（セルの値）
     drag = { axis, s, before: snapshot(), from: q(v), to: q(v) };
     preview(); return true;
   }
@@ -101,7 +105,7 @@
     if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
     const before = snapshot(), done = [];
     for (const ax of axes) {
-      const c = info(ax, s);
+      const c = isCurve(ax, s) && info(ax, s);
       if (!c || !c.entered || c.shape === 'zero' || c.shape === shape) continue;
       if (put(S.data, ax, s, c.from, c.to, shape, 'reshape')) done.push(ax);
     }
@@ -111,16 +115,51 @@
     _.refresh(); return true;
   }
 
-  // 発声なし（パネルのボタン）：区間を両軸とも 0 で描き換える（形の記録は外す）。読みでは shape が zero になる
+  // 発声なし（パネルのボタン）：変化の区間を両軸とも 0 で描き換える（形の記録は外す）。読みでは shape が zero になる。
+  // 普通のセルはセルに 0 を打つ（modes/_shared.js の xlTable）
   function noVoice(s, axes) {
     if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
     const before = snapshot();
-    let ch = false; for (const ax of axes) ch = put(S.data, ax, s, 0, 0, 'none', 'novoice', 'novoice') || ch;
+    let ch = false; for (const ax of axes) if (isCurve(ax, s)) ch = put(S.data, ax, s, 0, 0, 'none', 'novoice', 'novoice') || ch;
     if (!ch) return false;
     pushUndo(before);
     addLog('curve_novoice', { axis: axes.join(''), detail: 'bin ' + s });
     _.refresh(); return true;
   }
 
-  Object.assign(_, { curveSplitAt: splitAt, curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
+  // ---------- 変化の区間にする・一定に戻す（パネルのボタン） ----------
+  // 変化にすると、最初はセルの値のまま一定の線にする（値が入っていなければ初期値の 5 にし、入れた区間とはしない）
+  function mark(s, axes) {
+    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    const before = snapshot(), done = [];
+    for (const ax of axes) {
+      const v = S.data.cells[ax][s]; if (v === CURVE) continue;
+      if (typeof v === 'number') put(S.data, ax, s, v, v, v === 0 ? 'none' : 'line', 'mark', 'cell');
+      else { const iv = _.M.init[ax]; S.data.points[ax] = _.rewriteFrames(S.data.points[ax], samples(s, iv, iv, 'line')); trim(ax, binStart(s), _.binEnd(s)); }
+      S.data.cells[ax][s] = CURVE; done.push(ax);
+    }
+    if (!done.length) return false;
+    pushUndo(before);
+    addLog('curve_mark', { axis: done.join(''), value: 'on', detail: 'bin ' + s });
+    _.refresh(); return true;
+  }
+  // 一定に戻す：区間の平均を、普通のセルの刻み（9 段階なら整数、連続値なら小数第 1 位）に丸めた値にする。入れていない区間は空欄、発声なしは 0
+  function unmark(s, axes) {
+    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    const before = snapshot(), done = [];
+    for (const ax of axes) {
+      if (!isCurve(ax, s)) continue;
+      const c = info(ax, s, true), round = _.isInt() ? Math.round : x => Math.round(x * 10) / 10;
+      S.data.cells[ax][s] = !c || !c.entered ? null : c.shape === 'zero' ? 0 : clamp(round(c.mean), 1, 9);
+      trim(ax, binStart(s), _.binEnd(s)); done.push(ax);
+    }
+    if (!done.length) return false;
+    pushUndo(before);
+    addLog('curve_mark', { axis: done.join(''), value: 'off', detail: 'bin ' + s });
+    _.refresh(); return true;
+  }
+  // グラフで自由に描くとき（core/timeline.js）：押した所が変化の区間なら系列を描く。描くのは変化の区間のフレームだけ
+  const seriesAt = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s); };
+
+  Object.assign(_, { curveIsCurve: isCurve, curveSeriesAt: seriesAt, curveMark: mark, curveUnmark: unmark, curveSplitAt: splitAt, curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });
 })();
