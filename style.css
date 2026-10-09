@@ -27,7 +27,7 @@ header .time{min-width:8.6em}
    文字とくっつかないよう、右の余白を少し広げる */
 button[data-key]{position:relative;padding-right:12px !important}
 button[data-key]::before{content:attr(data-key);position:absolute;right:3px;bottom:1px;font-size:8px;line-height:1;opacity:.6;pointer-events:none}
-#playBtn::before{font-size:12px;bottom:0}   /* スペースキーの記号（␣）は小さいと見えない */
+#playBtn[data-key]{padding-right:28px !important}   /* 「Space」は長いので、右の余白を広くとる */
 #clock{position:relative}
 #clock[data-out]:not([data-out=""])::after{content:attr(data-out);position:absolute;top:-8px;right:-4px;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--pen);color:#fff;white-space:nowrap}
 #playBtn[data-rate]:not([data-rate=""])::after{content:attr(data-rate);position:absolute;top:-6px;right:-8px;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--pen);color:#fff}
@@ -38,7 +38,7 @@ input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);borde
 header{flex-wrap:nowrap}
 header>*{flex:0 0 auto}
 header .status{flex:0 1 auto}
-@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:150px} header{gap:4px} header button{padding:4px 6px}}
+@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:132px} header{gap:4px} header button{padding:4px 6px}}
 @media (max-width:1180px){header{flex-wrap:wrap}}
 select,textarea{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
 button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);cursor:pointer}
