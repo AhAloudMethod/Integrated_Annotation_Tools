@@ -134,6 +134,17 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => localStorage.clear()); await p.close();
   }
 
+  // 7. Excel の区切り「1秒固定」：評価区間の開始〜終了を 1 秒ごとにし、右クリックでは区切れない（専用の Excel とカスタムの Excel）
+  for (const mode of ['excel', 'custom']) {
+    const p = await open(mode);
+    if (mode === 'custom') { await p.selectOption('select[aria-label=インタフェース]', 'excel'); await p.waitForTimeout(100); }
+    await p.evaluate(() => { AH._.setRange({ start: 1, bin: 2, count: 5, target: 11, edges: null }); AH._.setTimeline(true); }); await p.waitForTimeout(100);
+    await p.selectOption('select[aria-label=区切り]', 'sec1'); await p.waitForTimeout(150);
+    const r = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), bin: AH.S.meta.range.bin, end: AH._.rangeEnd(), cut: !!AH.mode.graphCuts }));
+    check(`${mode}：区切り「1秒固定」で評価区間（1〜11 秒）を 1 秒ごとの 10 区間にし、区切りを編集できない`, r.n === 10 && r.s0 === 1 && r.bin === 1 && Math.abs(r.end - 11) < 1e-6 && !r.cut, JSON.stringify(r));
+    await p.evaluate(() => localStorage.clear()); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

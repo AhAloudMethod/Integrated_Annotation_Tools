@@ -9,7 +9,7 @@
   const REPS = { plane: '四角平面', circle: '円', grid: '9×9グリッド', sam: 'SAMの絵', buttons: '1〜9ボタン', excel: 'Excel（セル）', sliders: 'スライダー2本', rank8: '8方向ボタン（変化の方向）' };
   const nine = r => ['grid', 'sam', 'buttons'].includes(r);
   // values：値の刻み（real＝連続。1〜9 の小数、int＝離散。1〜9 の整数）。インタフェースとは別に選ぶ
-  // cuts：区間の区切り（fixed＝事前設定の区切り。編集できない、self＝自分で区切る。Excel だけ）
+  // cuts：区間の区切り（fixed＝事前設定の区切り、sec1＝1秒固定。どちらも編集できない、self＝自分で区切る。Excel だけ）
   // curve：区間内で変化を使うか（on／off。Excel だけ）。選んだ区間だけ、区間の中の動きをグラフで入れる（core/curve.js）
   // curveInput：区間内で変化の入れ方（both＝描く・テンプレートの両方、draw＝描くだけ、template＝テンプレートだけ）
   const DEF = { time: 'cont', rep: 'plane', input: 'mouse', dims: 'both', scale: 'abs', values: 'real', face: false, trail: true, color: false, border: false, autoNext: false, cuts: 'fixed', curve: 'off', curveInput: 'both' };
@@ -36,6 +36,7 @@
     if (n.rep === 'rank8') Object.assign(n, { time: 'cont', input: n.input === 'gamepad' ? 'mouse' : n.input, face: false, trail: false, color: false, border: false });
     if (n.rep === 'excel') Object.assign(n, { time: 'disc', input: 'keyboard', face: false, trail: false, color: false, border: false, autoNext: false });
     else n.cuts = 'fixed';
+    if (!['fixed', 'sec1', 'self'].includes(n.cuts)) n.cuts = 'fixed';
     if (nine(n.rep) || n.rep === 'rank8') n.values = 'int';
     if (n.scale === 'rel') n.values = 'real';
     if (n.values === 'curve') Object.assign(n, { values: 'real', curve: 'on' });   // 前の版の書き方（値の「区間内で変化」）
@@ -134,6 +135,7 @@
     const n = normalize({ ...o(), ...patch });
     for (const k of Object.keys(n)) S.meta.options[k] = n[k];
     AH.addLog('option', { detail: JSON.stringify(patch) });
+    if (patch.cuts === 'sec1' && AH.hasVideo()) AH.uniformRange(1);   // 1秒固定：評価区間を 1 秒ごとにする
     AH.remount();
   }
   function presetName() {
@@ -163,7 +165,7 @@
     if (!xl()) sel('入力', 'input', inputs);
     sel('次元', 'dims', [['both', '2軸同時'], ['v', AH.ax('v').name + 'のみ'], ['a', AH.ax('a').name + 'のみ']]);
     if (o().rep === 'sliders' && o().time === 'cont') sel('尺度', 'scale', [['abs', '絶対（1〜9）'], ['rel', '相対（上下限なし）']]);
-    if (xl()) sel('区切り', 'cuts', [['fixed', '事前設定の区切り'], ['self', '自分で区切る']]);
+    if (xl()) sel('区切り', 'cuts', [['fixed', '事前設定の区切り'], ['sec1', '1秒固定'], ['self', '自分で区切る']]);
     box.appendChild(grid);
     if (rank() || xl()) { note = h('div', { class: 'cfgNote' }, presetName()); box.appendChild(note); panel.appendChild(box); return; }   // 変化の方向と Excel にはフィードバックの欄がない
     const fb = h('div', { class: 'opts' }, 'フィードバック：');
@@ -294,12 +296,13 @@
     get unbounded() { return o().time === 'cont' && rel(); },
     get graphCuts() { return xl() && o().cuts === 'self'; },   // Excel で自分で区切るときだけ、評価グラフの右クリック（と C キー）で区切りを編集する
     get decimals() { return xl() ? 1 : 2; },   // Excel の連続値は小数第1位まで（グラフでの編集も。区間内で変化の変化の区間は連続の方式と同じ）
-    selfCuts: () => xl() && o().cuts === 'self',   // 自分で区切る：実験モードでも参加者が区切れる
+    selfCuts: () => xl() && o().cuts === 'self',
+    cutsMode: () => (xl() ? o().cuts : null),   // 実験モードで評価区間を当てるときに使う（core/experiment.js）   // 自分で区切る：実験モードでも参加者が区切れる
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
       if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、セルをクリックしてその区間へ移り、「この区間を変化にする」を押してから評価グラフで入れます。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で今の区間を 0 にします。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。「一定に戻す」で、区間の平均を丸めた値の普通のセルに戻します。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
-      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : '区切りは事前に設定したもので、編集できません。'}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
+      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。<kbd>Enter</kbd>・<kbd>Tab</kbd> やセルの移動で確定）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : o().cuts === 'sec1' ? '区切りは評価区間の開始から 1 秒ごとで、編集できません。' : '区切りは事前に設定したもので、編集できません。'}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
       if (pointType()) how = o().time === 'disc' ? 'クリック（または数字キー：快度＝1〜9、覚醒度＝Shift+数字）で今の区間の値を設定します。<kbd>Backspace</kbd> で今の区間を消去。' : 'クリック（または数字キー）でその時刻に変化点を置きます。<kbd>Backspace</kbd> で直前の変化点を削除。';

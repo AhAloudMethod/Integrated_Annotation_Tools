@@ -175,6 +175,11 @@
     if (e[e.length - 1] <= e[0]) { hintMsg('終了は開始より後にしてください'); syncRangeUI(); return; }
     setEdges(e);
   }
+  // 区切りを等間隔（bin 秒ごと）にする。開始と終了はそのまま（Excel の区切り「1秒固定」で使う）
+  function uniformRange(bin = 1) {
+    const start = binStart(0), end = rangeEnd();
+    setRange({ edges: null, start, bin, target: end, count: countFor(start, Math.max(start + bin, end), bin) });
+  }
   $('cutAdd').addEventListener('click', e => { addCut(nowT()); e.currentTarget.blur(); });
   $('cutDel').addEventListener('click', e => { delCut(video.currentTime || 0); e.currentTarget.blur(); });
   $('cutReset').addEventListener('click', undoable(e => {
@@ -192,5 +197,5 @@
     setEdges([e0[0], ...inner, e0[e0.length - 1]]); addLog('range_cut', { value: 'list', detail: inner.join(' ') }); e.target.blur();
   }));
 
-  Object.assign(_, { hintMsg, countFor, addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { uniformRange, hintMsg, countFor, addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();

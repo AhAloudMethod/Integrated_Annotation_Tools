@@ -99,7 +99,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 | `halolight` | HaloLight（色の円） | 連続 | `gradient`（true） |
 | `carma` | CARMA（1 次元スライダー） | 連続・1 軸 | `axis`（`"v"` か `"a"`） |
 | `ranktrace` | RankTrace（上下限なし） | 連続・1 軸 | `axis`（`"v"` か `"a"`） |
-| `excel` | Excel | 区間ごと | `cuts`（`"fixed"`＝評価区間に従う（既定），`"self"`＝参加者が区切る） |
+| `excel` | Excel | 区間ごと | `cuts`（`"fixed"`＝事前設定の区切り（既定），`"sec1"`＝1秒固定，`"self"`＝参加者が区切る） |
 | `affectgrid` | Affect Grid（9×9） | 区間ごと | `autoNext`（false） |
 | `sam` | SAM（9 段階の絵） | 区間ごと | `autoNext`（false） |
 | `affectrank` | AffectRank（変化時に 8 方向） | 相対の変化 | ― |

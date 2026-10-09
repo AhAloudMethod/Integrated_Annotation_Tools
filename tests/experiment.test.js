@@ -45,6 +45,7 @@ const GOOD = makeFolder('exp_good', {
       P02: [{ mode: 'sam', video: 'a.mp4' }],
       P03: [{ mode: 'sam', video: 'c.mp4' }],
       P04: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'self' } }],
+      P06: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'sec1' } }],
       P05: [{ mode: 'custom', video: 'a.mp4', options: { rep: 'excel', values: 'int', curve: 'on', curveInput: 'draw' } }],
     },
   },
@@ -283,6 +284,17 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const sc = await p.evaluate(() => ({ n: AH.nSec(), edges: AH.S.meta.range.edges, cols: document.querySelectorAll('table.xl input[data-ax=v]').length }));
   check('自分で区切る試行は、評価区間（1〜11 秒）を区切りの無い 1 区間にして始める', sc.n === 1 && JSON.stringify(sc.edges) === '[1,11]' && sc.cols === 1, JSON.stringify(sc));
+  await p.keyboard.press('Control+Shift+KeyE');
+  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+
+  // ---- 1秒固定の試行：setup.json の区間（1〜11 秒、2 秒ごと）を 1 秒ごとにする
+  await p.setInputFiles('#expDir', GOOD);
+  await p.waitForSelector('#expGo');
+  await p.selectOption('#expPid', 'P06');
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const s1 = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), bin: AH.S.meta.range.bin, edges: AH.S.meta.range.edges || null }));
+  check('1秒固定の試行は、評価区間（1〜11 秒）を 1 秒ごとの 10 区間にして始める', s1.n === 10 && s1.s0 === 1 && s1.bin === 1 && !s1.edges, JSON.stringify(s1));
   await p.keyboard.press('Control+Shift+KeyE');
   await p.waitForLoadState('load'); await p.waitForTimeout(500);
 

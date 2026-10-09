@@ -188,14 +188,16 @@
     document.body.classList.toggle('expVwin', !!s.videoWindow);
   }
   // 評価区間を当てる。動画の長さに収まらなければ誤りの文を返す（黙って切り詰めない。フレームの端数 0.02 秒は許す）
-  // 参加者が自分で区切る試行（Excel の cuts: "self"）は、区切りの無い 1 区間（開始〜終了）から始める
+  // 参加者が自分で区切る試行（Excel の cuts: "self"）は、区切りの無い 1 区間（開始〜終了）から始める。
+  // 1秒固定（cuts: "sec1"）の試行は、開始〜終了を 1 秒ごとに区切る（setup.json の区切りは使わない）
   function applyRange(r) {
     const D = S.meta.duration, tol = 0.02, label = r.label || 'countdown';
-    const self = !!(_.M && _.M.selfCuts && _.M.selfCuts());
+    const self = !!(_.M && _.M.selfCuts && _.M.selfCuts()), sec1 = !!(_.M && _.M.cutsMode && _.M.cutsMode() === 'sec1');
     if (r.edges) {
       const e = r.edges, end = e[e.length - 1];
       if (end > D + tol) return `評価区間の終了（${end} 秒）が動画の長さ（${D.toFixed(3)} 秒）を超えています`;
       const edges = self ? [e[0], end] : e.slice(); edges[edges.length - 1] = Math.min(end, D);
+      if (sec1) { const s0 = edges[0], e1 = edges[edges.length - 1]; _.setRange({ edges: null, start: s0, bin: 1, label, target: e1, count: _.countFor(s0, Math.max(s0 + 1, e1), 1) }); return null; }
       _.setRange({ edges, start: edges[0], target: edges[edges.length - 1], count: edges.length - 1, bin: r.bin || 1, label });
       return null;
     }
@@ -203,7 +205,8 @@
     if (end > D + tol) return `評価区間の終了（${end} 秒）が動画の長さ（${D.toFixed(3)} 秒）を超えています`;
     if (start >= Math.min(end, D)) return `評価区間の開始（${start} 秒）が終了より後ろです`;
     const e = Math.min(end, D);
-    if (self) _.setRange({ edges: [start, e], start, bin, label, target: e, count: 1 });
+    if (sec1) _.setRange({ edges: null, start, bin: 1, label, target: e, count: _.countFor(start, Math.max(start + 1, e), 1) });
+    else if (self) _.setRange({ edges: [start, e], start, bin, label, target: e, count: 1 });
     else _.setRange({ edges: null, start, bin, label, target: e, count: _.countFor(start, Math.max(start + bin, e), bin) });
     return null;
   }
