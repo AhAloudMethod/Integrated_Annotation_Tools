@@ -97,6 +97,25 @@
     addLog('listen_replay', { detail: `sec=${s}` });
     return true;
   }
+  // 区間 s を始めから終わりまで再生して止める（Excel のセルに入れている間の R。入れているセルの区間）。
+  // 聴いてから入力がオンなら、聴いた区間をもう一度聴くのと同じ（終わりで止まる）。オフでも区間の終わりで止める
+  let once = null;
+  function playSec(s) {
+    if (!video.src || s < 0 || s >= nSec()) return false;
+    const usableNow = usable();
+    if (!usableNow) once = Math.min(_.binEnd(s), S.meta.duration || Infinity);
+    ownSeek = true; video.currentTime = binStart(s); target = null;
+    video.play();
+    addLog('listen_replay', { detail: `sec=${s}${usableNow ? '' : ' cell'}` });
+    const step = () => {
+      if (once == null) return;
+      if (video.paused && !video.seeking) { once = null; return; }   // 途中で止めた
+      if (video.currentTime >= once - 0.001) { const e = once; once = null; video.pause(); ownSeek = true; video.currentTime = Math.max(0, e - EPS); return; }
+      requestAnimationFrame(step);
+    };
+    if (once != null) requestAnimationFrame(step);
+    return true;
+  }
   // ヘッダーの案内
   function status() {
     const box = $('listenBox'); if (!box) return;
@@ -121,5 +140,5 @@
   $('listenMode').addEventListener('change', e => { setOn(e.target.checked); e.target.blur(); });
 
   Object.assign(_, { listenOn: () => on, listenUsable: usable, listenWaiting: waiting, listenPlayBin: playBin, listenLive: live, listenRecording: recording, listenTakeStart: () => { const t = recStart; recStart = null; return t; },
-    listenTick: tick, listenRecord: startRecord, listenReplay: replay, listenStatus: status, setListen: setOn });
+    listenTick: tick, listenRecord: startRecord, listenReplay: replay, listenPlaySec: playSec, listenStatus: status, setListen: setOn });
 })();

@@ -160,6 +160,18 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => localStorage.clear()); await p.close();
   }
 
+  // 9. Excel：セルに入れている間の R は、そのセルの区間を始めから終わりまで再生して止める（聴いてから入力がオフでも、オンでも）
+  for (const listen of [false, true]) {
+    const p = await open('excel');
+    await p.evaluate(on => { AH._.setListen(on); AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.seekTo(1.5); }, listen); await p.waitForTimeout(150);
+    await p.click('input[data-ax=v][data-s="5"]'); await p.keyboard.press('KeyR');
+    const started = await p.waitForFunction(() => !AH.video.paused && AH.video.currentTime >= 5 && AH.video.currentTime < 6, null, { timeout: 3000 }).then(() => true).catch(() => false);
+    const stopped = await p.waitForFunction(() => AH.video.paused && AH.video.currentTime > 5.9, null, { timeout: 4000 }).then(() => true).catch(() => false);
+    const r = await p.evaluate(() => ({ t: +AH.video.currentTime.toFixed(3), focus: document.activeElement.dataset.s, val: document.activeElement.value }));
+    check(`Excel：セルの R はそのセルの区間（5〜6 秒）を再生して終わりで止まる（聴いてから入力が${listen ? 'オン' : 'オフ'}）`, started && stopped && r.t < 6 && r.focus === '5' && r.val === '', JSON.stringify({ started, stopped, r }));
+    await p.evaluate(() => { AH._.setListen(false); localStorage.clear(); }); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

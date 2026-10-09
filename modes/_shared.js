@@ -221,8 +221,8 @@
               : e.key === 'Tab' ? [0, back]
               : { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
             if (e.key === 'Escape') { inp.blur(); return; }
-            // 聴いてから入力：セルに入れている間も R で聴いた区間をもう一度聴く（セルに R は入らない）
-            if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey && AH._.listenUsable() && AH._.listenReplay()) { e.preventDefault(); return; }
+            // R：入れているセルの区間を始めから終わりまで再生して止める（聴いてから入力がオフでも。セルに R は入らない）
+            if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.listenPlaySec(s); return; }
             if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); AH._.frameStep(e.key === 'ArrowLeft' ? -1 : 1); return; }   // Ctrl+←→：1 フレーム移動
             if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.cutNow(); return; }
             if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.setVoicedShown(!AH._.voicedShown(), 'key'); return; }   // 発声の区間の表示   // 今の時間で区切る（区切れるときだけ）
