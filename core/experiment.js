@@ -20,11 +20,13 @@
   let X = null;
 
   // ---------- フォルダの読み込みと検査 ----------
-  // 選んだフォルダの中の experiment.json（いちばん浅いもの）を探す。setup.json と動画のパスはそのフォルダからの相対で引く
+  // 選んだフォルダの中の experiment.json（いちばん浅いもの）を探す。setup.json と動画のパスはそのフォルダからの相対で引く。
+  // list は File（webkitRelativePath つき）か、落としたフォルダから読んだ { file, path }（path は「フォルダ名/…」）の配列
   function readFolder(list) {
     const files = new Map(); let base = null, depth = Infinity;
-    for (const f of list) {
-      const rel = (f.webkitRelativePath || f.name).split('/').slice(1).join('/') || f.name;
+    for (const it of list) {
+      const f = it.file || it, full = it.file ? it.path : f.webkitRelativePath || f.name;
+      const rel = full.split('/').slice(1).join('/') || f.name;
       files.set(rel, f);
       const d = rel.split('/').length;
       if (f.name === 'experiment.json' && d < depth) { depth = d; base = rel.slice(0, -'experiment.json'.length); }
@@ -538,10 +540,40 @@
     if (e.code === 'KeyH' && !X.set.voicedBtn && !e.ctrlKey && !e.metaKey) block();   // 「発声」ボタンを出さない試行では H も効かない
   }, true);
 
-  $('expBtn').addEventListener('click', e => { e.currentTarget.blur(); $('expDir').click(); });
-  $('expDir').addEventListener('change', async e => {
-    const list = [...e.target.files]; e.target.value = '';
-    if (!list.length) return;
+  // ---------- フォルダを落として開く ----------
+  // フォルダを選ぶ画面（webkitdirectory）は Windows ではファイルを出さないので、エクスプローラーから中身を確かめて落とせるようにする。
+  // 落としたフォルダの中を下までたどり、{ file, path } の配列にする（path は「フォルダ名/…」で、webkitRelativePath と同じ形）
+  async function entriesToFiles(entries) {
+    const out = [];
+    const walk = async en => {
+      if (!en) return;
+      if (en.isFile) { const file = await new Promise((ok, ng) => en.file(ok, ng)); out.push({ file, path: en.fullPath.replace(/^\//, '') }); return; }
+      if (!en.isDirectory) return;
+      const rd = en.createReader();
+      for (;;) {   // readEntries は一度に全部を返さないことがあるので、空になるまで読む
+        const part = await new Promise((ok, ng) => rd.readEntries(ok, ng));
+        if (!part.length) break;
+        for (const c of part) await walk(c);
+      }
+    };
+    for (const en of entries) await walk(en);
+    return out;
+  }
+  // ボタンにフォルダ（かファイル）を落とすと、選んだときと同じ処理に渡す
+  function dropTarget(btn, fn) {
+    const on = v => btn.classList.toggle('on', v);
+    btn.addEventListener('dragover', e => { if (![...e.dataTransfer.types].includes('Files')) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; on(true); });
+    btn.addEventListener('dragleave', () => on(false));
+    btn.addEventListener('drop', async e => {
+      e.preventDefault(); on(false);
+      const items = [...e.dataTransfer.items].filter(it => it.kind === 'file');
+      const entries = items.map(it => (it.webkitGetAsEntry ? it.webkitGetAsEntry() : null));
+      const list = entries.every(Boolean) ? await entriesToFiles(entries) : [...e.dataTransfer.files];
+      if (list.length) fn(list);
+    });
+  }
+
+  async function openFolder(list) {
     const { cfgFile, setupFile, get } = readFolder(list);
     if (!cfgFile) { setup(null, get, { errors: ['選んだフォルダに experiment.json がありません'] }); return; }
     let exp = null, su = null;
@@ -549,9 +581,13 @@
     try { su = setupFile ? await readJSON(setupFile) : null; } catch (err) { setup(null, get, { errors: ['setup.json を JSON として読めません：' + err.message] }); return; }
     const res = E.check(exp, env(get), su);
     setup(res.errors.length ? exp : E.merge(exp, su), get, res);
-  });
+  }
+  $('expBtn').addEventListener('click', e => { e.currentTarget.blur(); $('expDir').click(); });
+  $('expDir').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) openFolder(list); });
   $('expSetupBtn').addEventListener('click', e => { e.currentTarget.blur(); _.closePops(); $('expSetupDir').click(); });
   $('expSetupDir').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) setupExport(list); });
+  dropTarget($('expBtn'), openFolder);
+  dropTarget($('expSetupBtn'), list => { _.closePops(); setupExport(list); });
   $('expDoneBtn').addEventListener('click', e => { e.currentTarget.blur(); complete(); });
   $('expRecFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'pick') pickFile(f); });
 

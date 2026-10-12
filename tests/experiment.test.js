@@ -129,6 +129,21 @@ const BAD = makeFolder('exp_bad', {
   await p.click('#expCancel');
   check('閉じると覆いが消え、実験モードにならない', !(await vis('#expCover')) && (await state()) === null);
 
+  // ---- フォルダを落として開く：落としたフォルダの中を下までたどる（readEntries は空になるまで読む）。サブフォルダの動画も相対パスで引ける
+  await p.evaluate(() => {
+    const file = (dir, name, text) => ({ isFile: true, isDirectory: false, fullPath: `${dir}/${name}`, file: ok => ok(new File([text], name)) });
+    const dir = (path, batches) => ({ isFile: false, isDirectory: true, fullPath: path, createReader: () => { let k = 0; return { readEntries: ok => ok(batches[k++] || []) }; } });
+    const exp = JSON.stringify({ name: 'drop', participants: { P01: [{ mode: 'excel', video: 'sub/a.mp4' }] } });
+    const root = dir('/exp2', [[file('/exp2', 'experiment.json', exp)], [dir('/exp2/sub', [[file('/exp2/sub', 'a.mp4', 'x')]])]]);
+    const ev = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'dataTransfer', { value: { types: ['Files'], files: [], items: [{ kind: 'file', webkitGetAsEntry: () => root }] } });
+    document.getElementById('expBtn').dispatchEvent(ev);
+  });
+  await p.waitForSelector('#expGo');
+  const dropFrom = await p.$$eval('#expFrom option', os => os.map(o => o.textContent));
+  check('実験フォルダを開くボタンにフォルダを落とすと、選んだときと同じく開く（サブフォルダの動画も読む）', dropFrom.length === 1 && dropFrom[0].includes('a.mp4') && !(await p.$('.expErr li')), JSON.stringify(dropFrom));
+  await p.click('#expCancel');
+
   // ---- 正しいフォルダ：参加者と始める試行を選ぶ
   await p.setInputFiles('#expDir', GOOD);
   await p.waitForSelector('#expGo');
