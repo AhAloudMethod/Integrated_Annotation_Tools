@@ -247,6 +247,8 @@ table.xl td input{width:34px;height:28px;border:0;text-align:center;font:inherit
 table.xl.real td input{width:46px}
 table.xl td input:focus{outline:2px solid var(--val);outline-offset:-2px}
 table.xl .cur{background:color-mix(in srgb,var(--val) 16%,transparent)}
+table.xl.curve .tgt{outline:2px dashed var(--ink);outline-offset:-2px}
+.curveTgt{font-size:12px;color:var(--muted);margin:2px 0 4px}
 /* 区間内で変化：入れ方と形のボタン */
 .curveBox .curveTools,.curveBox .curveShapes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .curveBox button.on{background:var(--val);border-color:var(--val);color:#fff}

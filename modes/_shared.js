@@ -171,6 +171,7 @@
   // 動画の位置がそのときのままなら、そのセルの区間を対象にする。動いていれば今の区間
   let lastCell = null;
   const cellSec = () => (lastCell && Math.abs(video.currentTime - lastCell.t) < 0.002 ? lastCell.s : AH.curSec());
+  const setCellSec = s => { lastCell = { s, t: video.currentTime }; };   // グラフで押した区間を対象にする（core/timeline.js）
   // curve：区間内で変化を使う（変化にした区間のセルは表示だけ。クリックでその区間へ移る）
   function xlTable(under, axes = ['v', 'a'], real = false, curve = false) {
     const { grid, follow } = xlWrap(under);
@@ -269,6 +270,8 @@
         if (document.activeElement !== inp && inp.value !== String(v ?? '')) inp.value = v ?? '';
       }
       follow(cur);
+      // 区間内で変化：パネルのボタンの対象の区間を、表の列の枠で示す
+      if (curve) { const t = cellSec(); for (const cell of grid.querySelectorAll('[data-s]')) if (cell.tagName !== 'INPUT') cell.classList.toggle('tgt', +cell.dataset.s === t); }
     };
   }
   // 区間内で変化（カスタムの Excel。core/curve.js）の変化の区間のセル：表示だけ。区間の始めの値→終わりの値（整数に丸める）と形の印を出す。
@@ -477,6 +480,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, cellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, xlTable, cellSec, setCellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

@@ -20,7 +20,7 @@
     const b0 = binStart(s), b1 = _.binEnd(s);
     return S.data.strokes.some(st => st.axes.includes(ax) && st.t_start < b1 - EPS && st.t_end >= b0 - EPS);
   };
-  // テンプレートで入れた区間か：区間をちょうど覆う形の記録がある。「描く」ではこの区間を変えない（core/timeline.js）
+  // テンプレートで入れた区間か：区間をちょうど覆う形の記録がある。「描く」でなぞると、なぞった範囲の記録を外す（trim）
   const record = (ax, s) => { const b0 = binStart(s), b1 = _.binEnd(s); return (S.data.shapes || []).find(r => r.axis === ax && Math.abs(r.t0 - b0) < TOL && Math.abs(r.t1 - b1) < TOL); };
   // 自由に描いた区間か：グラフで描いた書き込みがかかっている
   const drawn = (ax, s) => { const b0 = binStart(s), b1 = _.binEnd(s); return S.data.strokes.some(st => st.source === 'graph' && st.axes.includes(ax) && st.t_start < b1 - EPS && st.t_end >= b0 - EPS); };
@@ -170,8 +170,8 @@
     _.refresh(); return true;
   }
   // グラフで自由に描くとき（core/timeline.js）：押した所が変化の区間なら系列を描く。描くのは変化の区間のフレームだけで、
-  // テンプレートで入れた区間は変えない（テンプレートで入れ直すか、形のボタンで変える）
-  const seriesAt = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s) && !record(ax, s); };
+  // テンプレートで入れた区間も、なぞった軸のなぞった範囲は描き直す（形の記録は描き終えたときに外す。core/timeline.js）
+  const seriesAt = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s); };
   const isTemplate = (ax, t) => { const s = secOf(t); return s >= 0 && isCurve(ax, s) && !!record(ax, s); };
 
   Object.assign(_, { curveIsTemplate: isTemplate, curveIsZero: isZero, curveIsCurve: isCurve, curveSeriesAt: seriesAt, curveMark: mark, curveUnmark: unmark, curveSplitAt: splitAt, curveNoVoice: noVoice, curveOn: on, curveInfo: info, curveTrim: trim, curveFrames: frames, curveDown: down, curveMove: move, curveUp: up, curveReshape: reshape, curveDragging: () => (drag ? drag.axis : null) });

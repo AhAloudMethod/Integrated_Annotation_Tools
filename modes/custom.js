@@ -51,14 +51,17 @@
   const CURVE_SHAPES = [['line', '直線'], ['early', '前半で変化'], ['late', '後半で変化']];
   let curveToolSel = 'draw', curveShapeSel = 'line';
   const curveTool = () => (o().curveInput === 'both' ? curveToolSel : o().curveInput);
-  // 区間内で変化のパネル。対象の区間は、直前にクリックしたセルの区間（動画の位置が動いていなければ）か、今の区間（AH.ui.cellSec）。
+  // 区間内で変化のパネル。対象の区間は、直前にクリックしたセルかグラフで押した区間（動画の位置が動いていなければ）か、今の区間（AH.ui.cellSec）。
+  // 対象の区間は欄の文字・表の列の枠・グラフの枠で示す
   //  - 「なぞって評価する」（トグル）：対象の区間を変化の区間にする／普通のセルに戻す（区間の平均を丸めた値）
   //  - 「発声なし」（トグル）：対象の区間を両軸 0 にする／空欄に戻す（普通のセルでも、変化の区間でも）
+  //  - 入れ方の切り替え（両方のときだけ）：対象の区間が普通のセルなら、変化の区間にしてから入れ方を切り替える
   //  - 入れ方の切り替え（両方のときだけ）と形のボタン。形のボタンは、次にテンプレートで入れる形を選び、対象の変化の区間に値があればその形に変える。
   //    描くときは次に入れる形が無いので、形のボタンを光らせない。描くときに形のボタンを押すと、テンプレートに切り替える
   let curveSync = () => {};
   function curveBox(panel) {
     const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内で変化</div>');
+    const tgtL = h('div', { class: 'curveTgt' }); box.appendChild(tgtL);
     const btn = (label, cls, fn) => h('button', { type: 'button', class: cls, onclick: e => { e.currentTarget.blur(); if (!AH.reviewing()) { fn(); sync(); } } }, label);
     const tgt = () => AH.ui.cellSec();
     const isCv = s => act().some(ax => AH.curveIsCurve(ax, s));
@@ -69,7 +72,7 @@
     let tools = null;
     if (o().curveInput === 'both') {
       tools = h('div', { class: 'curveTools' });
-      for (const [k, l] of [['draw', '描く'], ['template', 'テンプレート']]) tools.appendChild(btn(l, 'tool', () => { curveToolSel = k; AH.addLog('option', { detail: 'curveTool=' + k }); })).dataset.k = k;
+      for (const [k, l] of [['draw', '描く'], ['template', 'テンプレート']]) tools.appendChild(btn(l, 'tool', () => { curveToolSel = k; AH.addLog('option', { detail: 'curveTool=' + k }); const s = tgt(); if (!isCv(s)) AH.curveMark(s, act()); })).dataset.k = k;
       box.appendChild(tools);
     }
     const shapes = h('div', { class: 'curveShapes' });
@@ -78,6 +81,8 @@
     box.appendChild(shapes);
     const sync = () => {
       const s = tgt();
+      const tx = s >= 0 && s < AH.nSec() ? '対象：' + AH.secLabel(s) + (isCv(s) ? '（変化の区間）' : '') : '';
+      if (tgtL.textContent !== tx) tgtL.textContent = tx;
       markB.classList.toggle('on', isCv(s));
       nvB.classList.toggle('on', AH.curveIsZero(s, act()));
       if (tools) for (const b of tools.children) b.classList.toggle('on', b.dataset.k === curveTool());
@@ -303,6 +308,7 @@
     get model() { return rank() ? 'events' : o().time === 'disc' ? 'table' : 'series'; },
     get curve() { return curve(); },   // 区間内で変化（core/curve.js）
     curveTool, curveShape: () => curveShapeSel,
+    curveTarget: () => AH.ui.cellSec(), curveSelect: s => AH.ui.setCellSec(s),   // パネルのボタンの対象の区間（グラフで示し、グラフで押して選ぶ。core/timeline.js）
     get unbounded() { return o().time === 'cont' && rel(); },
     get graphCuts() { return xl() && o().cuts === 'self'; },   // Excel で自分で区切るときだけ、評価グラフの右クリック（と C キー）で区切りを編集する
     get decimals() { return xl() ? 1 : 2; },   // Excel の連続値は小数第1位まで（グラフでの編集も。区間内で変化の変化の区間は連続の方式と同じ）

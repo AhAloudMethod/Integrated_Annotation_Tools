@@ -45,6 +45,12 @@
         g.strokeStyle = own ? css('--muted') : css('--line'); g.lineWidth = own ? 1.5 : s % 5 === 0 ? 1.4 : 0.8;
         g.beginPath(); g.moveTo(x, 4); g.lineTo(x, h - RULER); g.stroke();
       }
+      // 区間内で変化：パネルのボタンの対象の区間を点線の枠で示す
+      const ts = _.curveOn() && _.M.curveTarget ? _.M.curveTarget() : -1;
+      if (ts >= 0 && ts < nSec()) {
+        const x0 = xOf(binStart(ts)), x1 = xOf(Math.min(_.binEnd(ts), D));
+        g.strokeStyle = css('--ink'); g.lineWidth = 2; g.setLineDash([5, 3]); g.strokeRect(x0 + 1, 3, Math.max(2, x1 - x0 - 2), h - RULER - 5); g.setLineDash([]);
+      }
       g.fillStyle = css('--bg'); g.fillRect(PAD_L, h - RULER, w - PAD_L - PAD_R, RULER);
       g.fillStyle = css('--muted');
       for (let t = 0; t <= D; t += 5) g.fillText(t + 's', xOf(t) + 2, h - 9);
@@ -213,9 +219,9 @@
     // 区間内で変化のテンプレート（core/curve.js）：押した区間に、押した高さから離した高さへの曲線を入れる
     const LA = G.lanes.find(l => l.ax === axis);
     const tP = G.tOf(e.clientX - r.left);
+    if (_.curveOn() && _.M.curveSelect) { const s = binAt(tP); if (s >= 0 && s < nSec()) _.M.curveSelect(s); }   // 押した区間をパネルのボタンの対象にする
     if (_.curveDown(axis, tP, LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
     // series：系列を描く（連続の方式と、区間内で変化で変化の区間を押したとき）。それ以外の区間方式はセルの値を置く
-    if (_.curveIsTemplate(axis, tP)) { _.hintMsg('テンプレートで入れた区間は「描く」では変えません（テンプレートか形のボタンで変えます）'); return; }
     edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set(), series: model() === 'series' || _.curveSeriesAt(axis, tP) };
     editAt(e);
   });

@@ -83,16 +83,23 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.click('.curveBox .shape:text("前半で変化")');
     const c2 = (await cells(p, 'v'))[3], m2 = await p.evaluate(() => AH.valueAt('v', 3.5));
     check('形のボタンで今の区間を前半で変化にする（始めと終わりの値はそのまま）', c2 === c1.replace('直', '前') && m2 < m1 - 0.5, JSON.stringify({ c2, m1, m2 }));
-    // 描くでは、テンプレートで入れた区間を変えない。描くときは形のボタンを光らせない
+    // 描くでは、テンプレートで入れた区間もなぞった軸だけ描き直す（形の記録を外して「描」）。描くときは形のボタンを光らせない
+    await drag(p, g('a', 3.2, 6), g('a', 3.8, 6));   // 覚醒度もテンプレートで入れておく
+    const ca = (await cells(p, 'a'))[3];
     await p.click('.curveBox .tool:text("描く")');
     const lit = await p.$$eval('.curveBox .shape.on', bs => bs.length);
     await drag(p, g('v', 3.2, 2), g('v', 3.8, 9));
-    check('描くでは、テンプレートで入れた区間を変えず、形のボタンを光らせない', (await cells(p, 'v'))[3] === c2 && lit === 0, JSON.stringify({ c: (await cells(p, 'v'))[3], lit }));
+    const cd = [(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]];
+    check('描くでは、テンプレートで入れた区間もなぞった軸だけ描き直し（「描」）、もう片方の軸の形は残す。形のボタンを光らせない', /描$/.test(cd[0]) && /前$/.test(ca) && cd[1] === ca && lit === 0, JSON.stringify({ cd, ca, lit }));
+    await p.click('.curveBox .tool:text("テンプレート")');
+    await drag(p, g('v', 3.3, 3), g('v', 3.7, 7));
+    check('テンプレートでは、描いた区間にも形の曲線を入れ直す', /^~3→7前$/.test((await cells(p, 'v'))[3]), (await cells(p, 'v'))[3]);
+    await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
     await at(p, 0.5); await p.click('.curveBox .shape:text("後半で変化")');
     const sw = await p.evaluate(() => ({ tool: AH.mode.curveTool(), lit: [...document.querySelectorAll('.curveBox .on')].map(b => b.textContent).join() }));
     check('描くのときに形のボタンを押すとテンプレートに切り替わり、その形が光る', sw.tool === 'template' && /テンプレート/.test(sw.lit) && /後半で変化/.test(sw.lit), JSON.stringify(sw));
-    await p.click('.curveBox .tool:text("描く")');
     await at(p, 3.2);
+    await p.click('.curveBox .tool:text("描く")');
     await p.click('.curveBox .novoice'); await p.waitForTimeout(100);
     const z = [(await cells(p, 'v'))[3], (await cells(p, 'a'))[3]];
     const zon = await p.$eval('.curveBox .novoice', b => b.classList.contains('on'));
@@ -113,6 +120,27 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 2b. 入れ方のボタン（描く・テンプレート）を押すと、対象の区間が普通のセルなら変化の区間にする。対象の区間は表とグラフで示し、グラフで押した区間を対象にする
+  {
+    const p = await open();
+    await at(p, 1.5); await p.click('.curveBox .tool:text("テンプレート")'); await p.waitForTimeout(100);
+    await p.click('.curveBox .tool:text("描く")'); await p.waitForTimeout(100);
+    const d1 = await cells(p, 'v');
+    check('描く・テンプレートを押すと、対象の区間（普通のセル）を変化の区間にする。変化の区間で押しても普通のセルに戻さない', d1[1] === '~' && await p.$eval('.curveBox .mark', b => b.classList.contains('on')), JSON.stringify(d1.slice(0, 3)));
+    await p.click('input[data-ax=v][data-s="4"]'); await p.keyboard.type('6');
+    await p.click('.curveBox .tool:text("テンプレート")'); await p.waitForTimeout(100);
+    check('直前にクリックしたセルの区間で押すと、そのセルの値の一定の線で変化の区間にする', (await cells(p, 'v'))[4] === '~6', (await cells(p, 'v'))[4]);
+    const g = await graph(p);
+    await drag(p, g('v', 6.5, 3), g('v', 6.5, 3), 1);   // 普通の区間をグラフで押す（セルの値も置く）
+    const tg = await p.evaluate(() => ({ tgt: AH.mode.curveTarget(), cur: AH.curSec(), th: [...document.querySelectorAll('table.xl th.tgt')].map(e => +e.dataset.s), label: document.querySelector('.curveBox .curveTgt').textContent, sec: AH.secLabel(6) }));
+    check('グラフで押した区間を対象にし、表の列と欄の文字で示す（再生位置は動かない）', tg.tgt === 6 && tg.cur !== 6 && tg.th.join() === '6' && tg.label.includes(tg.sec), JSON.stringify(tg));
+    await p.click('.curveBox .tool:text("描く")'); await p.waitForTimeout(100);
+    check('グラフで押した区間で描くを押すと、その区間を変化の区間にする', (await cells(p, 'v'))[6] === '~3', (await cells(p, 'v'))[6]);
+    await at(p, 8.5);
+    check('再生位置を動かすと、対象は今の区間に戻る', await p.evaluate(() => AH.mode.curveTarget() === AH.curSec() && document.querySelector('table.xl th.tgt').dataset.s === String(AH.curSec())));
+    await p.close();
+  }
+
   // ---- 3. 区切り：変化の区間の途中に区切りを置くと、両方とも変化の区間のまま曲線を切り分ける（直線の半分は直線、前半で変化の半分は「描」）
   {
     const p = await open({ curveInput: 'template' });
@@ -120,7 +148,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const g = await graph(p);
     await at(p, 0.5); await p.click('.curveBox .shape:text("前半で変化")');
     await drag(p, g('v', 2.5, 2), g('v', 2.5, 8));
-    await at(p, 0.5); await p.click('.curveBox .shape:text("直線")');
+    await at(p, 0.3); await p.click('.curveBox .shape:text("直線")');   // グラフで押した区間は再生位置が動くまで対象なので、別の位置へ動かす
     await drag(p, g('v', 6.5, 2), g('v', 6.5, 8));
     await p.evaluate(() => { AH._.addCut(2.5); AH._.addCut(6.5); }); await p.waitForTimeout(150);
     const c = await cells(p, 'v');
