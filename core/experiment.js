@@ -14,6 +14,7 @@
   const LS_KEYS = ['ahann_axes', 'ahann_after', 'ahann_grid', 'ahann_pad_square', 'ahann_f0', 'ahann_voiced', 'ahann_listen', 'ahann_tl', 'ahann_vidsize', 'ahann_pad_joy', 'ahann_pad_slider'];
   const SUM_COLS = ['trial', 'practice', 'mode', 'condition', 'video', 'start_iso', 'end_iso', 'task_ms', 'play_ms', 'review_ms', 'n_play', 'n_seek', 'n_undo', 'n_redo',
     'n_strokes', 'n_events', 'bins', 'filled_v', 'filled_a', 'n_restore', 'partial', 'survey_opened'];
+  const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const VIDEO_RE = /\.(mp4|m4v|mov|webm|mkv|avi|ogv|mpe?g|wmv)$/i;
   // X：実験の状態。cfg（experiment.json に setup.json を合わせたもの）、get（相対パス→File）、pid、trials、i（今の試行）、set（今の設定）、range、state、backup（元の設定）
   let X = null;
@@ -313,6 +314,7 @@
       const err = applyRange(recRange(rec));
       if (err) { showAlign(err); return; }
       if (!video.paused) video.pause();
+      _.seekTo(0);   // 区間合わせで動かした位置のまま渡さない（動画の試行と同じく最初から始める）
       saveRec(X.i, rec);
       handOff(rec);
     });
@@ -444,8 +446,10 @@
   }
 
   // ---------- 実験用の設定（setup.json）を書き出す（通常の画面） ----------
-  // 設定の欄は exp-check.js の SETTINGS から作り、今の画面の値を初めの値にする。動画はフォルダの中のものを並べ、
-  // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。区間の無い動画は「未設定」と出し、書き出さない
+  // 設定の欄は exp-check.js の SETTINGS から作る。フォルダに setup.json があればその値を、無い項目は今の画面の値を初めの値にする
+  // （手や Agent で直した設定を、評価区間を直すための書き出し直しで消さないため）。動画はフォルダの中のものを並べ、
+  // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。覚えていなければ setup.json の区間を使い、どちらも無い動画は「未設定」と出して書き出さない。
+  // 基準音声の時刻 ref は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
   function currentSettings() {
     return { ...DEF, axes: _.axesId(), rate: +$('rate').value, afterWrite: $('afterWrite').value, timeline: !document.body.classList.contains('noTl'),
       graphEdit: $('graphEdit').checked, grid: _.gridShown(), f0: _.f0Shown(), voiced: _.voicedShown(), listen: _.listenOn(), videoSize: +$('vidSize').value,
@@ -470,15 +474,20 @@
     return { start: r4(r.start), end: r4(end), bin: r.bin, label: r.label || 'countdown', ...d };
   }
   async function setupExport(list) {
-    const { videos } = readFolder(list);
+    const { videos, setupFile } = readFolder(list);
     cover('<h2>実験用の設定を書き出す</h2><p>フォルダの動画を調べています…</p>');
+    let old = null, oldErr = '';
+    try { old = setupFile ? await readJSON(setupFile) : null; } catch (err) { oldErr = err.message; }
+    const oldSet = old && isObj(old.settings) ? old.settings : {}, oldVids = old && isObj(old.videos) ? old.videos : {};
     const rows = [];
     for (const v of videos) {
       const dur = await durationOf(v.file);
       const r = dur ? _.loadRange(v.file.name, `${v.file.size}:${dur.toFixed(2)}`) : null;
-      rows.push({ path: v.path, dur, entry: r ? videoEntry(r, dur) : null });
+      const prev = isObj(oldVids[v.path]) ? oldVids[v.path] : null;
+      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}) } : prev;
+      rows.push({ path: v.path, dur, entry, kept: !r && !!prev });
     }
-    const cur = currentSettings();
+    const cur = { ...currentSettings(), ...Object.fromEntries(E.SETTINGS.filter(d => d.key in oldSet).map(d => [d.key, oldSet[d.key]])) };
     const ctl = d => {
       const id = 'es_' + d.key, v = cur[d.key];
       if (d.type === 'check') return `<label class="chk"><input id="${id}" type="checkbox"${v ? ' checked' : ''}> ${esc(d.label)}</label>`;
@@ -490,12 +499,14 @@
     const missing = rows.filter(r => !r.entry).length;
     cover(`<h2>実験用の設定を書き出す</h2>
       <p class="muted">実験中の画面の設定と、動画ごとの評価区間を setup.json に書き出します。ダウンロードした setup.json を実験フォルダ（experiment.json と同じ場所）に入れてください。</p>
+      ${old ? '<p class="muted">フォルダの setup.json の設定を初めの値にしています（setup.json に無い項目は今の画面の値）。</p>' : ''}
+      ${oldErr ? `<p class="expMiss">フォルダの setup.json を読めないので、今の画面の値を初めの値にしています（${esc(oldErr)}）。</p>` : ''}
       <div class="refTitle">設定</div>
       <div class="expForm">${E.SETTINGS.filter(d => !d.exp).map(ctl).join('')}</div>
       <div class="refTitle">実験中に出すボタン</div>
       <div class="expForm">${E.SETTINGS.filter(d => d.exp).map(ctl).join('')}</div>
       <div class="refTitle">動画ごとの評価区間（通常の画面で動画を開いて合わせたもの）</div>
-      ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${r.entry ? esc(span(r.entry)) : '<b class="expMiss">未設定</b>'}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
+      ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${r.entry ? esc(span(r.entry)) + (r.kept ? '（setup.json のまま）' : '') : '<b class="expMiss">未設定</b>'}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
       ${missing ? `<p class="expMiss">未設定の動画が ${missing} 本あります。実験で使う動画なら、通常の画面で開いて評価区間を合わせてから書き出し直してください（このまま書き出すと、その動画の試行は始められません）。</p>` : ''}
       <div class="expBtns"><button id="esSave" type="button">setup.json を書き出す</button><button id="esClose" type="button">閉じる</button></div>`);
     $('esClose').addEventListener('click', () => cover(''));

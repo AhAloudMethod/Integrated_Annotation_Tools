@@ -1,6 +1,7 @@
 // 実験の設定（experiment.json と setup.json）の検査。ブラウザ（core/experiment.js）と Node（tools/exp-check.js）の両方で使う。
 // errors は実験を始められない誤り、warnings は始められるが確かめたほうがよいこと（カウンターバランスの偏りなど）。
-// setup.json は通常の画面の「実験用の設定を書き出す」で作る（settings と videos）。experiment.json の値が優先する
+// setup.json は通常の画面の「実験用の設定を書き出す」で作る（settings と videos）。全試行に共通の設定と動画ごとの評価区間は setup.json にだけ書き、
+// experiment.json には書けない（置き場を 1 つにするため）。試行ごとに変えるときだけ、試行の settings・range に書く
 (() => {
   // 設定の項目：書き出しの画面の欄と検査はこの表から作る。exp は実験モードだけの項目（ボタンを出すか）。
   // axes の選択肢は評価軸の組（env.axes）。評価区間の変更は実験モードでは常にできない
@@ -28,10 +29,11 @@
   const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref'];   // ref：基準音声の時刻（秒。無ければ最初の声）
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
 
-  // experiment.json と setup.json を合わせる（settings と videos は experiment.json の値が優先）
+  // experiment.json と setup.json を合わせる（settings と videos は setup.json から取る）
   function merge(exp, setup) {
-    if (!isObj(exp) || !isObj(setup)) return exp;
-    return { ...exp, settings: { ...(setup.settings || {}), ...(exp.settings || {}) }, videos: { ...(setup.videos || {}), ...(exp.videos || {}) } };
+    if (!isObj(exp)) return exp;
+    const su = isObj(setup) ? setup : {};
+    return { ...exp, settings: { ...(su.settings || {}) }, videos: { ...(su.videos || {}) } };
   }
   // 試行の評価区間：試行の range ＞ 動画ごとの videos ＞ 全体の range。足りない項目（bin・label）は全体の range から補う
   function rangeFor(cfg, t) {
@@ -57,6 +59,7 @@
       if (!isObj(setup)) errors.push('setup.json が JSON のオブジェクトではありません');
       else for (const k of Object.keys(setup)) if (!['settings', 'videos'].includes(k)) errors.push(`setup.json の「${k}」は使えない項目です（settings と videos だけ）`);
     }
+    for (const k of ['settings', 'videos']) if (exp[k] != null) errors.push(`experiment.json の全体の「${k}」は使えません（setup.json に書きます。試行ごとに変える設定は試行の settings に書きます）`);
     const cfg = merge(exp, setup);
     if (!cfg.name) errors.push('name（実験名）がありません');
     const chkSet = (s, where) => {
@@ -98,7 +101,7 @@
       if (!isObj(cfg.conditions) || Object.values(cfg.conditions).some(c => typeof c !== 'string')) errors.push('conditions は方式 id から条件名（文字列）への対応です');
       else for (const m of Object.keys(cfg.conditions)) if (!env.modes.includes(m)) errors.push(`conditions：方式「${m}」はありません`);
     }
-    chkSet(cfg.settings, '全体'); chkRange(cfg.range, '全体の range'); chkSurvey(cfg.survey, '全体'); chkSurvey(cfg.finalSurvey, '全体', 'finalSurvey');
+    chkSet(cfg.settings, 'setup.json'); chkRange(cfg.range, '全体の range'); chkSurvey(cfg.survey, '全体'); chkSurvey(cfg.finalSurvey, '全体', 'finalSurvey');
     const videos = isObj(cfg.videos) ? cfg.videos : {};
     for (const [v, r] of Object.entries(videos)) {
       chkRange(r, `動画「${v}」の評価区間`);

@@ -51,7 +51,7 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
     && r.text.includes('P02：本番の前に練習が無い方式があります') && r.text.includes('始められます'), r.text);
 }
 {
-  const r = run(folder('expc_err', { participants: { P01: [{ mode: 'nosuch', video: 'x.mp4' }] }, settings: { axes: 'xyz' } }, []));
+  const r = run(folder('expc_err', { participants: { P01: [{ mode: 'nosuch', video: 'x.mp4' }] } }, [], { settings: { axes: 'xyz' } }));
   check('誤りがあれば一覧を出し、終了コード 1', r.code === 1 && r.text.includes('name（実験名）がありません') && r.text.includes('方式「nosuch」はありません') && r.text.includes('動画「x.mp4」')
     && r.text.includes('axes は va・pana・thayer'), r.text);
   // setup.json の誤り：評価区間の無い動画、動画より長い終了、設定の値の型、使えない項目
@@ -72,8 +72,12 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   const cnd = [sv('https://x.test/a?p={pid}&c={condition}'), sv('https://x.test/a?p={pid}&c={condition}', { condition: 'Excel・9段階' })];
   check('survey の URL に {condition} があるのに条件名の無い本番の試行があれば警告する（あれば警告しない）', cnd[0].code === 0 && cnd[0].text.includes('条件名の無い本番の試行') && !cnd[1].text.includes('条件名の無い'), cnd.map(r => r.text).join('\n'));
   check('survey の空の配列・url の無いもの・文字列でない要素・配列でないオブジェクトは誤り', svBad.every(r => r.code === 1 && r.text.includes('survey は URL の文字列')), svBad.map(r => r.text).join('\n'));
-  // experiment.json の settings・試行の range は setup.json より優先する
-  const r4 = run(folder('expc_over', { name: 'o', settings: { grid: true }, participants: { P01: [{ mode: 'excel', video: 'c.mp4', range: { start: 1, end: 5 } }] } }, ['c.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
+  // 全体の設定と動画ごとの評価区間は setup.json にだけ書く。experiment.json の全体の settings・videos は誤り
+  const rg = run(folder('expc_glob', { name: 'g', settings: { grid: true }, videos: { 'a.mp4': { start: 0, end: 5 } }, participants: { P01: [{ mode: 'excel', video: 'a.mp4', settings: { review: false } }] } }, ['a.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
+  check('experiment.json の全体の settings・videos は誤り（試行の settings は使える）', rg.code === 1 && rg.text.includes('experiment.json の全体の「settings」は使えません') && rg.text.includes('experiment.json の全体の「videos」は使えません')
+    && !rg.text.includes('P01 の 1 番目'), rg.text);
+  // 試行の range は setup.json より優先する
+  const r4 = run(folder('expc_over', { name: 'o', participants: { P01: [{ mode: 'excel', video: 'c.mp4', range: { start: 1, end: 5 } }] } }, ['c.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
   check('試行の range があれば、setup.json に無い動画でも誤りにしない', r4.code === 0, r4.text);
   // 録画の試行（record: true）：動画も setup.json も要らない。video との両方・どちらも無い・true 以外は誤り
   const rec = { P01: [{ mode: 'excel', record: true, practice: true }, { mode: 'excel', record: true }, { mode: 'sam', record: true }],

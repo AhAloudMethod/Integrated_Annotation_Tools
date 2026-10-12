@@ -34,7 +34,6 @@ function readZip(buf) {
 const GOOD = makeFolder('exp_good', {
   'experiment.json': {
     name: 'exptest',
-    settings: { review: false, videoWindow: false, listen: false },
     conditions: { excel: '条件B' },
     survey: ['https://survey.test/form?pid={pid}&t={trial}&m={mode}&v={video}&c={condition}', { url: 'https://survey.test/sus?pid={pid}', label: 'SUS に答える' }],
     finalSurvey: 'https://survey.test/final?pid={pid}&n={name}',
@@ -51,7 +50,9 @@ const GOOD = makeFolder('exp_good', {
     },
   },
   // 動画ごとの評価区間。c.mp4 は動画（12 秒）より長い終了にして、試行を始められないことを確かめる
-  'setup.json': { settings: { f0: false }, videos: { 'practice.mp4': { start: 0, end: 12, bin: 1 }, 'a.mp4': { start: 1, end: 11, bin: 2 }, 'c.mp4': { start: 0, end: 20, bin: 1 } } },
+  // 書き出しの画面は、この設定を初めの値にし、ブラウザに覚えていない動画の区間と a.mp4 の ref を引き継ぐ
+  'setup.json': { settings: { f0: false, review: false, videoWindow: false, listen: false },
+    videos: { 'practice.mp4': { start: 0, end: 12, bin: 1 }, 'a.mp4': { start: 1, end: 11, bin: 2, ref: 1.5 }, 'c.mp4': { start: 0, end: 20, bin: 1 } } },
 }, ['practice.mp4', 'a.mp4', 'c.mp4']);
 // 録画の試行だけの実験フォルダ（動画も setup.json も置かない）。録画は別のフォルダに置く
 const REC = makeFolder('exp_rec', {
@@ -65,10 +66,9 @@ const TAKES = makeFolder('exp_takes', {}, ['take.mp4', 'other.mp4']);
 const BAD = makeFolder('exp_bad', {
   'experiment.json': {
     name: 'bad',
-    settings: { rate: 2, nosuch: 1 },
     participants: { P01: [{ mode: 'nosuch', video: 'a.mp4' }, { mode: 'excel', video: 'missing.mp4' }, { mode: 'excel', video: 'a.mp4' }, { mode: 'excel', video: 'a.mp4' }] },
   },
-  'setup.json': { videos: { 'a.mp4': { start: 0, end: 12 } } },
+  'setup.json': { settings: { rate: 2, nosuch: 1 }, videos: { 'a.mp4': { start: 0, end: 12 } } },
 }, ['a.mp4']);
 
 (async () => {
@@ -102,17 +102,22 @@ const BAD = makeFolder('exp_bad', {
   await p.setInputFiles('#file', path.join(GOOD, 'a.mp4'));
   await p.waitForFunction(() => AH.S.meta.duration > 0);
   await p.evaluate(() => AH._.setRange({ edges: null, start: 2, bin: 1, label: 'countdown', target: 10, count: 8 }));
+  // テストの動画はどれも同じ中身なので、中身で引く覚え（ahann_range_sig:）を消し、a.mp4 だけを覚えている状態にする
+  await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('ahann_range_sig:')).forEach(k => localStorage.removeItem(k)));
   await p.setInputFiles('#expSetupDir', GOOD);
   await p.waitForSelector('#esSave');
   const rows = await p.$$eval('.expVids tr', trs => trs.map(t => t.textContent));
   check('setup.json の画面：フォルダの動画と、覚えてある評価区間を並べる', rows.some(r => r.includes('a.mp4') && r.includes('2〜10 秒，1 秒ごと')), JSON.stringify(rows));
-  const form = await p.evaluate(() => ({ grid: document.getElementById('es_grid').checked, axes: document.getElementById('es_axes').value, review: document.getElementById('es_review').checked, voice: document.getElementById('es_voice').checked }));
-  check('設定の欄は今の画面の値（評価軸は PANA）で、ボタンの欄は既定（視聴は出す・音声入力は出さない）', form.axes === 'pana' && form.review && !form.voice, JSON.stringify(form));
+  check('setup.json の画面：覚えていない動画は、フォルダの setup.json の区間を出す', rows.some(r => r.includes('practice.mp4') && r.includes('0〜12 秒') && r.includes('setup.json のまま')), JSON.stringify(rows));
+  const form = await p.evaluate(() => ({ axes: document.getElementById('es_axes').value, listen: document.getElementById('es_listen').checked, review: document.getElementById('es_review').checked, voice: document.getElementById('es_voice').checked }));
+  check('設定の欄はフォルダの setup.json の値（視聴を出さない・聴いてから入力しない）で、setup.json に無い項目は今の画面の値（評価軸は PANA）と既定（音声入力は出さない）',
+    form.axes === 'pana' && !form.listen && !form.review && !form.voice, JSON.stringify(form));
   await p.check('#es_voice'); await p.selectOption('#es_axes', 'va');
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(await text('setup.json'));
-  check('setup.json に欄の値と動画ごとの評価区間（長さつき）を書く', su.settings.voice === true && su.settings.axes === 'va' && su.videos['a.mp4'].start === 2 && su.videos['a.mp4'].end === 10 && su.videos['a.mp4'].bin === 1
+  check('setup.json に欄の値と動画ごとの評価区間（長さつき）を書く', su.settings.voice === true && su.settings.axes === 'va' && su.settings.review === false && su.videos['a.mp4'].start === 2 && su.videos['a.mp4'].end === 10 && su.videos['a.mp4'].bin === 1
     && Math.abs(su.videos['a.mp4'].duration - 12) < 0.1 && Object.keys(su.settings).length === 18, JSON.stringify(su));
+  check('書き出し直しても、setup.json の ref と、覚えていない動画の区間を残す', su.videos['a.mp4'].ref === 1.5 && su.videos['practice.mp4'].end === 12 && su.videos['c.mp4'].end === 20, JSON.stringify(su.videos));
   await p.click('#esClose');
 
   // ---- 誤りのある設定ファイル：誤りを一覧で出して始めない
@@ -363,9 +368,10 @@ const BAD = makeFolder('exp_bad', {
   await seek(10.5); await p.click('#expRecEnd');
   await p.click('#expRecGo');
   await p.waitForFunction(() => AH._.expState() === 'ready');
-  const rr = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), end: AH._.rangeEnd(), bin: AH.S.meta.range.bin, rec: AH.S.meta.experiment.record,
+  const rr = await p.evaluate(() => ({ t: AH._.seekTarget(), n: AH.nSec(), s0: AH.binStart(0), end: AH._.rangeEnd(), bin: AH.S.meta.range.bin, rec: AH.S.meta.experiment.record,
     prog: JSON.parse(localStorage.getItem('ahann_exp:rectest:R01')) }));
   check('渡すと、合わせた区間（2〜10.5 秒）を全体の range の区切り（2 秒）で当て、開始の覆いを出す', !(await alignShown()) && (await vis('#expStart')) && rr.n === 5 && Math.abs(rr.s0 - 2) < 0.02 && Math.abs(rr.end - 10.5) < 0.02 && rr.bin === 2, JSON.stringify(rr));
+  check('渡すと、再生位置を動画の最初（0 秒）に戻す', rr.t === 0, JSON.stringify(rr.t));
   check('選んだ録画と区間を meta.experiment.record と進行に残す（完了扱いにはしない）', !!rr.rec && rr.rec.file === 'take.mp4' && rr.rec.size > 0 && Math.abs(rr.rec.end - 10.5) < 0.02
     && rr.prog.rec[0].file === 'take.mp4' && !(rr.prog.done || {})[0], JSON.stringify(rr));
   await p.click('#expStart');
