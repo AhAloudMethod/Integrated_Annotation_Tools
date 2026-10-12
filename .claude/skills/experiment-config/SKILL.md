@@ -132,6 +132,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 | `change` | 変化ボタン | 変化の時点 | ― |
 | `custom` | カスタム（設計軸の組み合わせ） | 組み合わせによる | `rep`，`time`，`values`，`input`，`dims`，`scale`，`face`，`trail`，`color`，`border`，`autoNext`，`cuts`，`curve`，`curveInput`（README の「カスタム方式」．`rep: "excel"` と `cuts: "self"` で参加者が区切る Excel になる．`rep: "excel"` と `curve: "on"` で，選んだ区間だけ区間の中の動きをグラフで入れられる（区間内で変化）．`curveInput` で入れ方（`"both"`・`"draw"`・`"template"`）を決める） |
 
+- 参加者が区間を自分で区切る Excel（`cuts: "self"`）は，ユーザが「グラフは使わない」と言わない限り，区間内で変化を使う形にする．`custom` で `rep: "excel"`，`cuts: "self"`，`curve: "on"` と書く．グラフで入れるボタン（「なぞって評価する」）は `curve: "on"` のときだけ出るからである．専用の `excel` には `curve` が無いので，自分で区切る Excel を頼まれたら `custom` に置き換える（専用と同じ 9 段階にするなら `values: "int"`）．「連続値」は `values: "real"`（セルに小数を打てる）のことで，`curve` とは別の設定である．
 - CARMA と RankTrace は 1 軸ずつ評価する．快度と覚醒度の両方を取るなら，`options.axis` を `"v"` と `"a"` にした 2 つの試行にする．このとき同じ動画を 2 回使うと方式と動画の組が重複するので，`custom` の 1 軸（`dims`）を使うか，動画を分ける．どうするかはユーザに確かめる．
 
 ## アンケートの事前入力 URL
