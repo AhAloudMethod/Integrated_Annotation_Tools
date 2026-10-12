@@ -107,6 +107,7 @@
     const ps = cfg.participants;
     if (!isObj(ps) || !Object.keys(ps).length) { errors.push('participants（参加者ごとの試行）がありません'); return { errors, warnings }; }
     const useVideos = Object.keys(videos).length > 0, noRange = new Set();
+    let anyVideo = false;
     for (const [pid, ts] of Object.entries(ps)) {
       if (!Array.isArray(ts) || !ts.length) { errors.push(`${pid}：試行の配列がありません`); continue; }
       const seen = new Set();
@@ -114,13 +115,18 @@
         const where = `${pid} の ${k + 1} 番目`;
         if (!isObj(t)) { errors.push(`${where}：試行がオブジェクトではありません`); return; }
         if (!env.modes.includes(t.mode)) errors.push(`${where}：方式「${t.mode}」はありません`);
-        if (!t.video || !env.has(t.video)) errors.push(`${where}：動画「${t.video}」がフォルダにありません`);
-        // 自動保存のキー（方式＋参加者ID＋動画名）が衝突するので、同じ組は 1 回だけ
+        // 録画の試行（record: true）は、試行のときに実験者が録画を選んで評価区間を合わせる（動画のファイルも評価区間も要らない）
+        if (t.record != null && t.record !== true) errors.push(`${where}：record は true です（録画の試行）`);
+        else if (t.record && t.video != null) errors.push(`${where}：video と record の両方があります（どちらか一方です）`);
+        else if (!t.record && t.video == null) errors.push(`${where}：video（動画）か record（録画の試行）がありません`);
+        else if (!t.record && !env.has(t.video)) errors.push(`${where}：動画「${t.video}」がフォルダにありません`);
+        // 自動保存のキー（方式＋参加者ID＋動画名）が衝突するので、同じ組は 1 回だけ。録画の試行のキーは試行の番号なので衝突しない
         const key = `${t.mode}|${t.video}`;
-        if (seen.has(key)) errors.push(`${where}：方式と動画の組（${t.mode}・${t.video}）が重複しています`); seen.add(key);
+        if (!t.record && t.video != null) { if (seen.has(key)) errors.push(`${where}：方式と動画の組（${t.mode}・${t.video}）が重複しています`); seen.add(key); }
         chkSet(t.settings, where); chkRange(t.range, where); chkSurvey(t.survey, where);
         if (t.condition != null && typeof t.condition !== 'string') errors.push(`${where}：condition（条件名）は文字列です`);
-        if (useVideos && !t.range && t.video && !videos[t.video]) noRange.add(t.video);
+        if (useVideos && !t.range && !t.record && t.video && !videos[t.video]) noRange.add(t.video);
+        if (!t.record) anyVideo = true;
       });
     }
     // アンケートの URL に {condition} があるのに、条件名の無い本番の試行があると、その欄は空になる
@@ -130,7 +136,7 @@
       if (miss.length) warnings.push(`アンケートの URL に {condition} がありますが、条件名の無い本番の試行があります（${miss.slice(0, 5).join('、')}${miss.length > 5 ? ` ほか ${miss.length - 5} 件` : ''}）。conditions か試行の condition を書いてください`);
     }
     for (const v of noRange) errors.push(`動画「${v}」の評価区間がありません（通常の画面で評価区間を合わせ、setup.json を書き出し直してください）`);
-    if (!useVideos) warnings.push('動画ごとの評価区間（setup.json の videos）がありません。どの動画も全体の range（無ければ動画全体を 1 秒ごと）で評価します');
+    if (!useVideos && anyVideo) warnings.push('動画ごとの評価区間（setup.json の videos）がありません。どの動画も全体の range（無ければ動画全体を 1 秒ごと）で評価します');
     if (!errors.length) warnings.push(...orderWarnings(ps));
     return { errors, warnings };
   }
@@ -143,26 +149,29 @@
     if (lens.size > 1) ws.push(`参加者によって本番の試行の数が違います（${pids.map((p, i) => `${p} ${mains[i].length}`).join('，')}）`);
     const fmt = m => [...m].map(([v, n]) => `${v} ${n}`).join('，');
     if (pids.length >= 2) {
+      // 録画の試行は動画が試行ごとに違うので、動画の偏りには数えない
+      const vids = mains.map(m => m.filter(t => !t.record));
       for (const [key, name] of [['mode', '方式'], ['video', '動画']]) {
-        const sets = new Set(mains.map(m => m.map(t => t[key]).sort().join('|')));
-        const values = [...new Set(mains.flat().map(t => t[key]))];
+        const ms = key === 'video' ? vids : mains;
+        const sets = new Set(ms.map(m => m.map(t => t[key]).sort().join('|')));
+        const values = [...new Set(ms.flat().map(t => t[key]))];
         if (values.length < 2) continue;
         if (sets.size > 1) { ws.push(`参加者によって本番の${name}の組が違います`); continue; }
         // 位置ごとに数える。参加者の数が値の数で割り切れないときの差 1 は許す
-        const L = Math.max(...mains.map(m => m.length));
+        const L = Math.max(...ms.map(m => m.length));
         for (let k = 0; k < L; k++) {
           const cnt = new Map(values.map(v => [v, 0]));
-          for (const m of mains) if (m[k]) cnt.set(m[k][key], cnt.get(m[k][key]) + 1);
+          for (const m of ms) if (m[k]) cnt.set(m[k][key], cnt.get(m[k][key]) + 1);
           const ns = [...cnt.values()];
           if (Math.max(...ns) - Math.min(...ns) > 1) ws.push(`本番の ${k + 1} 番目に現れる${name}が偏っています（${fmt(cnt)}）`);
         }
       }
       // 方式ごとに、どの動画と組んだかの偏り（動画を方式に割り振るとき）
-      const videos = [...new Set(mains.flat().map(t => t.video))];
-      if (videos.length >= 2 && mains.every(m => new Set(m.map(t => t.video)).size >= 2)) {
-        for (const mode of [...new Set(mains.flat().map(t => t.mode))]) {
+      const videos = [...new Set(vids.flat().map(t => t.video))];
+      if (videos.length >= 2 && vids.every(m => new Set(m.map(t => t.video)).size >= 2)) {
+        for (const mode of [...new Set(vids.flat().map(t => t.mode))]) {
           const cnt = new Map(videos.map(v => [v, 0]));
-          for (const m of mains) for (const t of m) if (t.mode === mode) cnt.set(t.video, cnt.get(t.video) + 1);
+          for (const m of vids) for (const t of m) if (t.mode === mode) cnt.set(t.video, cnt.get(t.video) + 1);
           const ns = [...cnt.values()];
           if (Math.max(...ns) - Math.min(...ns) > 1) ws.push(`方式「${mode}」と組む動画が偏っています（${fmt(cnt)}）`);
         }

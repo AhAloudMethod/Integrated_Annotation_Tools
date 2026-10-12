@@ -1,6 +1,7 @@
 // 実験モード（core/experiment.js）：setup.json の書き出し、実験フォルダの読み込みと検査、隠す要素、開始前に操作が効かないこと、
 // 開始から完了までの時間と zip の書き出し、動画ごとの評価区間、次の試行への切り替えと設定の適用、アンケート、
-// 途中で抜けたときの _partial の zip と書き出し直し、抜けたときに設定が戻ること
+// 途中で抜けたときの _partial の zip と書き出し直し、抜けたときに設定が戻ること、
+// 録画の試行（録画を選び、区間を合わせて参加者に渡す。中断したら同じ録画を選び直す）
 const { chromium } = require('playwright-core');
 const fs = require('fs');
 const path = require('path');
@@ -52,6 +53,15 @@ const GOOD = makeFolder('exp_good', {
   // 動画ごとの評価区間。c.mp4 は動画（12 秒）より長い終了にして、試行を始められないことを確かめる
   'setup.json': { settings: { f0: false }, videos: { 'practice.mp4': { start: 0, end: 12, bin: 1 }, 'a.mp4': { start: 1, end: 11, bin: 2 }, 'c.mp4': { start: 0, end: 20, bin: 1 } } },
 }, ['practice.mp4', 'a.mp4', 'c.mp4']);
+// 録画の試行だけの実験フォルダ（動画も setup.json も置かない）。録画は別のフォルダに置く
+const REC = makeFolder('exp_rec', {
+  'experiment.json': {
+    name: 'rectest', range: { bin: 2 },
+    survey: 'https://survey.test/form?pid={pid}&v={video}',
+    participants: { R01: [{ mode: 'excel', record: true }, { mode: 'sam', record: true }] },
+  },
+}, []);
+const TAKES = makeFolder('exp_takes', {}, ['take.mp4', 'other.mp4']);
 const BAD = makeFolder('exp_bad', {
   'experiment.json': {
     name: 'bad',
@@ -72,7 +82,8 @@ const BAD = makeFolder('exp_bad', {
   });
   await ctx.route('https://survey.test/**', r => r.fulfill({ contentType: 'text/html', body: '<p>survey</p>' }));
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
-  const dialogs = []; p.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
+  let dismiss = false;   // true なら次の確認を「キャンセル」する
+  const dialogs = []; p.on('dialog', d => { dialogs.push(d.message()); if (dismiss) { dismiss = false; d.dismiss(); } else d.accept(); });
   const downloads = [];
   p.on('download', d => downloads.push(d));
   const dl = name => downloads.find(d => d.suggestedFilename() === name);
@@ -84,6 +95,8 @@ const BAD = makeFolder('exp_bad', {
   await p.reload();
   const vis = sel => p.evaluate(s => { const el = document.querySelector(s); return !!el && !el.hidden && getComputedStyle(el).display !== 'none' && !!el.offsetParent; }, sel);
   const state = () => p.evaluate(() => AH._.expState());
+  // Ctrl+Shift+E で抜ける：読み込み直しが終わるまで待つ（load を待つだけでは、読み込み直す前に返ることがある）
+  const exitExp = () => Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.keyboard.press('Control+Shift+KeyE')]);
 
   // ---- 通常の画面：a.mp4 の評価区間を合わせてから、setup.json を書き出す
   await p.setInputFiles('#file', path.join(GOOD, 'a.mp4'));
@@ -205,8 +218,8 @@ const BAD = makeFolder('exp_bad', {
   check('進行をブラウザに残す', JSON.stringify(Object.keys(prog)) === '["0","1"]');
 
   // ---- 抜ける：設定が実験前の値に戻る
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(300);
+  await exitExp();
+  await p.waitForTimeout(300);
   const after = await p.evaluate(() => ({ axes: localStorage.getItem('ahann_axes'), f0: localStorage.getItem('ahann_f0'), exp: document.body.classList.contains('exp'), pid: !!document.getElementById('pid').offsetParent }));
   check('Ctrl+Shift+E で抜けると、ブラウザの設定が実験前に戻る', after.axes === 'pana' && after.f0 === '1' && !after.exp && after.pid, JSON.stringify(after));
   const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('ahann_range:a.mp4') || 'null'));
@@ -220,8 +233,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   await p.click('#expStart');
   await p.keyboard.press('Space'); await p.waitForTimeout(500); await p.keyboard.press('Space');
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(1500);
+  await exitExp();
+  await p.waitForTimeout(1500);
   const zp = await zip('P02_t01_a_sam_partial.zip');
   const pj = zp['P02_t01_a_sam_session.json'] ? JSON.parse(zp['P02_t01_a_sam_session.json']) : null;
   check('試行の途中で抜けると _partial の zip を書き出す（partial と task_abort が残る）', !!pj && pj.meta.experiment.partial === true && pj.log.some(l => l.type === 'task_abort') && pj.meta.experiment.task.partial === 1,
@@ -238,8 +251,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'running');
   const rs = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), end: AH._.rangeEnd() }));
   check('途中の試行を再開すると、実験の評価区間のまま続ける', rs.n === 5 && rs.s0 === 1 && Math.abs(rs.end - 11) < 1e-6, JSON.stringify(rs));
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(1500);
+  await exitExp();
+  await p.waitForTimeout(1500);
   await p.setInputFiles('#expDir', GOOD);
   await p.waitForSelector('#expGo');
   await p.selectOption('#expPid', 'P02');
@@ -264,8 +277,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const fresh = await p.evaluate(() => ({ v0: AH.S.data.cells.v[0] ?? null, restore: AH.S.log.some(l => l.type === 'restore') }));
   check('実験の外の保存データは再開を尋ねずに新しく始める', dialogs.length === nd && fresh.v0 === null && !fresh.restore, JSON.stringify({ fresh, dialogs: dialogs.slice(nd) }));
-  await p.keyboard.press('Control+Shift+KeyE');   // 開始の前に抜ける（保存データは残るが、開始を押していない）
-  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+  await exitExp();   // 開始の前に抜ける（保存データは残るが、開始を押していない）
+  await p.waitForTimeout(500);
   await p.setInputFiles('#expDir', GOOD);
   await p.waitForSelector('#expGo');
   await p.selectOption('#expPid', 'P02');
@@ -273,8 +286,8 @@ const BAD = makeFolder('exp_bad', {
   await p.click('#expGo');
   await p.waitForFunction(() => AH._.expState() === 'ready');
   check('開始を押す前の保存データも再開を尋ねない', dialogs.slice(nd2).every(m => !m.includes('途中データ')), JSON.stringify(dialogs.slice(nd2)));
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+  await exitExp();
+  await p.waitForTimeout(500);
 
   // ---- 参加者が自分で区切る試行（Excel の cuts: "self"）は、区切りの無い 1 区間から始める
   await p.setInputFiles('#expDir', GOOD);
@@ -284,8 +297,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const sc = await p.evaluate(() => ({ n: AH.nSec(), edges: AH.S.meta.range.edges, cols: document.querySelectorAll('table.xl input[data-ax=v]').length }));
   check('自分で区切る試行は、評価区間（1〜11 秒）を区切りの無い 1 区間にして始める', sc.n === 1 && JSON.stringify(sc.edges) === '[1,11]' && sc.cols === 1, JSON.stringify(sc));
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+  await exitExp();
+  await p.waitForTimeout(500);
 
   // ---- 1秒固定の試行：setup.json の区間（1〜11 秒、2 秒ごと）を 1 秒ごとにする
   await p.setInputFiles('#expDir', GOOD);
@@ -295,8 +308,8 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const s1 = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), bin: AH.S.meta.range.bin, edges: AH.S.meta.range.edges || null }));
   check('1秒固定の試行は、評価区間（1〜11 秒）を 1 秒ごとの 10 区間にして始める', s1.n === 10 && s1.s0 === 1 && s1.bin === 1 && !s1.edges, JSON.stringify(s1));
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+  await exitExp();
+  await p.waitForTimeout(500);
 
   // ---- 区間内で変化の試行：options の入れ方を当て、方式の設定の欄は隠すが、区間内の動きの欄（形・発声なし）は出す
   await p.setInputFiles('#expDir', GOOD);
@@ -307,8 +320,8 @@ const BAD = makeFolder('exp_bad', {
   const cv = await p.evaluate(() => ({ curve: AH.mode.curve, tool: AH.mode.curveTool(), tools: document.querySelectorAll('.curveBox .tool').length, box: !!document.querySelector('.curveBox') && getComputedStyle(document.querySelector('.curveBox')).display !== 'none',
     cfg: [...document.querySelectorAll('#panel .optCtl')].every(e => getComputedStyle(e).display === 'none'), table: !!document.querySelector('table.xl.curve') }));
   check('区間内で変化の試行：入れ方（描くだけ）を当て、切り替えは出さず、形と発声なしの欄と表を出す（方式の設定は隠す）', cv.curve && cv.tool === 'draw' && cv.tools === 0 && cv.box && cv.cfg && cv.table, JSON.stringify(cv));
-  await p.keyboard.press('Control+Shift+KeyE');
-  await p.waitForLoadState('load'); await p.waitForTimeout(500);
+  await exitExp();
+  await p.waitForTimeout(500);
 
   // ---- 動画より長い評価区間：試行を始めない
   await p.setInputFiles('#expDir', GOOD);
@@ -318,6 +331,94 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'error');
   const em = await p.$eval('#expCard', c => c.textContent);
   check('評価区間の終了が動画より長ければ、誤りを出して試行を始めない', em.includes('c.mp4') && em.includes('動画の長さ') && !(await vis('#expStart')), em);
+
+  await exitExp();
+  await p.waitForTimeout(500);
+
+  // ---- 録画の試行：実験者が録画を選び、開始・終了を合わせてから参加者に渡す
+  const alignShown = () => p.evaluate(() => { const el = document.getElementById('expAlign'); return !el.hidden && getComputedStyle(el).display !== 'none'; });   // 固定の位置なので vis（offsetParent）は使えない
+  const seek = t => p.evaluate(t => new Promise(ok => { AH.video.addEventListener('seeked', () => setTimeout(ok, 50), { once: true }); AH._.seekTo(t); }), t);
+  await p.setInputFiles('#expDir', REC);
+  await p.waitForSelector('#expGo');
+  const recFrom = await p.$$eval('#expFrom option', os => os.map(o => o.textContent));
+  check('録画の試行は、動画の無いフォルダでも始められ、一覧に（録画）と出る', recFrom.length === 2 && recFrom[0].includes('（録画）') && !(await p.$('.expErr li')), JSON.stringify(recFrom));
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'pick');
+  check('録画の試行は、まず実験者に録画を選ばせる', (await p.$eval('#expCard', c => c.textContent)).includes('録画') && (await vis('#expRecPick')) && !(await vis('#expStart')));
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'take.mp4'));
+  await p.waitForFunction(() => AH._.expState() === 'align');
+  const al = await p.evaluate(() => ({ cover: !document.getElementById('expCover').hidden, s0: AH.binStart(0), end: AH._.rangeEnd(), dur: AH.S.meta.duration, file: AH.S.meta.video_file }));
+  check('録画を選ぶと覆いが消えて区間合わせになり、初めの区間は 0 秒〜動画の最後', !al.cover && (await alignShown()) && al.s0 === 0 && Math.abs(al.end - al.dur) < 1e-6 && al.file === 'take.mp4', JSON.stringify(al));
+  // 区間合わせの間：再生はできるが、評価の値は入らない
+  await p.keyboard.press('Space'); await p.waitForTimeout(400); await p.keyboard.press('Space'); await p.waitForTimeout(100);
+  await p.evaluate(() => document.querySelector('table.xl input[data-ax=v]').focus());
+  await p.keyboard.type('7'); await p.keyboard.press('Enter'); await p.waitForTimeout(100);
+  const alIn = await p.evaluate(() => ({ plays: AH.S.log.filter(l => l.type === 'play').length, filled: AH.S.data.cells.v.filter(x => x != null && x !== '').length }));
+  check('区間合わせの間は再生できるが、評価の値は入らない', alIn.plays === 1 && alIn.filled === 0, JSON.stringify(alIn));
+  // 開始 2 秒、終了 1 秒（開始より前）→ 渡せない。終了を 10.5 秒にして渡す
+  await seek(2); await p.click('#expRecStart');
+  await seek(1); await p.click('#expRecEnd');
+  await p.click('#expRecGo'); await p.waitForTimeout(100);
+  check('開始が終了より後ろなら、参加者に渡さずに誤りを出す', (await state()) === 'align' && (await p.$eval('#expAlign', b => b.textContent)).includes('開始が終了より後ろ'));
+  await seek(10.5); await p.click('#expRecEnd');
+  await p.click('#expRecGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const rr = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), end: AH._.rangeEnd(), bin: AH.S.meta.range.bin, rec: AH.S.meta.experiment.record,
+    prog: JSON.parse(localStorage.getItem('ahann_exp:rectest:R01')) }));
+  check('渡すと、合わせた区間（2〜10.5 秒）を全体の range の区切り（2 秒）で当て、開始の覆いを出す', !(await alignShown()) && (await vis('#expStart')) && rr.n === 5 && Math.abs(rr.s0 - 2) < 0.02 && Math.abs(rr.end - 10.5) < 0.02 && rr.bin === 2, JSON.stringify(rr));
+  check('選んだ録画と区間を meta.experiment.record と進行に残す（完了扱いにはしない）', !!rr.rec && rr.rec.file === 'take.mp4' && rr.rec.size > 0 && Math.abs(rr.rec.end - 10.5) < 0.02
+    && rr.prog.rec[0].file === 'take.mp4' && !(rr.prog.done || {})[0], JSON.stringify(rr));
+  await p.click('#expStart');
+  await p.keyboard.press('Space'); await p.waitForTimeout(500); await p.keyboard.press('Space'); await p.waitForTimeout(200);
+  // 途中で止まった（再読み込み）→ フォルダを開き直すと、同じ録画を選び直させる
+  await p.reload(); await p.waitForTimeout(300);
+  await p.setInputFiles('#expDir', REC);
+  await p.waitForSelector('#expGo');
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'pick');
+  check('再開するときは、前に選んだ録画の名前を出して選び直させる', (await p.$eval('#expCard', c => c.textContent)).includes('take.mp4'));
+  const nd3 = dialogs.length; dismiss = true;
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'other.mp4')); await p.waitForTimeout(300);
+  check('違う録画を選ぶと確かめ、キャンセルなら選び直しのまま', (await state()) === 'pick' && dialogs.slice(nd3).some(m => m.includes('take.mp4') && m.includes('other.mp4')), JSON.stringify(dialogs.slice(nd3)));
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'take.mp4'));
+  await p.waitForFunction(() => AH._.expState() === 'running');
+  const rs2 = await p.evaluate(() => ({ n: AH.nSec(), s0: AH.binStart(0), restore: AH.S.log.some(l => l.type === 'restore'), key: localStorage.getItem('ahann4:excel:R01:rec1') != null }));
+  check('同じ録画を選ぶと、自動保存（キーは試行の番号）から合わせた区間のまま再開する', rs2.restore && rs2.n === 5 && Math.abs(rs2.s0 - 2) < 0.02 && rs2.key, JSON.stringify(rs2));
+  await p.click('#expDoneBtn');
+  await p.waitForFunction(() => AH._.expState() === 'done');
+  await p.waitForTimeout(500);
+  const zr = await zip('R01_t01_take_excel.zip');
+  const rj = zr['R01_t01_take_excel_session.json'] ? JSON.parse(zr['R01_t01_take_excel_session.json']) : null;
+  const rcsv = (zr['R01_rectest_trials.csv'] || '').trim().split('\n');
+  check('完了の zip の名前・要約の video 列に録画のファイル名を使い、操作ログに exp_record を残す', !!rj && rj.meta.experiment.record.file === 'take.mp4' && rj.log.some(l => l.type === 'exp_record')
+    && rcsv.length === 2 && rcsv[1].split(',')[4] === 'take.mp4', JSON.stringify([downloads.map(d => d.suggestedFilename()), rcsv]));
+  check('書き出したら、録画の試行の自動保存も消す', await p.evaluate(() => localStorage.getItem('ahann4:excel:R01:rec1') === null));
+  const [rpop] = await Promise.all([ctx.waitForEvent('page'), p.click('#expSurvey')]);
+  await rpop.waitForLoadState();
+  check('アンケートの {video} に録画のファイル名が入る', rpop.url() === 'https://survey.test/form?pid=R01&v=take.mp4', rpop.url());
+  await rpop.close();
+  // 次の録画の試行：選び直し、渡した後（開始の前）に止まったら、選び直すだけで区間合わせを飛ばす
+  await p.click('#expNext');
+  await p.waitForFunction(() => AH._.expState() === 'pick');
+  check('次の録画の試行は、前の試行の録画を引き継がずに選ばせる', !(await p.$eval('#expCard', c => c.textContent)).includes('take.mp4'));
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'take.mp4'));
+  await p.waitForFunction(() => AH._.expState() === 'align');
+  await p.click('#expRecRepick');
+  await p.waitForFunction(() => AH._.expState() === 'pick');
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'other.mp4'));
+  await p.waitForFunction(() => AH._.expState() === 'align');
+  await seek(3); await p.click('#expRecStart');
+  await p.click('#expRecGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  await p.reload(); await p.waitForTimeout(300);
+  await p.setInputFiles('#expDir', REC);
+  await p.waitForSelector('#expGo');
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'pick');
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'other.mp4'));
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const r3 = await p.evaluate(() => ({ s0: AH.binStart(0), file: AH.S.meta.video_file, mode: AH.S.meta.mode }));
+  check('「動画を選び直す」で選び直せ、渡した後に止まった試行は区間合わせを飛ばして開始の覆いに戻る', r3.file === 'other.mp4' && Math.abs(r3.s0 - 3) < 0.02 && r3.mode === 'sam', JSON.stringify(r3));
 
   await p.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase('ahann_exp'); });
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');

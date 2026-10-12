@@ -205,6 +205,11 @@ body.exp .optCtl{display:none}
 .expAfter[hidden]{display:none}
 .expSurveys{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-bottom:12px}
 .expSurvey.expOpened::after{content:"　✓ 開きました"}
+.expAlign{position:fixed;top:56px;right:16px;z-index:900;display:flex;flex-direction:column;gap:8px;align-items:flex-start;width:min(440px,calc(100vw - 32px));
+  background:var(--panel);border:2px solid var(--aro);border-radius:8px;padding:10px 14px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.expAlign[hidden]{display:none}  /* 区間合わせの間は使わない右の入力欄の上に出し、動画と評価グラフ（シーク）を隠さない */
+body.expAligning #panel,body.expAligning #under{pointer-events:none;opacity:.5}
+body.expAligning #reviewBtn{display:none}
 
 /* ==================== 方式別 ==================== */
 

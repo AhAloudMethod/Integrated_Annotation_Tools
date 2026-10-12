@@ -75,6 +75,17 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   // experiment.json の settings・試行の range は setup.json より優先する
   const r4 = run(folder('expc_over', { name: 'o', settings: { grid: true }, participants: { P01: [{ mode: 'excel', video: 'c.mp4', range: { start: 1, end: 5 } }] } }, ['c.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
   check('試行の range があれば、setup.json に無い動画でも誤りにしない', r4.code === 0, r4.text);
+  // 録画の試行（record: true）：動画も setup.json も要らない。video との両方・どちらも無い・true 以外は誤り
+  const rec = { P01: [{ mode: 'excel', record: true, practice: true }, { mode: 'excel', record: true }, { mode: 'sam', record: true }],
+    P02: [{ mode: 'sam', record: true, practice: true }, { mode: 'sam', record: true }, { mode: 'excel', record: true }] };
+  const r5 = run(folder('expc_rec', { name: 'rec', range: { bin: 2 }, participants: rec }, []));
+  check('録画の試行だけなら、動画と setup.json が無くても誤りにせず、動画の警告も出さない', r5.code === 0 && !r5.text.includes('誤り') && !r5.text.includes('setup.json の videos') && !r5.text.includes('組む動画') && !r5.text.includes('重複'), r5.text);
+  check('参加者ごとの順で、録画の試行の動画を（録画）と出す', r5.text.includes('P01: [練]excel/（録画） → excel/（録画） → sam/（録画）'), r5.text);
+  const r6 = run(folder('expc_rec2', { name: 'rec', participants: { P01: [{ mode: 'excel', record: true, video: 'a.mp4' }, { mode: 'excel' }, { mode: 'sam', record: 'yes' }] } }, ['a.mp4']));
+  check('video と record の両方・どちらも無い・record が true 以外は誤り', r6.code === 1 && r6.text.includes('P01 の 1 番目：video と record の両方があります') && r6.text.includes('P01 の 2 番目：video（動画）か record（録画の試行）がありません')
+    && r6.text.includes('P01 の 3 番目：record は true です'), r6.text);
+  const r7 = run(folder('expc_rec3', { name: 'rec', participants: { P01: [{ mode: 'excel', video: 'a.mp4' }, { mode: 'sam', record: true }] } }, ['a.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
+  check('動画の試行と録画の試行を混ぜられる（録画の試行には評価区間を求めない）', r7.code === 0 && !r7.text.includes('評価区間がありません'), r7.text);
   const r2 = run(out('expc_none'));
   check('experiment.json が無ければ終了コード 1', r2.code === 1 && r2.text.includes('見つかりません'), r2.text);
 }

@@ -2,8 +2,8 @@
 (() => {
   const _ = AH._;
   const { video, modes, S, addLog, endStroke } = _;
-  // ---------- 自動保存（方式＋参加者ID＋動画名で復元） ----------
-  const key = () => `ahann4:${S.meta.mode}:${S.meta.participant}:${S.meta.video_file}`;
+  // ---------- 自動保存（方式＋参加者ID＋動画名で復元。実験モードの録画の試行は動画名の代わりに試行の番号 save_key） ----------
+  const key = () => `ahann4:${S.meta.mode}:${S.meta.participant}:${S.meta.save_key || S.meta.video_file}`;
   function autosave() {
     if (!S.meta.video_file || !S.data) return;
     try { localStorage.setItem(key(), JSON.stringify({ meta: S.meta, data: S.data, log: S.log, undo: S.undo.slice(-10) })); } catch (_) {}
@@ -48,5 +48,5 @@
     return true;
   }
 
-  Object.assign(_, { autosave, tryRestore, renameParticipant });
+  Object.assign(_, { autosave, tryRestore, renameParticipant, saveKey: key });
 })();

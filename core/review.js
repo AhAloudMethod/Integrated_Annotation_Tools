@@ -4,7 +4,7 @@
   const _ = AH._;
   const { $, addLog } = _;
   let on = false;
-  const reviewing = () => on;
+  const reviewing = () => on || !!(_.expAligning && _.expAligning());   // 実験モードの区間合わせ（core/experiment.js）の間も値を変えない
   function setReview(v) {
     if (on === v) return;
     on = v;

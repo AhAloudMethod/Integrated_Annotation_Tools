@@ -1,6 +1,7 @@
 // 実験モード：参加者内で方式を比べる実験に使う。実験者は experiment.json（試行の順）・setup.json（設定と動画ごとの評価区間）と動画を入れたフォルダを選び、参加者を選ぶ。
 // 試行（方式×動画）を設定ファイルの順に進め、参加者が選べる要素（ID・方式・設定・評価区間など）を隠す。
 // 各試行は ready（覆いに「開始」）→ running（評価する）→ done（完了で書き出し、入力をロック）と進む。
+// 録画の試行（record: true）は、その前に pick（実験者が録画を選ぶ）→ align（実験者が評価区間の開始・終了を合わせる）を通る。
 // タスク遂行時間は「開始」から「完了」まで。操作ログに task_start・task_end を残し、内訳（再生時間・シークの回数など）を要約にする。
 // 書き出しは 1 試行 1 つの zip（その時点までの要約も入れる）。zip はブラウザ（IndexedDB）にも残し、参加者を選ぶ画面から書き出し直せる。
 // 当てた設定はブラウザに保存されるので、実験モードを抜けるとき（とページを閉じるとき）に元の値へ戻す。Ctrl+Shift+E で抜ける（試行の途中なら _partial の zip を書き出す）。
@@ -67,14 +68,22 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
-  // ---------- 進行（終えた試行と要約）はブラウザに残す ----------
+  // ---------- 進行（終えた試行と要約、録画の試行で選んだ録画と区間）はブラウザに残す ----------
+  // { done: { 試行の番号: 要約 }, rec: { 試行の番号: { file, size, duration, start, end } } }
   const progKey = pid => `ahann_exp:${X.cfg.name}:${pid}`;
-  function loadProgress(pid) {
-    try { return JSON.parse(localStorage.getItem(progKey(pid)) || '{}').done || {}; } catch (_e) { return {}; }
+  function loadProg(pid) {
+    try { return JSON.parse(localStorage.getItem(progKey(pid)) || '{}'); } catch (_e) { return {}; }
   }
+  const writeProg = prog => { try { localStorage.setItem(progKey(X.pid), JSON.stringify(prog)); } catch (_e) {} };
+  const loadProgress = pid => loadProg(pid).done || {};
   function saveProgress(i, row) {
-    const done = loadProgress(X.pid); done[i] = { ...(done[i] || {}), ...row };
-    try { localStorage.setItem(progKey(X.pid), JSON.stringify({ done })); } catch (_e) {}
+    const prog = loadProg(X.pid), done = prog.done || {}; done[i] = { ...(done[i] || {}), ...row };
+    writeProg({ ...prog, done });
+  }
+  const loadRec = i => (loadProg(X.pid).rec || {})[i] || null;
+  function saveRec(i, rec) {
+    const prog = loadProg(X.pid);
+    writeProg({ ...prog, rec: { ...(prog.rec || {}), [i]: rec } });
   }
   const summaryCSV = () => {
     const done = loadProgress(X.pid);
@@ -90,7 +99,9 @@
   }
   const errList = errs => `<ul class="expErr">${errs.map(e => `<li>${esc(e)}</li>`).join('')}</ul>`;
   const cond = t => E.conditionFor(X.cfg, t);   // 条件名（experiment.json の condition・conditions。無ければ空）
-  const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}${cond(t) ? `（${cond(t)}）` : ''}　${t.video}`;
+  const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}${cond(t) ? `（${cond(t)}）` : ''}　${t.record ? '（録画）' : t.video}`;
+  // 今の試行の動画の名前。録画の試行は選んだ録画のファイル名（選ぶ前は空）
+  const vidName = t => (t.record ? ((S.meta.experiment || {}).record || {}).file || '' : t.video);
   function setup(cfg, get, { errors: errs, warnings = [] }) {
     X = { cfg, get, state: 'setup', backup: null };
     if (errs.length) {
@@ -133,7 +144,7 @@
       await zipDel(X.cfg.name, pid);
       try {
         localStorage.removeItem(progKey(pid));
-        for (const t of X.cfg.participants[pid]) localStorage.removeItem(`ahann4:${t.mode}:${pid}:${t.video.split('/').pop()}`);
+        X.cfg.participants[pid].forEach((t, k) => localStorage.removeItem(`ahann4:${t.mode}:${pid}:${t.record ? `rec${k + 1}` : t.video.split('/').pop()}`));
       } catch (_e) {}
       $('expPid').dispatchEvent(new Event('change'));
     });
@@ -222,44 +233,117 @@
     if (document.body.classList.contains('vwin') && _.closeVideoWindow) _.closeVideoWindow();
     endStroke('trial'); setArmed(false); pen.down = false;
     if (video.src) _.autosave();
-    S.meta.video_file = ''; S.data = null; S.undo = []; S.redo = []; S.log = [];
+    S.meta.video_file = ''; delete S.meta.save_key; S.data = null; S.undo = []; S.redo = []; S.log = [];
   }
   function startTrial(i) {
     teardown();
     const t = X.trials[i];
-    X.i = i;
+    X.i = i; X.file = null;
     X.set = { ...DEF, ...(X.cfg.settings || {}), ...(t.settings || {}) };
     X.range = E.rangeFor(X.cfg, t);
     _.selectMode(t.mode);
     S.meta.options = { ...S.meta.options, ...(t.options || {}) };
     applySettings(X.set);
     _.remount();
+    if (t.record) { setState('pick'); return; }
     setState('loading');
     _.openVideoFile(X.get(t.video), () => loaded(i));
   }
   function loaded(i) {
     const t = X.trials[i], log = S.log;
     const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
-    const vref = X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].ref;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
+    const vref = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].ref;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
     S.meta.ref = typeof vref === 'number' ? vref : null;
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
       name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
+    if (!started && t.record) {
+      // 渡した後に止まった試行は、残した区間で開始の覆いに戻る（区間が録画に収まらなければ合わせ直す）。まだなら区間合わせ
+      const prev = loadRec(i);
+      if (prev && !applyRange(recRange(prev))) { handOff(prev); return; }
+      delete S.meta.experiment.record;
+      X.align = { start: 0, end: S.meta.duration };
+      setState('align'); showAlign();
+      return;
+    }
     if (!started) {   // 復元したときは、その時点の評価区間のまま続ける
       const err = applyRange(X.range);
       if (err) { setState('error', err); return; }
-      addLog('exp_trial', { value: i + 1, detail: JSON.stringify({ name: X.cfg.name, mode: t.mode, condition: cond(t), video: t.video, practice: !!t.practice, range: X.range }) });
+      logTrial(X.range);
     }
     setState(ended ? (i + 1 < X.trials.length ? 'done' : 'finished') : started ? 'running' : 'ready');
+  }
+  function logTrial(range) {
+    const t = X.trials[X.i];
+    addLog('exp_trial', { value: X.i + 1, detail: JSON.stringify({ name: X.cfg.name, mode: t.mode, condition: cond(t), video: vidName(t), ...(t.record ? { record: true } : {}), practice: !!t.practice, range }) });
+  }
+
+  // ---------- 録画の試行（record: true） ----------
+  // 実験者が録画を選び（pick）、動画を見ながら開始・終了を合わせて（align）から参加者に渡す（ready）。
+  // 区切り（bin・label・Excel の cuts）は動画の試行と同じく applyRange が決める（edges の区切りは録画ごとに長さが違うので使わない）。
+  // 渡した録画（名前・大きさ）と区間は進行に残し、中断したら同じ録画を選び直してもらう。自動保存のキーは試行の番号（rec1 など）
+  const recRange = rec => { const r = { ...X.range, start: rec.start, end: rec.end }; delete r.edges; return r; };
+  function pickFile(f) {
+    const prev = loadRec(X.i);
+    if (prev && (f.name !== prev.file || f.size !== prev.size)
+      && !confirm(`前に選んだ録画（${prev.file}，${prev.size} バイト）と違います（${f.name}，${f.size} バイト）。このファイルで続けますか？`)) return;
+    X.file = f;
+    S.meta.save_key = `rec${X.i + 1}`;   // core/storage.js の自動保存のキー
+    setState('loading');
+    _.openVideoFile(f, () => loaded(X.i));
+  }
+  // 区間合わせ：合わせている区間を評価グラフに 1 区間として出し、実験者用の帯を作り直す
+  function showAlign(msg) {
+    const { start, end } = X.align;
+    if (start < end) _.setRange({ edges: [start, end], start, target: end, count: 1, bin: X.range.bin || 1, label: X.range.label || 'countdown' });
+    const f3 = x => x.toFixed(3);
+    $('expAlign').innerHTML = `<b>評価区間を合わせる（実験者）</b><span>${esc(X.file.name)}</span>`
+      + `<span>開始 ${f3(start)} 秒 〜 終了 ${f3(end)} 秒（動画 ${f3(S.meta.duration)} 秒）</span>`
+      + '<span class="expBtns"><button id="expRecStart" type="button">今の時間を開始にする</button><button id="expRecEnd" type="button">今の時間を終了にする</button></span>'
+      + '<span class="expBtns"><button id="expRecRepick" type="button">動画を選び直す</button><button id="expRecGo" type="button" class="expDone">参加者に渡す</button></span>'
+      + (msg ? `<span class="expMiss">${esc(msg)}</span>` : '');
+    const now = () => _.frameStart(video.currentTime);
+    const bind = (id, fn) => $(id).addEventListener('click', e => { e.currentTarget.blur(); fn(); });
+    bind('expRecStart', () => { X.align.start = now(); showAlign(); });
+    bind('expRecEnd', () => { X.align.end = now(); showAlign(); });
+    bind('expRecRepick', () => { if (!video.paused) video.pause(); setState('pick'); });
+    bind('expRecGo', () => {
+      const D = S.meta.duration, a = X.align;
+      if (!(a.start < a.end)) { showAlign('開始が終了より後ろです。合わせ直してください'); return; }
+      const rec = { file: X.file.name, size: X.file.size, duration: +D.toFixed(3), start: +a.start.toFixed(4), end: +a.end.toFixed(4) };
+      const err = applyRange(recRange(rec));
+      if (err) { showAlign(err); return; }
+      if (!video.paused) video.pause();
+      saveRec(X.i, rec);
+      handOff(rec);
+    });
+  }
+  // 区間を当てた後：記録して開始の覆いへ。中断の後に選び直した録画が違っても、実際に開いた録画を残す
+  function handOff(prev) {
+    const rec = { ...prev, file: X.file.name, size: X.file.size, duration: +S.meta.duration.toFixed(3) };
+    S.meta.experiment.record = rec;
+    addLog('exp_record', { detail: JSON.stringify(rec) });
+    logTrial(recRange(rec));
+    setState('ready');
   }
   const progText = () => { const t = X.trials[X.i]; return `${X.i + 1} / ${X.trials.length}${t.practice ? '　練習' : ''}${cond(t) ? '　' + cond(t) : ''}`; };
   function setState(st, msg) {
     X.state = st;
     document.body.classList.toggle('expWait', st !== 'running');
+    document.body.classList.toggle('expAligning', st === 'align');
+    $('expAlign').hidden = st !== 'align';
     $('expInfo').hidden = false; $('expInfo').textContent = progText();
     $('expDoneBtn').hidden = st !== 'running';
     const head = `<p class="expProg">${esc(progText())}</p>`;
     if (st === 'loading') cover(head + '<p>読み込んでいます…</p>');
-    else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${X.trials[X.i].video}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、Ctrl+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
+    else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、Ctrl+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
+    else if (st === 'pick') {
+      const prev = loadRec(X.i);
+      cover(head + '<h2>録画を選ぶ（実験者の方へ）</h2>'
+        + (prev ? `<p>この試行は「${esc(prev.file)}」で始めています。同じ録画を選び直してください。</p>`
+          : '<p>この試行で評価する録画のファイルを選んでください。選んだ後、動画を見ながら評価区間の開始と終了を合わせます。</p>')
+        + '<button id="expRecPick" type="button" class="expMain">録画した動画を選ぶ</button>');
+      $('expRecPick').addEventListener('click', e => { e.currentTarget.blur(); $('expRecFile').click(); });
+    } else if (st === 'align') cover('');
     else if (st === 'ready') {
       cover(head + '<p>準備ができたら「開始」を押してください。</p><button id="expStart" type="button" class="expMain">開始</button>');
       $('expStart').addEventListener('click', start);   // フォーカスは置かない（Space で誤って始めないように）
@@ -287,7 +371,7 @@
   // どちらも URL の文字列か、URL の文字列・{ url, label } の配列。{pid} などを試行の値に置き換える
   function surveys(i, final) {
     const t = X.trials[i];
-    const val = { pid: X.pid, trial: i + 1, mode: t.mode, condition: cond(t), video: t.video, practice: t.practice ? 1 : 0, name: X.cfg.name };
+    const val = { pid: X.pid, trial: i + 1, mode: t.mode, condition: cond(t), video: vidName(t), practice: t.practice ? 1 : 0, name: X.cfg.name };
     const fill = u => u.replace(/\{(pid|trial|mode|condition|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
     const list = tpl => !tpl ? [] : (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
     return [...list(t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey), ...(final ? list(X.cfg.finalSurvey) : [])];
@@ -322,7 +406,7 @@
     const blob = new Blob([_.makeZip(files.map(f => ({ name: f.name, data: '﻿' + f.text })))], { type: 'application/zip' });
     downloadBlob(name, blob);
     $('status').textContent = `書き出しました（${name}）`;
-    const key = `ahann4:${S.meta.mode}:${S.meta.participant}:${S.meta.video_file}`;
+    const key = _.saveKey();
     try {
       await zipPut(`${X.cfg.name}|${X.pid}|${X.i}${partial ? '|partial' : ''}`, { name, blob, exp: X.cfg.name, pid: X.pid, trial: X.i, time: Date.now() });
       if (!partial) { S.meta.video_file = ''; localStorage.removeItem(key); }   // video_file を空にして、以後の操作で自動保存を作り直さない
@@ -351,7 +435,7 @@
     if (revAt != null) rev += w1 - revAt;
     // 値を入れた区間の数。区間内で変化（core/curve.js）の変化の区間は、書き込みがかかった区間を数える
     const bins = _.nSec(), filled = ax => S.data.cells[ax].slice(0, bins).filter((x, s) => (x === 'curve' ? (_.curveInfo(ax, s) || {}).entered : x != null && x !== '')).length;
-    return { trial: X.i + 1, practice: t.practice ? 1 : 0, mode: t.mode, condition: cond(t), video: t.video,
+    return { trial: X.i + 1, practice: t.practice ? 1 : 0, mode: t.mode, condition: cond(t), video: vidName(t),
       start_iso: S.meta.experiment.start_iso || '', end_iso: S.meta.experiment.end_iso || '',
       task_ms: +(w1 - w0).toFixed(1), play_ms: +play.toFixed(1), review_ms: +rev.toFixed(1),
       n_play: n('play'), n_seek: n('seek'), n_undo: n('undo'), n_redo: n('redo'),
@@ -435,6 +519,8 @@
     const inCover = !$('expCover').hidden && $('expCover').contains(e.target);
     if (!X) { if (inCover) e.stopImmediatePropagation(); return; }   // setup.json の書き出しの画面の欄
     const block = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+    // 区間合わせの間は、再生（Space）・移動（←→）・1 フレーム移動（, .）だけを効かせる（取り消しなども止める）
+    if (X.state === 'align') { if (!['Space', 'ArrowLeft', 'ArrowRight', 'Comma', 'Period'].includes(e.code) || e.altKey) block(); return; }
     // 覆いの中（「開始」ボタンなど）では既定の動作（Space・Enter で押す）だけを残し、再生などのツールの操作には渡さない
     if (X.state !== 'running') { if (inCover) e.stopImmediatePropagation(); else block(); return; }
     if (e.code === 'KeyV' && !X.set.review && !e.ctrlKey && !e.metaKey) block();
@@ -456,11 +542,12 @@
   $('expSetupBtn').addEventListener('click', e => { e.currentTarget.blur(); _.closePops(); $('expSetupDir').click(); });
   $('expSetupDir').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) setupExport(list); });
   $('expDoneBtn').addEventListener('click', e => { e.currentTarget.blur(); complete(); });
+  $('expRecFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'pick') pickFile(f); });
 
   // 自動保存から再開してよいか：この実験・参加者・試行の保存データで、「開始」を押した後のもの（core/storage.js）
   const expResumable = s => {
     const m = s && s.meta && s.meta.experiment;
     return !!X && !!m && m.name === X.cfg.name && m.participant === X.pid && m.trial === X.i && (s.log || []).some(l => l.type === 'task_start');
   };
-  Object.assign(_, { expResumable, expOn: () => !!X, expBlocked: () => !!X && X.state !== 'running', expState: () => (X ? X.state : null) });
+  Object.assign(_, { expResumable, expOn: () => !!X, expBlocked: () => !!X && X.state !== 'running', expAligning: () => !!X && X.state === 'align', expState: () => (X ? X.state : null) });
 })();

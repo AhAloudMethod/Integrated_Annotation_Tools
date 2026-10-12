@@ -42,13 +42,13 @@ function main(arg) {
     console.log('\n参加者ごとの順（[練] は練習）');
     for (const [pid, ts] of Object.entries(cfg.participants)) {
       if (!Array.isArray(ts)) continue;
-      console.log(`  ${pid}: ${ts.map(t => (t && t.practice ? '[練]' : '') + (t ? `${t.mode}${conditionFor(cfg, t) ? `（${conditionFor(cfg, t)}）` : ''}/${t.video}` : '?')).join(' → ')}`);
+      console.log(`  ${pid}: ${ts.map(t => (t && t.practice ? '[練]' : '') + (t ? `${t.mode}${conditionFor(cfg, t) ? `（${conditionFor(cfg, t)}）` : ''}/${t.record ? '（録画）' : t.video}` : '?')).join(' → ')}`);
     }
   }
   // 試行で使う動画ごとの評価区間（試行の range が優先）
   if (cfg && cfg.participants && typeof cfg.participants === 'object' && !Array.isArray(cfg.participants)) {
     const used = new Map();
-    for (const ts of Object.values(cfg.participants)) if (Array.isArray(ts)) for (const t of ts) if (t && t.video && !t.range && !used.has(t.video)) used.set(t.video, rangeFor(cfg, t));
+    for (const ts of Object.values(cfg.participants)) if (Array.isArray(ts)) for (const t of ts) if (t && t.video && !t.record && !t.range && !used.has(t.video)) used.set(t.video, rangeFor(cfg, t));
     if (used.size) {
       console.log('\n動画ごとの評価区間');
       for (const [v, r] of used) console.log(`  ${v}: ${r.edges ? `${r.edges[0]}〜${r.edges[r.edges.length - 1]} 秒（${r.edges.length - 1} 区間）` : r.start != null || r.end != null ? `${r.start ?? 0}〜${r.end ?? '最後'} 秒，${r.bin ?? 1} 秒ごと` : '動画全体，1 秒ごと'}`);
