@@ -66,7 +66,7 @@
   $('armBtn').addEventListener('click', e => { setArmed(!S.armed); e.target.blur(); });
   $('resetBtn').addEventListener('click', e => {
     e.currentTarget.blur();
-    if (!S.data || !confirm('この動画・方式の評価の値をすべて消して、初期値に戻します（Ctrl+Z で戻せます）。よろしいですか？')) return;
+    if (!S.data || !confirm(_.mod('この動画・方式の評価の値をすべて消して、初期値に戻します（Ctrl+Z で戻せます）。よろしいですか？'))) return;
     _.resetData();
   });
   $('graphEdit').addEventListener('change', e => { addLog('graph_edit', { value: e.target.checked }); e.target.blur(); });

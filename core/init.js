@@ -11,6 +11,7 @@
     let vp = 55; try { vp = +localStorage.getItem('ahann_vidsize') || 55; } catch (_) {}
     setVideoSize(vp);
     selectMode(sel.value); syncRangeUI();
+    _.localizeKeys();   // Mac では Ctrl を ⌘ と表示する
     requestAnimationFrame(tick);
   }
 

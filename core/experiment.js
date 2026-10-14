@@ -119,7 +119,7 @@
       <label>始める試行 <select id="expFrom"></select></label>
       <div class="expBtns"><button id="expGo" type="button">実験を始める</button><button id="expCancel" type="button">やめる</button></div>
       <div class="expSaved"><div class="refTitle">ブラウザに残っている結果</div><div id="expZips" class="expZips"></div></div>
-      <p class="muted">実験中は Ctrl+Shift+E で実験モードを抜けます。結果は試行ごとに 1 つの zip としてダウンロード先に書き出し、ブラウザにも残します。</p>`);
+      <p class="muted">実験中は ${_.mod('Ctrl')}+Shift+E で実験モードを抜けます。結果は試行ごとに 1 つの zip としてダウンロード先に書き出し、ブラウザにも残します。</p>`);
     const fill = () => {
       const pid = $('expPid').value, done = loadProgress(pid), ts = cfg.participants[pid];
       const first = ts.findIndex((_t, k) => !done[k] || done[k].partial);
@@ -339,7 +339,7 @@
     $('expDoneBtn').hidden = st !== 'running';
     const head = `<p class="expProg">${esc(progText())}</p>`;
     if (st === 'loading') cover(head + '<p>読み込んでいます…</p>');
-    else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、Ctrl+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
+    else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、${_.mod('Ctrl')}+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
     else if (st === 'pick') {
       const prev = loadRec(X.i);
       cover(head + '<h2>録画を選ぶ（実験者の方へ）</h2>'
@@ -528,7 +528,7 @@
   // 開始前・完了後はキーを効かせない（覆いの中の欄とボタンは除く）。視聴を許していなければ V も効かせない。
   // 他のキー操作（core/keys.js）より先に受け取るため、window の捕捉段階で止める
   window.addEventListener('keydown', e => {
-    if (e.code === 'KeyE' && e.ctrlKey && e.shiftKey) { if (X && X.state !== 'setup') { e.preventDefault(); exit(); } return; }
+    if (e.code === 'KeyE' && (e.ctrlKey || e.metaKey) && e.shiftKey) { if (X && X.state !== 'setup') { e.preventDefault(); exit(); } return; }
     const inCover = !$('expCover').hidden && $('expCover').contains(e.target);
     if (!X) { if (inCover) e.stopImmediatePropagation(); return; }   // setup.json の書き出しの画面の欄
     const block = () => { e.preventDefault(); e.stopImmediatePropagation(); };
