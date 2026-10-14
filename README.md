@@ -52,7 +52,7 @@ core/                 共通部分（読み込み順に依存するので，inde
 modes/                入力方式（読み込み順が「入力方式」の選択肢の並び順になる）
   _shared.js          方式に共通のヘルパ（AH.ui）
   key.js emujoy.js feeltrace.js rcea.js darma.js throttle.js halolight.js
-  carma.js ranktrace.js excel.js affectgrid.js sam.js affectrank.js custom.js
+  carma.js ranktrace.js excel.js affectgrid.js sam.js panas.js affectrank.js custom.js
 sam/                  SAM の原典画像
 vendor/               同梱した外部ライブラリ（vosk.js）
 tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する）
@@ -297,7 +297,7 @@ Excel（専用の方式とカスタムの Excel）のセルには，1〜9 に加
   - Thayer（横がエネルギー，縦が緊張）
 - 値の持ち方（横軸・縦軸それぞれ 1〜9，5 が中立）は変わらない．変わるのは，軸の名前，両端のラベル，方式の説明文，色の欄のラベル，書き出しの列名（`pa`・`na`，`energy`・`tension`），音声入力の語（「ポジティブ7」「負の感情3」「エネルギー6」「緊張4」など）である．色と象限の対応は変えない．
 - PANA と Thayer は VA の円環を 45° 回した軸である．そこで `_60hz.csv` と `_bins.csv` には，VA に直した値 `va_valence = 5 + (x−y)/√2`，`va_arousal = 5 + (x+y)/√2` も付ける（x, y は横軸・縦軸の中立 5 からのずれ）．上下限のない方式（RankTrace など）では，`_bins.csv` に VA に直した値を付けない（`_60hz.csv` には付ける）．この値は 1〜9 を少しはみ出すことがある（例：ポジティブ 9・ネガティブ 1 → 快度 10.66）．
-- SAM，Affect Grid，FEELTRACE，AffectRank は，絵や感情語が VA を前提にしているので VA のままにする．Excel は，感情ラベルの表を VA のときだけ出す．
+- SAM，Affect Grid，FEELTRACE，AffectRank は，絵や感情語が VA を前提にしているので VA のままにする．PANAS は ポジティブ・ネガティブ の尺度なので，設定にかかわらず PANA にする．Excel は，感情ラベルの表を VA のときだけ出す．
 - 選んだ軸の組は，操作ログの `axes` と書き出しの `meta.axes` に残る．評価の途中で変えるときは確認を出す．
 
 ### セッション
@@ -610,7 +610,7 @@ exp2/
 | `review_ms` | そのうち視聴をしていた時間 |
 | `n_play`・`n_seek`・`n_undo`・`n_redo` | 再生，シーク，取り消し，やり直しの回数 |
 | `n_strokes`・`n_events` | 連続方式の書き込みの数と，相対の変化の入力の数 |
-| `bins`・`filled_v`・`filled_a` | 評価区間の区間の数と，区間方式で値を入れた区間の数（未入力の区間を見つけるため） |
+| `bins`・`filled_v`・`filled_a` | 評価区間の区間の数と，区間方式で値を入れた区間の数（未入力の区間を見つけるため）．PANAS は 16 項目すべてに答えた区間の数（`filled_v`＝`filled_a`） |
 | `n_restore` | 自動保存から再開した回数 |
 | `partial` | 途中で抜けた試行なら 1 |
 | `survey_opened` | 開いたアンケートの数 |
@@ -643,8 +643,9 @@ exp2/
 | `_bins.csv`（整数値の連続方式：テンキー，カスタムの 9 段階×連続） | `bin, label, t_start, t_end, valence, arousal` | 区間内の 60 Hz の値のうち，最も長く続いた値（同数なら先に現れた値） |
 | `_bins.csv`（連続値・上下限あり） | `…, valence_mean, arousal_mean, valence_r9, arousal_r9` | 区間内の 60 Hz の値の平均（小数 3 桁）と，それを四捨五入した 9 段階 |
 | `_bins.csv`（連続値・上下限なし：RankTrace，カスタムの相対尺度） | `…, valence_mean, arousal_mean` | 区間内の平均 |
-| `_bins.csv`（区間方式：Excel，Affect Grid，SAM，カスタムの区間ごと） | `…, valence, arousal` | 入力値（未入力は空欄．Excel の 0 は発声なし） |
+| `_bins.csv`（区間方式：Excel，Affect Grid，SAM，PANAS，カスタムの区間ごと） | `…, valence, arousal` | 入力値（未入力は空欄．Excel の 0 は発声なし．PANAS は PANA の軸なので列名は `pa, na`，値は項目平均を 1〜9 に直した値） |
 | `_bins.csv`（AffectRank，変化ボタン） | `…, n_changes, sum_d_valence, sum_d_arousal` | 区間内の変化の回数と，方向（−1/0/+1）の合計 |
+| `_panas.csv`（PANAS） | `bin, label, t_start, t_end, pa1…pa8, na1…na8, n_answered, pa_sum, na_sum` | 区間ごとの 16 項目の回答（1〜6，未回答は空欄）と，全項目に答えた区間の PA・NA の合計（8〜48）．項目の文言と段階の表記は `_session.json` の `meta.panas` に残る |
 | `_changepoints.csv` | `axis, t, value, initial` | axis は valence か arousal．initial が 1 の点は t=0 の初期値 |
 | `_strokes.csv`（書き込みが 1 回以上あるとき） | `stroke, source, axes, t, valence, arousal` | stroke は書き込みの番号．source は input（マウスとキー），gamepad（ジョイスティックかスライダーの機器の値を含む），graph（グラフでの編集）のどれか．axes は v，a，va のどれか．書き込んでいない軸は空欄 |
 | `_ranks.csv` | `t, label, d_valence, d_arousal, source` | 変化の入力の時刻，方向の名前，方向（−1/0/+1），入れ方（input はクリックとキー，gamepad はジョイスティック） |
@@ -682,6 +683,7 @@ exp2/
 |---|---|---|---|---|
 | Excel | 現行の評価シート（CHI 実験 2 版） | 区間ごとのセル（既定は 1 秒），1〜9 の値，Affect Grid の図，メモ欄 | 操作ログを取るため HTML で再現した．行は快度→覚醒度の順に変えた．入力値の検査と，再生中の列の強調を足した．現行シートの 2 ページ目にあった Affect Grid を，ラベル・プロット表の代わりに右の欄へ常に出す | 現行シートは 29 列で 0:00 の列がない．評価区間の開始と区間の数で合わせられる |
 | Affect Grid | Russell et al. (1989) | 9×9 のマス，外周の 8 ラベル | 原典は刺激全体に 1 回だが，評価区間ごとに使う．直前の区間のマスを薄く表示する．「入力後に次の区間へ」を選べる | ― |
+| PANAS（日本語版） | 佐藤・安田 (2001) 日本語版 PANAS（16 項目，6 件法）．尺度使用マニュアル https://jspp.gr.jp/doc/PANAS_manual.pdf | PA 8 項目・NA 8 項目（活気のある，誇らしい，強気な，きっぱりとした，気合いの入った，わくわくした，機敏な，熱狂した／びくびくした，おびえた，うろたえた，心配した，ぴりぴりした，苦悩した，恥じた，いらだった），1「全く当てはまらない」〜6「非常によく当てはまる」 | 原典は自分の気分を答える質問紙だが，評価区間ごとに使う．項目は参加者 ID を種にしたランダム順（マニュアルの指定）．区間の値は項目の回答から作るので，声の入力と評価グラフの直接編集では置けない（声は断りを出し，グラフを押すとシークになる）．「合計を 1〜9 にしてグラフに出す」（オプション `to9`，既定はオフ）がオフのときは，区間の値（`_bins.csv`）は入れず，評価グラフと区間の帯には PA・NA の合計（8〜48）をそのまま出す．オンにすると，全項目に答えた区間に，PA・NA の項目平均（1〜6）を 1〜9 に引き伸ばして四捨五入した値が区間の値（`pa`・`na`）として入り，グラフと帯は 1〜9 になる．どちらでも合計は `_panas.csv` に残る．教示は目的に合わせて変えてよいとされている | 転載には著者の承諾が要る（マニュアルの「著作権関連情報」）．教示文の確定 |
 | SAM | Bradley & Lang (1994) | 9 段階（5 体の絵と，その間の 4 つの小円） | 支配性の軸を削った．原典は刺激全体に 1 回だが，評価区間ごとに使う．中間の値が押しにくくならないよう，絵のボタンと小円のボタンを同じ大きさにした．快度は左が不快になるよう，原典と左右を反転した．`sam/` に原典画像を置けばそれを使い，なければ自作の簡略版を使う | 原典画像の入手 |
 | EMuJoy | Nagel et al. (2007) | 2 次元の四角い平面，顔アイコン（目が覚醒度，口が快度），軌跡の尾 | 原典はマウス位置を常に記録するが，ボタンを押している間だけ記録する方式に変えた．顔と尾はオン／オフできる | 原典のサンプリング周期（50 ms か 10 Hz か） |
 | FEELTRACE | Cowie et al. (2000) | 円形の空間，位置に応じた色，円周と内部の感情語，縮んでいく円の軌跡 | 感情語は日本語の仮置き．押している間だけ記録する | 原典の感情語とその配置（論文系/FEELTRACE の図） |

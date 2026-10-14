@@ -22,7 +22,7 @@ const AH = { _: {} };
   // ---------- 状態 ----------
   const S = {
     meta: { participant: '', video_file: '', duration: 0, session_start_iso: '', tool: 'ah-annotator-v0.5', mode: '', options: {}, range: null },
-    data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, events:[], memo:''}
+    data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, items:[], events:[], memo:''}（items：区間ごとの項目の回答。PANAS だけが使う）
     log: [], undo: [], redo: [], t0: performance.now(), lastTime: 0,
     armed: false,
     videoSig: '',   // 動画の見分け（ファイルの大きさ＋長さ）。ファイル名を変えても評価区間を復元するため
@@ -30,7 +30,7 @@ const AH = { _: {} };
   const emptyData = () => {
     const iv = _.M ? _.M.init : { v: 5, a: 5 };
     return { points: { v: [{ t: 0, val: iv.v, init: true }], a: [{ t: 0, val: iv.a, init: true }] },
-             strokes: [], cells: { v: [], a: [] }, events: [], memo: '' };
+             strokes: [], cells: { v: [], a: [] }, items: [], events: [], memo: '' };
   };
   const model = () => (_.M ? _.M.model : 'series');
   // 値が整数か。方式が isInteger を持てばそれに従う（カスタムの「値」）。なければ区間表と integer の方式が整数

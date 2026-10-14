@@ -5,7 +5,7 @@ const { URL, VID, BROWSER } = require('./_env');
 const EXPECTED_ORDER = [
   '時間連続・2次元: key emujoy feeltrace rcea darma throttle halolight',
   '時間連続・1次元: carma ranktrace',
-  '離散: excel affectgrid sam',
+  '離散: excel affectgrid sam panas',
   '相対評価: affectrank',
   '変化の時点: change',
   'カスタム: custom',

@@ -129,6 +129,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 | `excel` | Excel | 区間ごと | `cuts`（`"fixed"`＝事前設定の区切り（既定），`"sec1"`＝1秒固定，`"self"`＝参加者が区切る） |
 | `affectgrid` | Affect Grid（9×9） | 区間ごと | `autoNext`（false） |
 | `sam` | SAM（9 段階の絵） | 区間ごと | `autoNext`（false） |
+| `panas` | PANAS（日本語版 16 項目・6 件法．軸は常に PANA） | 区間ごと | `autoNext`（false．全項目に答えたら次の区間へ），`to9`（false．true で合計を 1〜9 にして区間の値に入れる．false では区間の値を入れずに評価グラフと区間の帯へ合計 8〜48 を出す） |
 | `affectrank` | AffectRank（変化時に 8 方向） | 相対の変化 | ― |
 | `change` | 変化ボタン | 変化の時点 | ― |
 | `custom` | カスタム（設計軸の組み合わせ） | 組み合わせによる | `rep`，`time`，`values`，`input`，`dims`，`scale`，`face`，`trail`，`color`，`border`，`autoNext`，`cuts`，`curve`，`curveInput`（README の「カスタム方式」．`rep: "excel"` と `cuts: "self"` で参加者が区切る Excel になる．`rep: "excel"` と `curve: "on"` で，選んだ区間だけ区間の中の動きをグラフで入れられる（区間内で変化）．`curveInput` で入れ方（`"both"`・`"draw"`・`"template"`）を決める） |

@@ -138,9 +138,10 @@
       const cur = AH.curSec();
       [...wrap.children].forEach((c, s) => {
         c.classList.toggle('cur', s === cur);
-        c.querySelector('.v').textContent = S.data.cells.v[s] ?? '–';
-        c.querySelector('.a').textContent = S.data.cells.a[s] ?? '–';
-        c.classList.toggle('done', S.data.cells.v[s] != null && S.data.cells.a[s] != null);
+        const M = AH.mode, cv = ax => (M.graphCell ? M.graphCell(ax, s) : S.data.cells[ax][s]);   // 方式が区間の値を別に持つとき（PANAS の合計）はそれを出す
+        c.querySelector('.v').textContent = cv('v') ?? '–';
+        c.querySelector('.a').textContent = cv('a') ?? '–';
+        c.classList.toggle('done', cv('v') != null && cv('a') != null);
       });
       const cc = wrap.children[cur];
       if (cc && !video.paused) cc.scrollIntoView({ block: 'nearest', inline: 'nearest' });

@@ -144,7 +144,7 @@
     if (p.cmd === 'pause' && !video.paused) video.pause();
     if (!Object.keys(vals).length) { if (!p.cmd) toast(`聞き取り：「${text}」（値として読めませんでした）`, 'warn'); return false; }
     const M = _.M;
-    if (M.model === 'events' || M.unbounded) { toast('この方式では声による値の入力は使えません', 'warn'); return false; }
+    if (M.model === 'events' || M.unbounded || M.derivedCells) { toast('この方式では声による値の入力は使えません', 'warn'); return false; }
     if (M.model === 'table') {
       let s = binAt(t); if (s === nSec() && t >= (S.meta.duration || 0) - 0.05) s = nSec() - 1;
       if (s < 0 || s >= nSec()) { toast('評価区間外です', 'warn'); addLog('input_out_of_range', { detail: 'voice t=' + t.toFixed(3) }); return false; }

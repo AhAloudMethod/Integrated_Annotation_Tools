@@ -4,6 +4,7 @@
 //   PANA（Watson & Tellegen）横＝ポジティブ（低→高）   縦＝ネガティブ（低→高）
 //   Thayer                 横＝エネルギー（疲労→活気）   縦＝緊張（平静→緊張）
 // PANA・Thayer は VA の円環を 45° 回した軸なので、書き出しには VA に直した値（va_valence・va_arousal）も付ける。
+// PANAS（日本語版）は ポジティブ・ネガティブ の尺度なので、軸の組にかかわらず PANA（axesOnly）。
 // 絵や感情語が VA を前提にしている方式（vaOnly：SAM・Affect Grid・FEELTRACE・AffectRank）は、軸の組にかかわらず VA のまま。
 (() => {
   const _ = AH._;
@@ -30,7 +31,7 @@
   S.meta.axes = setId;
 
   // 今の方式で使う軸の組（VA 前提の方式は VA）
-  const current = () => ((_.M && _.M.vaOnly) ? 'va' : setId);
+  const current = () => (_.M && _.M.axesOnly) || ((_.M && _.M.vaOnly) ? 'va' : setId);   // axesOnly：方式が軸の組を決める（PANAS は PANA）
   const axSet = () => SETS[current()];
   const ax = k => axSet()[k];
   // 文中の「快度」「覚醒度」「快」「不快」「覚醒」「眠気」を今の軸の名前に置き換える（方式の説明文など）

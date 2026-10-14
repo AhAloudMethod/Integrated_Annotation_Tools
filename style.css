@@ -307,3 +307,17 @@ img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:bord
 .chgBtn small{font-size:11px;font-weight:400;color:var(--muted);margin-top:4px}
 .chgBtn.hit{background:var(--hit);border-color:var(--hit);color:#fff}
 .chgBtn.hit small{color:#fff}
+/* PANAS（日本語版）：16 項目×6 段階の一覧。項目が多いので一覧だけスクロールする */
+.panas{display:flex;flex-direction:column;gap:4px;max-height:100%;min-height:0}
+.pnHead{font-size:13px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.pnHead .pnSum{font-weight:600}
+.pnAnchor{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.pnList{overflow-y:auto;min-height:0;flex:1}
+.pnRow{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:1px 3px;border-radius:3px;border:1px solid transparent}
+.pnRow.act{border-color:var(--ink)}
+.pnName{font-size:13px;white-space:nowrap}
+.pnBtns{display:grid;grid-template-columns:repeat(6,26px);gap:2px}
+.pnBtns button{padding:2px 0;min-height:0}
+.pnBtns button.on{color:var(--ink);font-weight:700}
+.pnRow.pa button.on{background:color-mix(in srgb,var(--val) 25%,transparent);border-color:var(--val)}
+.pnRow.na button.on{background:color-mix(in srgb,var(--aro) 25%,transparent);border-color:var(--aro)}
