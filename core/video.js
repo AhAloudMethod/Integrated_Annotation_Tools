@@ -58,6 +58,7 @@
   $('pid').addEventListener('change', e => {
     const id = e.target.value.trim();
     if (!_.renameParticipant(S.meta.participant, id)) e.target.value = S.meta.participant;
+    _.refresh();   // 参加者 ID で変わる表示（PANAS の項目の並び）をすぐ更新する
   });
   // Enter・Esc で入力欄を抜ける（カーソルが残ると、数字キーが方式の入力にならず ID の末尾に入る）。change は blur で確定する
   $('pid').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.target.blur(); } });

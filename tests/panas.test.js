@@ -117,6 +117,18 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('見出し（区間・PA・NA）はスクロールしても上に見える', await p.evaluate(() => { const r = document.querySelector('.pnHead').getBoundingClientRect(), e = document.elementFromPoint(r.left + 10, r.top + 5); return !!e && !!e.closest('.pnTop'); }));
     await p.close();
   }
+  // 参加者 ID を変えると項目の並びが変わり、画面の並びと記録する並び（meta.panas.order）が、すぐ同じになる
+  {
+    const p = await open('P08', false);
+    const ord = () => p.evaluate(() => ({ dom: [...document.querySelectorAll('.pnRow')].map(r => r.dataset.i).join(','), meta: AH.S.meta.panas.order.join(','), seed: AH.S.meta.panas.order_seed }));
+    const a = await ord();
+    await p.fill('#pid', 'P09'); await p.keyboard.press('Enter'); await p.waitForTimeout(400);
+    await p.keyboard.press('ArrowUp');   // 並びを計算し直す操作のあとでも食い違わない
+    await p.waitForTimeout(200);
+    const c = await ord();
+    check('参加者 ID を変えると項目の並びが変わり、画面の並びと meta.panas.order が一致する', a.dom === a.meta && c.dom === c.meta && c.dom !== a.dom && c.seed === 'P09', JSON.stringify({ a: a.dom, c: c.dom, seed: c.seed }));
+    await p.close();
+  }
   // 参加者 ID を打って Enter・Esc を押すとカーソルが外れ、ID が確定し、数字キーは ID の末尾ではなく方式の入力になる
   for (const key of ['Enter', 'Escape']) {
     const p = await open(null, false);

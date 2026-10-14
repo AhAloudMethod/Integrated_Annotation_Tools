@@ -39,7 +39,7 @@
     return out;
   };
   const to9 = sum => Math.min(9, Math.max(1, Math.round(1 + (sum / 8 - 1) * 8 / 5)));   // 平均 1〜6 → 1〜9
-  let box, list, head, topBar, nvBtn, rows = [], act = 0, lastAct = -1, lastSec = -1, strip;
+  let box, list, head, topBar, nvBtn, rows = [], act = 0, lastAct = -1, lastSec = -1, strip, mounted = '';   // mounted：画面に出している項目の並び
 
   // 区間の値（cells）は項目の回答から決める。1〜9 化（to9）をオフにすると入れない（グラフ・帯・_bins.csv は空欄．合計は _panas.csv にある）
   function syncCells(s) {
@@ -93,7 +93,7 @@
     options: { autoNext: false, to9: false },
     help: '<p>今の区間について、16 の気分の項目がどれだけ当てはまるかを 1〜6 で答えます（1＝全く当てはまらない、6＝非常によく当てはまる）。全項目に答えると区間の値が入ります（「合計を 1〜9 にしてグラフに出す」をオフにすると、区間の値は入れず、グラフには合計 8〜48 をそのまま描きます）。数字キー <kbd>1</kbd>〜<kbd>6</kbd> で今の項目に答えて次へ進み、<kbd>↑</kbd><kbd>↓</kbd> で項目を移り、<kbd>Backspace</kbd> で消します。声のない区間は <kbd>0</kbd>（または「発声なし」）で印を付け、答えずに次へ進みます（もう一度押すと解除）。評価の対象から外れます。</p>',
     mount({ panel, under }) {
-      rows = []; lastSec = -1; lastAct = -1;
+      rows = []; lastSec = -1; lastAct = -1; mounted = order().join(',');
       box = h('div', { class: 'planeBox panas' });
       // 見出しと 1・6 の表記は上に固定する（右の列がスクロールしても見える）
       topBar = h('div', { class: 'pnTop' }); box.appendChild(topBar);
@@ -133,7 +133,7 @@
     },
     update() {
       if (!box) return;
-      if (S.meta.panas && S.meta.panas.order_seed !== (S.meta.participant || 'noid')) { AH.remount(); return; }   // 参加者 ID が変わったら並びを作り直す
+      if (mounted !== order().join(',')) { AH.remount(); return; }   // 参加者 ID が変わって並びが変わったら、画面を作り直す（画面の並びと記録する並び meta.panas.order を食い違わせない）
       syncAll();
       const s = AH.curSec(), r = row(s), t = sums(r), nv = isNV(s);
       if (s !== lastSec) { lastSec = s; act = nextOpen(s, order()[ITEMS.length - 1]); }
