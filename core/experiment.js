@@ -236,7 +236,7 @@
     if (document.body.classList.contains('vwin') && _.closeVideoWindow) _.closeVideoWindow();
     endStroke('trial'); setArmed(false); pen.down = false;
     if (video.src) _.autosave();
-    S.meta.video_file = ''; delete S.meta.save_key; S.data = null; S.undo = []; S.redo = []; S.log = [];
+    S.meta.video_file = ''; delete S.meta.save_key; delete S.meta.novoice_preset; S.data = null; S.undo = []; S.redo = []; S.log = [];
   }
   function startTrial(i) {
     teardown();
@@ -257,6 +257,9 @@
     const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
     const vref = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].ref;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
     S.meta.ref = typeof vref === 'number' ? vref : null;
+    // 発声なしの区間（setup.json の novoice。PANAS で事前に印を付け、参加者は変えられない．modes/panas.js）
+    const vnv = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].novoice;
+    if (Array.isArray(vnv) && vnv.length) S.meta.novoice_preset = vnv.map(x => [x[0], x[1]]); else delete S.meta.novoice_preset;
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
       name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
     if (!started && t.record) {
@@ -451,7 +454,7 @@
   // 設定の欄は exp-check.js の SETTINGS から作る。フォルダに setup.json があればその値を、無い項目は今の画面の値を初めの値にする
   // （手や Agent で直した設定を、評価区間を直すための書き出し直しで消さないため）。動画はフォルダの中のものを並べ、
   // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。覚えていなければ setup.json の区間を使い、どちらも無い動画は「未設定」と出して書き出さない。
-  // 基準音声の時刻 ref は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
+  // 基準音声の時刻 ref と発声なしの区間 novoice は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
   function currentSettings() {
     return { ...DEF, axes: _.axesId(), rate: +$('rate').value, afterWrite: $('afterWrite').value, timeline: !document.body.classList.contains('noTl'),
       graphEdit: $('graphEdit').checked, grid: _.gridShown(), f0: _.f0Shown(), voiced: _.voicedShown(), listen: _.listenOn(), videoSize: +$('vidSize').value,
@@ -486,7 +489,7 @@
       const dur = await durationOf(v.file);
       const r = dur ? _.loadRange(v.file.name, `${v.file.size}:${dur.toFixed(2)}`) : null;
       const prev = isObj(oldVids[v.path]) ? oldVids[v.path] : null;
-      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}) } : prev;
+      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}), ...(prev && Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) } : prev;
       rows.push({ path: v.path, dur, entry, kept: !r && !!prev });
     }
     const cur = { ...currentSettings(), ...Object.fromEntries(E.SETTINGS.filter(d => d.key in oldSet).map(d => [d.key, oldSet[d.key]])) };

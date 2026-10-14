@@ -94,11 +94,11 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const dls = []; p.on('download', d => dls.push(d)); await p.click('#exportBtn'); await p.waitForTimeout(1500);
     const read = async suf => { const d = dls.find(x => x.suggestedFilename().endsWith(suf)); if (!d) return null; const f = path.join(OUT, 'panas' + suf); await d.saveAs(f); return fs.readFileSync(f, 'utf8').replace(/^﻿/, '').split('\n'); };
     const pn = await read('_panas.csv'), bins = await read('_bins.csv'), ses = JSON.parse((await read('_session.json')).join('\n'));
-    check('_panas.csv の列', pn && pn[0] === 'bin,label,t_start,t_end,pa1,pa2,pa3,pa4,pa5,pa6,pa7,pa8,na1,na2,na3,na4,na5,na6,na7,na8,n_answered,pa_sum,na_sum,no_voice', pn && pn[0]);
-    check('_panas.csv の 1 行目：全項目 3 → 合計 24・24', pn && /,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,16,24,24,0$/.test(pn[1]), pn && pn[1]);
+    check('_panas.csv の列', pn && pn[0] === 'bin,label,t_start,t_end,pa1,pa2,pa3,pa4,pa5,pa6,pa7,pa8,na1,na2,na3,na4,na5,na6,na7,na8,n_answered,pa_sum,na_sum,no_voice,no_voice_preset', pn && pn[0]);
+    check('_panas.csv の 1 行目：全項目 3 → 合計 24・24', pn && /,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,16,24,24,0,0$/.test(pn[1]), pn && pn[1]);
     await p.keyboard.press('Digit0'); await p.waitForTimeout(100);
     const nvf = await p.evaluate(() => { const fs = AH._.buildFiles(); return { pn: fs.find(x => x.name.endsWith('_panas.csv')).text.split('\n')[1], bn: fs.find(x => x.name.endsWith('_bins.csv')).text.split('\n')[1] }; });
-    check('発声なしの書き出し：_panas.csv は回答と合計が空欄で no_voice=1、_bins.csv は pa・na が 0 で VA に直した値は空欄', nvf.pn.split(',').slice(4, 20).every(x => x === '') && /,0,,,1$/.test(nvf.pn) && /,0,0,,$/.test(nvf.bn), JSON.stringify(nvf));
+    check('発声なしの書き出し：_panas.csv は回答と合計が空欄で no_voice=1、_bins.csv は pa・na が 0 で VA に直した値は空欄', nvf.pn.split(',').slice(4, 20).every(x => x === '') && /,0,,,1,0$/.test(nvf.pn) && /,0,0,,$/.test(nvf.bn), JSON.stringify(nvf));
     await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
     check('_bins.csv は pa,na の列と、区間の値 4', bins && /,pa,na,va_valence,va_arousal$/.test(bins[0]) && /,4,4,/.test(bins[1]), bins && bins.slice(0, 2).join(' | '));
     check('_session.json に項目の文言・段階・並びが残る', ses.meta.panas && ses.meta.panas.items.length === 16 && ses.meta.panas.points === 6 && ses.meta.panas.order.length === 16 && ses.meta.axes === 'pana', JSON.stringify(ses.meta.panas).slice(0, 80));

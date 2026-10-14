@@ -29,7 +29,9 @@
   const meta = () => ({ scale: '日本語版PANAS（佐藤・安田 2001）', points: 6, anchors: { 1: LO, 6: HI }, items: ITEMS.map(x => ({ id: x.id, text: x.text })) });
   // 区間の回答：項目の番号順の配列。声のない区間は 'novoice'（発声なし．Excel の 0 と同じく，評価の対象から外す）
   const raw = s => (S.data.items && S.data.items[s]);
-  const isNV = s => raw(s) === 'novoice';
+  // 事前に印が付いた区間（実験モード。setup.json の novoice）は固定。判定は区間表モデルの共通部分（core/table.js）
+  const locked = s => AH.novoiceLocked(s);
+  const isNV = s => raw(s) === 'novoice' || locked(s);
   const row = s => (Array.isArray(raw(s)) ? raw(s) : []);
   const sums = r => {
     const out = { pa: 0, na: 0, n: 0 };
@@ -52,7 +54,7 @@
     AH.setOption('to9', on);   // 設定なので取り消しの対象にしない。区間の値は update() が合わせる
   }
   function setItem(s, i, v) {
-    if (AH.reviewing()) return;
+    if (AH.reviewing() || locked(s)) return;
     if (!S.data.items) S.data.items = [];
     const cur = row(s);
     if ((cur[i] ?? null) === (v ?? null)) return;
@@ -67,7 +69,7 @@
   }
   // 発声なし：声のない区間に印を付け、16 項目に答えずに次へ進む（もう一度押すと解除。項目に答えても解除）。印を付けると、その区間の回答は消える（Ctrl+Z で戻せる）
   function setNoVoice(s, on) {
-    if (AH.reviewing() || isNV(s) === on) return;
+    if (AH.reviewing() || locked(s) || isNV(s) === on) return;
     AH.pushUndo();
     if (!S.data.items) S.data.items = [];
     S.data.items[s] = on ? 'novoice' : null;
@@ -103,7 +105,7 @@
       cb.checked = !!S.meta.options.to9;
       cb.addEventListener('change', () => { setTo9(cb.checked); cb.blur(); });
       o.appendChild(l);
-      nvBtn = h('button', { type: 'button', class: 'pnNv', title: '声のない区間：16 項目に答えず、評価の対象から外す（0 キー。もう一度押すと解除）', onclick: e => { const s = AH.inputSec(); if (s != null) setNoVoice(s, !isNV(s)); e.currentTarget.blur(); } }, '発声なし<small>0</small>');
+      nvBtn = h('button', { type: 'button', class: 'pnNv', title: '声のない区間：16 項目に答えず、評価の対象から外す（0 キー。もう一度押すと解除）', onclick: e => { const s = AH.inputSec(); if (s != null && !locked(s)) setNoVoice(s, !isNV(s)); e.currentTarget.blur(); } }, '発声なし<small>0</small>');
       o.appendChild(nvBtn); box.appendChild(o);
       for (const k of order()) {
         const it = ITEMS[k];
@@ -119,6 +121,7 @@
       if (e.ctrlKey || e.metaKey || e.altKey) return false;
       const s = AH.inputSec(); if (s == null) return false;
       const m = /^(?:Digit|Numpad)([1-6])$/.exec(e.code);
+      if (locked(s)) return /^(?:Digit|Numpad)[0-6]$|^Backspace$/.test(e.code);   // 事前に印が付いた区間は固定（キーは受け取るだけで何も変えない）
       if (m) { answer(act, +m[1]); return true; }
       if (e.code === 'Digit0' || e.code === 'Numpad0') { setNoVoice(s, !isNV(s)); return true; }
       if (e.code === 'Backspace') { if (isNV(s)) setNoVoice(s, false); else setItem(s, act, null); return true; }
@@ -134,8 +137,9 @@
       syncAll();
       const s = AH.curSec(), r = row(s), t = sums(r), nv = isNV(s);
       if (s !== lastSec) { lastSec = s; act = nextOpen(s, order()[ITEMS.length - 1]); }
-      list.classList.toggle('nv', nv); nvBtn.classList.toggle('on', nv);
-      head.innerHTML = nv ? `<b>区間 ${AH.secLabel(s)}</b>　<span class="pnSum">発声なし（評価の対象外）</span>` : `<b>区間 ${AH.secLabel(s)}</b>　<span>回答 ${t.n}/${ITEMS.length}</span>　<span class="pnSum">PA ${t.n === ITEMS.length ? t.pa : '–'}</span>　<span class="pnSum">NA ${t.n === ITEMS.length ? t.na : '–'}</span>`;
+      const lk = locked(s);
+      list.classList.toggle('nv', nv); list.classList.toggle('lock', lk); nvBtn.classList.toggle('on', nv); nvBtn.disabled = lk;
+      head.innerHTML = nv ? `<b>区間 ${AH.secLabel(s)}</b>　<span class="pnSum">${lk ? '発声なし（事前設定。変更できません）' : '発声なし（評価の対象外）'}</span>` : `<b>区間 ${AH.secLabel(s)}</b>　<span>回答 ${t.n}/${ITEMS.length}</span>　<span class="pnSum">PA ${t.n === ITEMS.length ? t.pa : '–'}</span>　<span class="pnSum">NA ${t.n === ITEMS.length ? t.na : '–'}</span>`;
       rows.forEach((el, k) => {
         el.classList.toggle('act', k === act);
         for (const b of el.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === r[k]);
@@ -158,10 +162,10 @@
       const n = AH.nSec(), rowsOut = [];
       for (let s = 0; s < n; s++) {
         const r = row(s), t = sums(r), done = t.n === ITEMS.length;
-        rowsOut.push([s, AH.secLabel(s), AH.binStart(s).toFixed(3), AH.binEnd(s).toFixed(3), ...ITEMS.map(x => r[x.i] ?? ''), t.n, done ? t.pa : '', done ? t.na : '', isNV(s) ? 1 : 0]);
+        rowsOut.push([s, AH.secLabel(s), AH.binStart(s).toFixed(3), AH.binEnd(s).toFixed(3), ...ITEMS.map(x => r[x.i] ?? ''), t.n, done ? t.pa : '', done ? t.na : '', isNV(s) ? 1 : 0, locked(s) ? 1 : 0]);
       }
       order();
-      return [{ suffix: '_panas.csv', header: ['bin', 'label', 't_start', 't_end', ...ID, 'n_answered', 'pa_sum', 'na_sum', 'no_voice'], rows: rowsOut }];
+      return [{ suffix: '_panas.csv', header: ['bin', 'label', 't_start', 't_end', ...ID, 'n_answered', 'pa_sum', 'na_sum', 'no_voice', 'no_voice_preset'], rows: rowsOut }];
     },
   });
 })();

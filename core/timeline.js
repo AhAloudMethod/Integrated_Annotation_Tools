@@ -176,7 +176,7 @@
     if (!(_.M && _.M.unbounded)) v = clamp(v, 1, 9);
     v = edit.series && model() === 'table' ? r2(v) : isInt() ? Math.round(v) : _.M && _.M.decimals === 1 ? Math.round(v * 10) / 10 : r2(v);   // Excel の連続値は小数第1位まで（変化の区間は連続の方式と同じ）
     if (!edit.series) {
-      const s = binAt(t); if (s < 0 || s >= nSec() || _.curveIsCurve(edit.axis, s)) return;   // 変化の区間のセルは、セルの値で上書きしない
+      const s = binAt(t); if (s < 0 || s >= nSec() || _.curveIsCurve(edit.axis, s) || _.novoiceLocked(s)) return;   // 変化の区間のセルは、セルの値で上書きしない
       if (S.data.cells[edit.axis][s] !== v) { if (!edit.changed) pushUndo(edit.before); edit.changed = true; S.data.cells[edit.axis][s] = v; edit.bins.add(s); }
     } else {
       const f = Math.round(t * FPS), q = x => (isInt() && model() === 'series' ? Math.round(x) : r2(x));
@@ -273,6 +273,7 @@
   tl.addEventListener('pointerup', tlUp); tl.addEventListener('pointercancel', tlUp);
 
   function refresh() {
+    _.applyNoVoice();   // 発声なしの事前設定の区間を 0 にそろえる（core/table.js）
     const t = video.currentTime || 0;
     if (_.renderF0) _.renderF0();
     // 区間外は時刻の右上の札にする（文字に足すと幅が変わり、右のボタンがずれる）

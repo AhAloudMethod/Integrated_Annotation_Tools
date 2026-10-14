@@ -108,7 +108,7 @@
   }
   // 形を変える（パネルの形のボタン）：入れた区間の始めと終わりの値を保ったまま、その形の曲線にする。自由に描いた区間も同じ。発声なしの区間は変えない
   function reshape(s, shape, axes) {
-    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), done = [];
     for (const ax of axes) {
       const c = isCurve(ax, s) && info(ax, s);
@@ -126,7 +126,7 @@
   // 発声なし（パネルのボタン。トグル）：区間を両軸とも 0 にする。普通のセルはセルを 0 に、変化の区間は系列を 0 で描き換える（形の記録は外す）。
   // もう発声なしなら空欄に戻す（変化の区間は普通の空のセルに戻す）
   function noVoice(s, axes) {
-    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), off = isZero(s, axes);
     for (const ax of axes) {
       if (off) { if (isCurve(ax, s)) trim(ax, binStart(s), _.binEnd(s)); S.data.cells[ax][s] = null; }
@@ -141,7 +141,7 @@
   // ---------- 変化の区間にする・一定に戻す（パネルのボタン） ----------
   // 変化にすると、最初はセルの値のまま一定の線にする（値が入っていなければ初期値の 5 にし、入れた区間とはしない）
   function mark(s, axes) {
-    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), done = [];
     for (const ax of axes) {
       const v = S.data.cells[ax][s]; if (v === CURVE) continue;
@@ -156,7 +156,7 @@
   }
   // 一定に戻す：区間の平均を、普通のセルの刻み（9 段階なら整数、連続値なら小数第 1 位）に丸めた値にする。入れていない区間は空欄、発声なしは 0
   function unmark(s, axes) {
-    if (!on() || _.reviewing() || s < 0 || s >= nSec()) return false;
+    if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), done = [];
     for (const ax of axes) {
       if (!isCurve(ax, s)) continue;
