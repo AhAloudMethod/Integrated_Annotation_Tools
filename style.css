@@ -6,10 +6,12 @@
 :root{
   --bg:#EEF1F3; --panel:#FFFFFF; --ink:#1D2630; --muted:#66727F; --line:#D5DBE0;
   --val:#1F7A8C; --aro:#A86B12; --f0:#6B4FA0; --head:#1D2630; --grid:#E3E7EA; --pen:#C0392B; --hit:#2E9E5B;
+  --fig:#FFFFFF;   /* 黒い線の図（Affect Grid）の下地 */
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
-    --val:#4FB3C6; --aro:#E0A64A; --f0:#B39DDB; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E; }
+    --val:#4FB3C6; --aro:#E0A64A; --f0:#B39DDB; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E;
+    --fig:#A4ADB6; }   /* 白だと暗い画面で眩しいので落とす。黒い線は読める濃さに留める */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
@@ -259,7 +261,7 @@ table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
 .cutBox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .cutBox .refTitle{flex-basis:100%;margin-bottom:0}
 img.xlAg:not([hidden]){display:block}   /* 高さは右の列に収まるよう core/layout.js が決める */
-img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:border-box;background:#fff;border-radius:4px}   /* 透過 PNG の黒い線をダークモードでも読めるよう、紙と同じ白い下地にする */
+img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:border-box;background:var(--fig);border-radius:4px}   /* 透過 PNG の黒い線をダークモードでも読めるよう、明るい下地にする */
 .planeBox textarea{width:100%}
 
 /* SAM */
