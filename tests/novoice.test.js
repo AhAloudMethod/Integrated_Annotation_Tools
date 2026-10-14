@@ -103,7 +103,12 @@ const run = dir => { const r = spawnSync(process.execPath, [TOOL, dir], { encodi
     const q = await openExp(mode, { autoNext: true });
     const s0 = await vals(q);
     check(`${mode}：事前に印が付いた区間（2・3）は値が 0、ほかは空`, same(s0, [[0, 0], [0, 0], [null, null]]), JSON.stringify(s0));
-    await seek(q, 2.3); await click(q, how);
+    await seek(q, 2.3);
+    const nt = await q.evaluate(() => { const n = document.querySelector('.nvNote'), r = n && n.getBoundingClientRect(); return { shown: !!n && !n.hidden && r.width > 0, text: n ? n.textContent : '', dim: n ? getComputedStyle(n.parentNode.querySelector(':scope > :not(.nvNote)')).opacity : '' }; });
+    await seek(q, 1.3); const nt1 = await q.evaluate(() => { const n = document.querySelector('.nvNote'); return !!n && n.hidden; });
+    await seek(q, 2.3);
+    check(`${mode}：固定の区間ではパネルの上に「発声なし（事前設定）」を出して薄くし、ほかの区間では出さない`, nt.shown && /事前設定/.test(nt.text) && +nt.dim < 1 && nt1, JSON.stringify({ nt, hiddenElsewhere: nt1 }));
+    await click(q, how);
     check(`${mode}：その区間では入力が効かず、値は 0 のまま`, same((await vals(q)).slice(0, 2), [[0, 0], [0, 0]]), JSON.stringify(await vals(q)));
     await seek(q, 1.3); await click(q, how);
     const s2 = await q.evaluate(() => ({ cell: [AH.S.data.cells.v[1], AH.S.data.cells.a[1]], sec: AH.curSec() }));
@@ -130,6 +135,28 @@ const run = dir => { const r = spawnSync(process.execPath, [TOOL, dir], { encodi
       check(`${name}：形・発声なし・変化にする、のボタンも固定の区間では何も変えない`, same(cc.cells, [[0, 0], [0, 0]]) && cc.shapes === 0 && cc.undo === 0, JSON.stringify(cc));
     }
     check(`${name}：コードから値を入れても固定の区間は 0 のまま`, same((await vals(q)).slice(0, 2), [[0, 0], [0, 0]]), JSON.stringify({ c1, v: await vals(q) }));
+    await q.close();
+  }
+  // Excel＋聴いてから入力：固定の列 2・3 は、移動でも聴く区間でも飛ばす（区間 1 の最後の行で Enter → 区間 4 を聴く）
+  {
+    const d = folder('nv_exp_excel_listen', { name: 'nv', participants: { P01: [{ mode: 'excel', video: 'a.mp4' }] } }, { ...setupWith([[2, 4]]), settings: { listen: true } }, true);
+    const q = await (await browser.newContext({ viewport: { width: 1366, height: 768 } })).newPage();
+    q.on('pageerror', e => errs.push(e.message)); q.on('dialog', x => x.accept());
+    await q.goto(URL); await q.setInputFiles('#expDir', d);
+    await q.waitForSelector('#expGo'); await q.click('#expGo');
+    await q.waitForFunction(() => AH._.expState() === 'ready'); await q.click('#expStart');
+    await q.waitForFunction(() => AH._.expState() === 'running'); await q.waitForTimeout(400);
+    const plays = []; await q.exposeFunction('__plays', s => plays.push(s));
+    await q.evaluate(() => { AH.video.addEventListener('play', () => window.__plays(+AH.video.currentTime.toFixed(1))); });
+    await q.evaluate(() => document.activeElement && document.activeElement.blur());
+    await q.keyboard.press('Space'); await q.waitForTimeout(1500);
+    for (let s = 0; s < 2; s++) {
+      await q.waitForFunction(() => AH.video.paused, null, { timeout: 4000 }); await q.waitForTimeout(150);
+      if (s === 0) await q.click('input[data-ax=v][data-s="0"]');
+      await q.keyboard.type('5'); await q.keyboard.press('Enter'); await q.keyboard.type('5'); await q.keyboard.press('Enter'); await q.waitForTimeout(1500);
+    }
+    const w = await q.evaluate(() => { const e = document.activeElement; return { sec: AH.curSec(), focus: e && e.dataset ? e.dataset.ax + ':' + e.dataset.s : '-' }; });
+    check('excel＋聴いてから入力：固定の列 2・3 は再生せず、区間 4 を聴き、カーソルも区間 4 へ移る', same(plays, [0, 1, 4]) && w.sec === 4 && w.focus === 'v:4', JSON.stringify({ plays, ...w }));
     await q.close();
   }
   // 5. 区間表でない方式の動画に novoice があれば警告（効かないため）

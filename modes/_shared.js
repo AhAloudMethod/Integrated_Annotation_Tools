@@ -120,6 +120,13 @@
     out.push({ ...cur, age: 0 }); return out;
   }
 
+  // 発声なしの事前設定の区間（実験モード。core/table.js の novoiceLocked）では、パネルの上に目印を出して全体を薄くする（Affect Grid・SAM）。
+  // 返す関数を update() で呼ぶ（今の区間が固定かで切り替える）
+  function lockNote(box) {
+    const note = h('div', { class: 'nvNote', hidden: '' }, '発声なし（事前設定）　変更できません');
+    box.insertBefore(note, box.firstChild);
+    return () => { const lk = AH.novoiceLocked(AH.curSec()); note.hidden = !lk; box.classList.toggle('nvLock', lk); };
+  }
   // 1秒ごとの入力状況の帯（AffectGrid・SAM）
   function secStrip(under) {
     const wrap = h('div', { class: 'strip' }); under.appendChild(wrap);
@@ -236,17 +243,18 @@
             if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.setVoicedShown(!AH._.voicedShown(), 'key'); return; }   // 発声の区間の表示   // 今の時間で区切る（区切れるときだけ）
             if (!move) return;
             e.preventDefault();
-            // 次のセル。変化の区間のセル（入力欄が無い）は飛ばして、同じ向きに進む
+            // 次のセル。変化の区間のセル（入力欄が無い）と、発声なしの事前設定の列（固定）は飛ばして、同じ向きに進む
             let rr = r, ss = s, nx = null;
             for (let k = 0; k < axes.length * n && !nx; k++) {
               if (e.key === 'Enter') { rr += move[0] === 0 ? 0 : back; if (rr < 0 || rr > last) { rr = rr < 0 ? last : 0; ss += back; } }
               else { rr += move[0]; ss += move[1]; }
               if (rr < 0 || rr > last || ss < 0 || ss >= n) break;
               nx = grid.querySelector(`input[data-ax="${axes[rr]}"][data-s="${ss}"]`);
+              if (nx && AH.novoiceLocked(ss)) nx = null;
             }
             if (nx) { nx.focus(); nx.select(); }
             // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
-            if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
+            if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(ss);   // 移った先の区間（固定の列は飛ばす）
           });
           inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
@@ -484,6 +492,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, cellSec, setCellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, lockNote, xlTable, cellSec, setCellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

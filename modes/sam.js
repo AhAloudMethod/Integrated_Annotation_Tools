@@ -1,8 +1,8 @@
 // ---- SAM（9段階の絵） ----
 (() => {
   const { S } = AH;
-  const { h, toggle, secStrip, autoNext, samRows } = AH.ui;
-  let rows = {}, strip;
+  const { h, toggle, secStrip, autoNext, samRows, lockNote } = AH.ui;
+  let rows = {}, strip, lock;
   AH.register({
     vaOnly: true,   // 絵・感情語が VA 前提なので、評価の軸の組にかかわらず VA（core/axes.js）
     id: 'sam', group: '離散', label: 'SAM（9段階の絵）', model: 'table', side: 'narrow', init: { v: 5, a: 5 },
@@ -17,9 +17,10 @@
         if (S.data.cells.v[s] != null && S.data.cells.a[s] != null) autoNext(s);
       });
       const o = h('div', { class: 'opts' }); toggle(o, 'autoNext', '入力後に次の区間へ'); box.appendChild(o);
-      panel.appendChild(box); strip = secStrip(under);
+      panel.appendChild(box); strip = secStrip(under); lock = lockNote(box);
     },
     update() {
+      if (lock) lock();
       const s = AH.curSec();
       for (const ax of ['v', 'a']) if (rows[ax]) for (const b of rows[ax].children) b.classList.toggle('on', +b.dataset.v === S.data.cells[ax][s]);
       strip();

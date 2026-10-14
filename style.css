@@ -313,6 +313,8 @@ img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:bord
 .pnTop{position:sticky;top:-10px;z-index:1;background:var(--panel);margin:-10px -10px 0;padding:10px 10px 2px}
 .pnHead{font-size:13px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
 .pnHead .pnSum{font-weight:600}
+.nvNote{font-size:12px;font-weight:600;padding:2px 0 4px}
+.planeBox.nvLock>:not(.nvNote){opacity:.4}
 .pnList.nv .pnRow{opacity:.4}
 .pnList.lock .pnRow{pointer-events:none}
 .pnNv:disabled{opacity:.5;cursor:not-allowed}
