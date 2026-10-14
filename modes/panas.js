@@ -34,7 +34,7 @@
     return out;
   };
   const to9 = sum => Math.min(9, Math.max(1, Math.round(1 + (sum / 8 - 1) * 8 / 5)));   // 平均 1〜6 → 1〜9
-  let box, list, head, rows = [], act = 0, lastSec = -1, strip;
+  let box, list, head, topBar, rows = [], act = 0, lastAct = -1, lastSec = -1, strip;
 
   // 区間の値（cells）は項目の回答から決める。1〜9 化（to9）をオフにすると入れない（グラフ・帯・_bins.csv は空欄．合計は _panas.csv にある）
   function syncCells(s) {
@@ -77,10 +77,12 @@
     options: { autoNext: false, to9: false },
     help: '<p>今の区間について、16 の気分の項目がどれだけ当てはまるかを 1〜6 で答えます（1＝全く当てはまらない、6＝非常によく当てはまる）。全項目に答えると区間の値が入ります（「合計を 1〜9 にしてグラフに出す」をオフにすると、区間の値は入れず、グラフには合計 8〜48 をそのまま描きます）。数字キー <kbd>1</kbd>〜<kbd>6</kbd> で今の項目に答えて次へ進み、<kbd>↑</kbd><kbd>↓</kbd> で項目を移り、<kbd>Backspace</kbd> で消します。</p>',
     mount({ panel, under }) {
-      rows = []; lastSec = -1;
+      rows = []; lastSec = -1; lastAct = -1;
       box = h('div', { class: 'planeBox panas' });
-      head = h('div', { class: 'pnHead' }); box.appendChild(head);
-      box.appendChild(h('div', { class: 'pnAnchor' }, `<span>1 ${LO}</span><span>6 ${HI}</span>`));
+      // 見出しと 1・6 の表記は上に固定する（右の列がスクロールしても見える）
+      topBar = h('div', { class: 'pnTop' }); box.appendChild(topBar);
+      head = h('div', { class: 'pnHead' }); topBar.appendChild(head);
+      topBar.appendChild(h('div', { class: 'pnAnchor' }, `<span>1 ${LO}</span><span>6 ${HI}</span>`));
       list = h('div', { class: 'pnList' }); box.appendChild(list);
       const o = h('div', { class: 'opts' }); AH.ui.toggle(o, 'autoNext', '全項目に答えたら次の区間へ');
       const l = h('label', { class: 'optCtl', title: 'オフ：区間の値（グラフ・帯・_bins.csv）を入れない。PA・NA の合計と項目ごとの回答は _panas.csv に残る' }, '<input type="checkbox"> 合計を 1〜9 にしてグラフに出す'), cb = l.querySelector('input');
@@ -120,7 +122,8 @@
         el.classList.toggle('act', k === act);
         for (const b of el.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === r[k]);
       });
-      const ar = rows[act]; if (ar && list) { const a = ar.offsetTop - list.offsetTop; if (a < list.scrollTop) list.scrollTop = a; else if (a + ar.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = a + ar.offsetHeight - list.clientHeight; }   // 今の項目が見える位置へ
+      // 今の項目が見える位置へ（項目か区間が変わったときだけ．スクロールしているのは一覧ではなく右の列なので scrollIntoView で上位の枠ごと動かす。手でスクロールした位置は変えない）
+      if (act !== lastAct && rows[act]) { lastAct = act; rows[act].style.scrollMarginTop = (topBar.offsetHeight + 4) + 'px'; rows[act].scrollIntoView({ block: 'nearest' }); }   // 上に固定した見出しの下に隠れないよう余白を取る
       if (strip) strip();
     },
     // 評価グラフ（core/timeline.js）と区間の帯（modes/_shared.js の secStrip）：1〜9 化をオフにしたときは，PA・NA の合計（8〜48）をそのまま描く

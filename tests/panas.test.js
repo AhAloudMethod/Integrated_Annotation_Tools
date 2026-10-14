@@ -84,6 +84,19 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('_session.json に項目の文言・段階・並びが残る', ses.meta.panas && ses.meta.panas.items.length === 16 && ses.meta.panas.points === 6 && ses.meta.panas.order.length === 16 && ses.meta.axes === 'pana', JSON.stringify(ses.meta.panas).slice(0, 80));
     await p.close();
   }
+  // 画面が低いとき（評価グラフを開くと右の列は一部しか見えない）でも、キーで答える間、今の項目が見える位置に追従する
+  {
+    const p = await open('P05', false);
+    await p.setViewportSize({ width: 1280, height: 600 }); await p.evaluate(() => AH._.setTimeline(true)); await p.waitForTimeout(400);
+    const seen = () => p.evaluate(() => { const r = document.querySelector('.pnRow.act').getBoundingClientRect(), e = document.elementFromPoint(r.left + 20, r.top + r.height / 2); return !!e && document.querySelector('.pnRow.act').contains(e); });
+    const some = await p.evaluate(() => { const rs = [...document.querySelectorAll('.pnRow')]; return rs.filter(r => { const x = r.getBoundingClientRect(), e = document.elementFromPoint(x.left + 20, x.top + x.height / 2); return !!e && r.contains(e); }).length; });
+    let down = 0, up = 0;
+    for (let k = 0; k < 16; k++) { await p.keyboard.press('Digit3'); await p.waitForTimeout(30); if (!(await seen())) down++; }
+    for (let k = 0; k < 20; k++) { await p.keyboard.press('ArrowUp'); await p.waitForTimeout(30); if (!(await seen())) up++; }
+    check('画面が低く一部の項目しか見えなくても、今の項目が見える位置に追従する（答えて進む・↑で戻る）', some < 16 && down === 0 && up === 0, JSON.stringify({ visibleRows: some, hiddenDown: down, hiddenUp: up }));
+    check('見出し（区間・PA・NA）はスクロールしても上に見える', await p.evaluate(() => { const r = document.querySelector('.pnHead').getBoundingClientRect(), e = document.elementFromPoint(r.left + 10, r.top + 5); return !!e && !!e.closest('.pnTop'); }));
+    await p.close();
+  }
   console.log('errors:', errs.length ? errs.join('|') : 'none');
   await browser.close();
 })();
