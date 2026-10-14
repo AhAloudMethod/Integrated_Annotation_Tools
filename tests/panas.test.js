@@ -16,7 +16,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.selectOption('#mode', 'panas'); await p.setInputFiles('#file', VID);
     await p.waitForFunction(() => AH.S.meta.duration > 0); await p.waitForTimeout(200);
     await p.evaluate(() => document.activeElement && document.activeElement.blur());
-    if (on) { await p.check('.panas .optCtl:last-child input'); }   // 既定はオフ（合計を 1〜9 にしない）
+    if (on) { await p.check('.panas .optCtl:nth-child(2) input'); }   // 既定はオフ（合計を 1〜9 にしない）
     return p;
   };
   const names = p => p.$$eval('.pnRow .pnName', es => es.map(e => e.textContent));
@@ -25,7 +25,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   {
     const off = await open('P00', false);   // 別の ID（同じ ID だと、この画面が保存した途中データを再開してしまう）
     await off.evaluate(() => { for (const r of document.querySelectorAll('.pnRow')) r.querySelector('button[data-v="3"]').click(); });
-    const o = await off.evaluate(() => ({ cb: document.querySelector('.panas .optCtl:last-child input').checked, v: AH.S.data.cells.v[0] ?? null, sum: AH.mode.graphCell('v', 0), scale: !!AH.mode.graphScale() }));
+    const o = await off.evaluate(() => ({ cb: document.querySelector('.panas .optCtl:nth-child(2) input').checked, v: AH.S.data.cells.v[0] ?? null, sum: AH.mode.graphCell('v', 0), scale: !!AH.mode.graphScale() }));
     check('既定はオフ：区間の値は入れず、グラフ・帯は合計（24）', !o.cb && o.v === null && o.sum === 24 && o.scale, JSON.stringify(o));
     await off.close();
     const p = await open('P01');
@@ -74,12 +74,32 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const vz = await p.evaluate(() => { const u = AH.S.undo.length, n = AH.S.log.length; const ok = AH._.applyVoice(AH._.parseVoice('ポジティブ7'), 0.5, 'ポジティブ7'); return { ok, du: AH.S.undo.length - u, cv: AH.S.log.slice(n).filter(x => /cell_voice/.test(x.type)).length }; });
     check('声の入力は断る（値も取り消しもログも増えない）', vz.ok === false && vz.du === 0 && vz.cv === 0, JSON.stringify(vz));
     check('実験の要約 filled_v・filled_a：全項目に答えた区間の数', await p.evaluate(() => AH.mode.filledCount('v') === 1 && AH.mode.filledCount('a') === 1));
+    // 発声なし：0 キーで印を付ける（区間の値は 0、グラフ・帯も 0、回答は消える）。もう一度押す・項目に答えると解除。取り消せる
+    await p.keyboard.press('Digit0'); await p.waitForTimeout(100);
+    const nv = await p.evaluate(() => ({ cells: [AH.S.data.cells.v[0], AH.S.data.cells.a[0]], item: AH.S.data.items[0], g: [AH.mode.graphCell('v', 0), AH.mode.graphCell('a', 0)], head: document.querySelector('.pnHead').textContent, fill: AH.mode.filledCount('v'), strip: document.querySelector('.strip .sc.cur .v').textContent }));
+    check('発声なし（0 キー）：区間の値は 0、回答は外れ、見出しに表示、帯は 0、要約の「入れた区間」に数える', nv.cells[0] === 0 && nv.cells[1] === 0 && nv.item === 'novoice' && nv.g[0] === 0 && /発声なし/.test(nv.head) && nv.fill === 1 && nv.strip === '0', JSON.stringify(nv));
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    const un = await p.evaluate(() => AH.S.data.items[0].filter(x => x != null).length);
+    check('発声なし：Ctrl+Z で印を付ける前の回答（16 項目）が戻る', un === 16, String(un));
+    await p.keyboard.press('Digit0'); await p.keyboard.press('Digit0'); await p.waitForTimeout(100);
+    const tg = await p.evaluate(() => ({ nv: AH.S.data.items[0] === 'novoice', v: AH.S.data.cells.v[0] ?? null }));
+    check('発声なし：もう一度 0 を押すと解除（空欄に戻る）', !tg.nv && tg.v === null, JSON.stringify(tg));
+    await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);   // 全項目 3 の状態へ
+    await p.keyboard.press('Digit0'); await p.waitForTimeout(80);
+    await p.click('.pnRow:nth-child(1) button[data-v="2"]'); await p.waitForTimeout(100);
+    const cl = await p.evaluate(() => ({ nv: AH.S.data.items[0] === 'novoice', n: (AH.S.data.items[0] || []).filter(x => x != null).length, v: AH.S.data.cells.v[0] ?? null }));
+    check('発声なしの区間で項目に答えると印が外れ、その 1 項目だけが残る', !cl.nv && cl.n === 1 && cl.v === null, JSON.stringify(cl));
+    await p.keyboard.press('Control+z'); await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
     // 書き出し
     const dls = []; p.on('download', d => dls.push(d)); await p.click('#exportBtn'); await p.waitForTimeout(1500);
     const read = async suf => { const d = dls.find(x => x.suggestedFilename().endsWith(suf)); if (!d) return null; const f = path.join(OUT, 'panas' + suf); await d.saveAs(f); return fs.readFileSync(f, 'utf8').replace(/^﻿/, '').split('\n'); };
     const pn = await read('_panas.csv'), bins = await read('_bins.csv'), ses = JSON.parse((await read('_session.json')).join('\n'));
-    check('_panas.csv の列', pn && pn[0] === 'bin,label,t_start,t_end,pa1,pa2,pa3,pa4,pa5,pa6,pa7,pa8,na1,na2,na3,na4,na5,na6,na7,na8,n_answered,pa_sum,na_sum', pn && pn[0]);
-    check('_panas.csv の 1 行目：全項目 3 → 合計 24・24', pn && /,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,16,24,24$/.test(pn[1]), pn && pn[1]);
+    check('_panas.csv の列', pn && pn[0] === 'bin,label,t_start,t_end,pa1,pa2,pa3,pa4,pa5,pa6,pa7,pa8,na1,na2,na3,na4,na5,na6,na7,na8,n_answered,pa_sum,na_sum,no_voice', pn && pn[0]);
+    check('_panas.csv の 1 行目：全項目 3 → 合計 24・24', pn && /,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,16,24,24,0$/.test(pn[1]), pn && pn[1]);
+    await p.keyboard.press('Digit0'); await p.waitForTimeout(100);
+    const nvf = await p.evaluate(() => { const fs = AH._.buildFiles(); return { pn: fs.find(x => x.name.endsWith('_panas.csv')).text.split('\n')[1], bn: fs.find(x => x.name.endsWith('_bins.csv')).text.split('\n')[1] }; });
+    check('発声なしの書き出し：_panas.csv は回答と合計が空欄で no_voice=1、_bins.csv は pa・na が 0 で VA に直した値は空欄', nvf.pn.split(',').slice(4, 20).every(x => x === '') && /,0,,,1$/.test(nvf.pn) && /,0,0,,$/.test(nvf.bn), JSON.stringify(nvf));
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
     check('_bins.csv は pa,na の列と、区間の値 4', bins && /,pa,na,va_valence,va_arousal$/.test(bins[0]) && /,4,4,/.test(bins[1]), bins && bins.slice(0, 2).join(' | '));
     check('_session.json に項目の文言・段階・並びが残る', ses.meta.panas && ses.meta.panas.items.length === 16 && ses.meta.panas.points === 6 && ses.meta.panas.order.length === 16 && ses.meta.axes === 'pana', JSON.stringify(ses.meta.panas).slice(0, 80));
     await p.close();

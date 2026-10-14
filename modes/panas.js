@@ -2,7 +2,7 @@
 // 佐藤 徳・安田朝子 (2001) 日本語版 PANAS の作成．性格心理学研究, 9, 138-139．
 // 項目文・段階の表記・採点は，作者の「尺度使用マニュアル」（https://jspp.gr.jp/doc/PANAS_manual.pdf）による．転載は著者の承諾が要る．
 // 区間ごとに 16 項目すべてに 1〜6 で答え，PA（ポジティブ）8 項目の合計・NA（ネガティブ）8 項目の合計を出す．
-// 項目ごとの回答は S.data.items[区間]（項目の番号順），書き出しは _panas.csv．区間の表（cells）には，ほかの方式と並べて見られるよう
+// 項目ごとの回答は S.data.items[区間]（項目の番号順．声のない区間は 'novoice'＝発声なし，評価の対象外），書き出しは _panas.csv．区間の表（cells）には，ほかの方式と並べて見られるよう
 // 項目の平均（1〜6）を 1〜9 に引き伸ばして四捨五入した値（v＝PA，a＝NA）を入れる（オプション to9．既定はオフで，オフなら入れない）．
 (() => {
   const { S } = AH;
@@ -27,19 +27,22 @@
     return S.meta.panas.order;
   };
   const meta = () => ({ scale: '日本語版PANAS（佐藤・安田 2001）', points: 6, anchors: { 1: LO, 6: HI }, items: ITEMS.map(x => ({ id: x.id, text: x.text })) });
-  const row = s => (S.data.items && S.data.items[s]) || [];
+  // 区間の回答：項目の番号順の配列。声のない区間は 'novoice'（発声なし．Excel の 0 と同じく，評価の対象から外す）
+  const raw = s => (S.data.items && S.data.items[s]);
+  const isNV = s => raw(s) === 'novoice';
+  const row = s => (Array.isArray(raw(s)) ? raw(s) : []);
   const sums = r => {
     const out = { pa: 0, na: 0, n: 0 };
     for (const x of ITEMS) { const v = r[x.i]; if (v != null) { out[x.factor] += v; out.n++; } }
     return out;
   };
   const to9 = sum => Math.min(9, Math.max(1, Math.round(1 + (sum / 8 - 1) * 8 / 5)));   // 平均 1〜6 → 1〜9
-  let box, list, head, topBar, rows = [], act = 0, lastAct = -1, lastSec = -1, strip;
+  let box, list, head, topBar, nvBtn, rows = [], act = 0, lastAct = -1, lastSec = -1, strip;
 
   // 区間の値（cells）は項目の回答から決める。1〜9 化（to9）をオフにすると入れない（グラフ・帯・_bins.csv は空欄．合計は _panas.csv にある）
   function syncCells(s) {
-    const t = sums(row(s)), on = !!S.meta.options.to9 && t.n === ITEMS.length;
-    const v = on ? to9(t.pa) : null, a = on ? to9(t.na) : null;
+    const t = sums(row(s)), on = !!S.meta.options.to9 && t.n === ITEMS.length, nv = isNV(s);
+    const v = nv ? 0 : on ? to9(t.pa) : null, a = nv ? 0 : on ? to9(t.na) : null;   // 発声なしは，1〜9 化にかかわらず 0（他の方式の「発声なし」と同じ）
     if ((S.data.cells.v[s] ?? null) === v && (S.data.cells.a[s] ?? null) === a) return;
     S.data.cells.v[s] = v; S.data.cells.a[s] = a;
   }
@@ -62,6 +65,17 @@
     AH.refresh();
     if (done && v != null) autoNext(s);
   }
+  // 発声なし：声のない区間に印を付け、16 項目に答えずに次へ進む（もう一度押すと解除。項目に答えても解除）。印を付けると、その区間の回答は消える（Ctrl+Z で戻せる）
+  function setNoVoice(s, on) {
+    if (AH.reviewing() || isNV(s) === on) return;
+    AH.pushUndo();
+    if (!S.data.items) S.data.items = [];
+    S.data.items[s] = on ? 'novoice' : null;
+    syncCells(s);
+    AH.addLog('panas_novoice', { value: on ? 1 : 0, detail: 'bin ' + s + ' (' + AH.secLabel(s) + ')' });
+    AH.refresh();
+    if (on) autoNext(s);
+  }
   // 次に答える項目（表示の順で，今の項目より後の未回答，なければ先頭の未回答）
   function nextOpen(s, from) {
     const o = order(), r = row(s), n = o.length, k0 = Math.max(0, o.indexOf(from));
@@ -75,7 +89,7 @@
     axesOnly: 'pana',   // PA・NA の尺度なので，評価の軸の組にかかわらず PANA（core/axes.js）
     id: 'panas', group: '離散', label: 'PANAS（日本語版・16項目）', model: 'table', side: 'wide', init: { v: 5, a: 5 },
     options: { autoNext: false, to9: false },
-    help: '<p>今の区間について、16 の気分の項目がどれだけ当てはまるかを 1〜6 で答えます（1＝全く当てはまらない、6＝非常によく当てはまる）。全項目に答えると区間の値が入ります（「合計を 1〜9 にしてグラフに出す」をオフにすると、区間の値は入れず、グラフには合計 8〜48 をそのまま描きます）。数字キー <kbd>1</kbd>〜<kbd>6</kbd> で今の項目に答えて次へ進み、<kbd>↑</kbd><kbd>↓</kbd> で項目を移り、<kbd>Backspace</kbd> で消します。</p>',
+    help: '<p>今の区間について、16 の気分の項目がどれだけ当てはまるかを 1〜6 で答えます（1＝全く当てはまらない、6＝非常によく当てはまる）。全項目に答えると区間の値が入ります（「合計を 1〜9 にしてグラフに出す」をオフにすると、区間の値は入れず、グラフには合計 8〜48 をそのまま描きます）。数字キー <kbd>1</kbd>〜<kbd>6</kbd> で今の項目に答えて次へ進み、<kbd>↑</kbd><kbd>↓</kbd> で項目を移り、<kbd>Backspace</kbd> で消します。声のない区間は <kbd>0</kbd>（または「発声なし」）で印を付け、答えずに次へ進みます（もう一度押すと解除）。評価の対象から外れます。</p>',
     mount({ panel, under }) {
       rows = []; lastSec = -1; lastAct = -1;
       box = h('div', { class: 'planeBox panas' });
@@ -88,7 +102,9 @@
       const l = h('label', { class: 'optCtl', title: 'オフ：区間の値（グラフ・帯・_bins.csv）を入れない。PA・NA の合計と項目ごとの回答は _panas.csv に残る' }, '<input type="checkbox"> 合計を 1〜9 にしてグラフに出す'), cb = l.querySelector('input');
       cb.checked = !!S.meta.options.to9;
       cb.addEventListener('change', () => { setTo9(cb.checked); cb.blur(); });
-      o.appendChild(l); box.appendChild(o);
+      o.appendChild(l);
+      nvBtn = h('button', { type: 'button', class: 'pnNv', title: '声のない区間：16 項目に答えず、評価の対象から外す（0 キー。もう一度押すと解除）', onclick: e => { const s = AH.inputSec(); if (s != null) setNoVoice(s, !isNV(s)); e.currentTarget.blur(); } }, '発声なし<small>0</small>');
+      o.appendChild(nvBtn); box.appendChild(o);
       for (const k of order()) {
         const it = ITEMS[k];
         const r = h('div', { class: 'pnRow ' + it.factor, 'data-i': k }, `<span class="pnName">${it.text}</span>`);
@@ -104,7 +120,8 @@
       const s = AH.inputSec(); if (s == null) return false;
       const m = /^(?:Digit|Numpad)([1-6])$/.exec(e.code);
       if (m) { answer(act, +m[1]); return true; }
-      if (e.code === 'Backspace') { setItem(s, act, null); return true; }
+      if (e.code === 'Digit0' || e.code === 'Numpad0') { setNoVoice(s, !isNV(s)); return true; }
+      if (e.code === 'Backspace') { if (isNV(s)) setNoVoice(s, false); else setItem(s, act, null); return true; }
       if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
         const o = order(), k = o.indexOf(act) + (e.code === 'ArrowDown' ? 1 : -1);
         act = o[(k + o.length) % o.length]; AH.refresh(); return true;
@@ -115,9 +132,10 @@
       if (!box) return;
       if (S.meta.panas && S.meta.panas.order_seed !== (S.meta.participant || 'noid')) { AH.remount(); return; }   // 参加者 ID が変わったら並びを作り直す
       syncAll();
-      const s = AH.curSec(), r = row(s), t = sums(r);
+      const s = AH.curSec(), r = row(s), t = sums(r), nv = isNV(s);
       if (s !== lastSec) { lastSec = s; act = nextOpen(s, order()[ITEMS.length - 1]); }
-      head.innerHTML = `<b>区間 ${AH.secLabel(s)}</b>　<span>回答 ${t.n}/${ITEMS.length}</span>　<span class="pnSum">PA ${t.n === ITEMS.length ? t.pa : '–'}</span>　<span class="pnSum">NA ${t.n === ITEMS.length ? t.na : '–'}</span>`;
+      list.classList.toggle('nv', nv); nvBtn.classList.toggle('on', nv);
+      head.innerHTML = nv ? `<b>区間 ${AH.secLabel(s)}</b>　<span class="pnSum">発声なし（評価の対象外）</span>` : `<b>区間 ${AH.secLabel(s)}</b>　<span>回答 ${t.n}/${ITEMS.length}</span>　<span class="pnSum">PA ${t.n === ITEMS.length ? t.pa : '–'}</span>　<span class="pnSum">NA ${t.n === ITEMS.length ? t.na : '–'}</span>`;
       rows.forEach((el, k) => {
         el.classList.toggle('act', k === act);
         for (const b of el.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === r[k]);
@@ -129,20 +147,21 @@
     // 評価グラフ（core/timeline.js）と区間の帯（modes/_shared.js の secStrip）：1〜9 化をオフにしたときは，PA・NA の合計（8〜48）をそのまま描く
     graphScale() { return !S.meta.options.to9 ? { lo: 8, hi: 48, mid: 28, tag: '（合計）' } : null; },
     graphCell(ax, s) {
+      if (isNV(s)) return 0;   // 発声なし：グラフでは灰色の帯、帯の表示は 0
       if (S.meta.options.to9) return S.data.cells[ax][s];
       const t = sums(row(s)); return t.n === ITEMS.length ? t[ax === 'v' ? 'pa' : 'na'] : null;
     },
     // 実験モードの要約（core/experiment.js）の filled_v・filled_a：1〜9 化がオフでも、全項目に答えた区間の数を数える
-    filledCount() { let n = 0; for (let s = 0; s < AH.nSec(); s++) if (sums(row(s)).n === ITEMS.length) n++; return n; },
+    filledCount() { let n = 0; for (let s = 0; s < AH.nSec(); s++) if (isNV(s) || sums(row(s)).n === ITEMS.length) n++; return n; },   // 発声なしの印も「入れた区間」に数える（Excel の 0 と同じ）
     // 書き出し（core/export.js）：項目ごとの回答と PA・NA の合計
     extraCsv() {
       const n = AH.nSec(), rowsOut = [];
       for (let s = 0; s < n; s++) {
         const r = row(s), t = sums(r), done = t.n === ITEMS.length;
-        rowsOut.push([s, AH.secLabel(s), AH.binStart(s).toFixed(3), AH.binEnd(s).toFixed(3), ...ITEMS.map(x => r[x.i] ?? ''), t.n, done ? t.pa : '', done ? t.na : '']);
+        rowsOut.push([s, AH.secLabel(s), AH.binStart(s).toFixed(3), AH.binEnd(s).toFixed(3), ...ITEMS.map(x => r[x.i] ?? ''), t.n, done ? t.pa : '', done ? t.na : '', isNV(s) ? 1 : 0]);
       }
       order();
-      return [{ suffix: '_panas.csv', header: ['bin', 'label', 't_start', 't_end', ...ID, 'n_answered', 'pa_sum', 'na_sum'], rows: rowsOut }];
+      return [{ suffix: '_panas.csv', header: ['bin', 'label', 't_start', 't_end', ...ID, 'n_answered', 'pa_sum', 'na_sum', 'no_voice'], rows: rowsOut }];
     },
   });
 })();
