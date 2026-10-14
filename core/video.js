@@ -59,6 +59,8 @@
     const id = e.target.value.trim();
     if (!_.renameParticipant(S.meta.participant, id)) e.target.value = S.meta.participant;
   });
+  // Enter・Esc で入力欄を抜ける（カーソルが残ると、数字キーが方式の入力にならず ID の末尾に入る）。change は blur で確定する
+  $('pid').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.target.blur(); } });
   $('mode').addEventListener('change', e => { switchMode(e.target.value); e.target.blur(); });
   $('playBtn').addEventListener('click', e => { togglePlay(); e.target.blur(); });
   $('backBtn').addEventListener('click', e => { seekTo(seekTarget() - 1); e.target.blur(); });

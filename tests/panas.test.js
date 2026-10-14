@@ -97,6 +97,14 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('見出し（区間・PA・NA）はスクロールしても上に見える', await p.evaluate(() => { const r = document.querySelector('.pnHead').getBoundingClientRect(), e = document.elementFromPoint(r.left + 10, r.top + 5); return !!e && !!e.closest('.pnTop'); }));
     await p.close();
   }
+  // 参加者 ID を打って Enter・Esc を押すとカーソルが外れ、ID が確定し、数字キーは ID の末尾ではなく方式の入力になる
+  for (const key of ['Enter', 'Escape']) {
+    const p = await open(null, false);
+    await p.click('#pid'); await p.keyboard.type('Q' + (key === 'Enter' ? '1' : '2')); await p.keyboard.press(key); await p.keyboard.press('Digit3'); await p.waitForTimeout(100);
+    const r = await p.evaluate(() => ({ focus: document.activeElement.tagName, field: document.getElementById('pid').value, pid: AH.S.meta.participant, n: (AH.S.data.items || []).reduce((a, x) => a + (x || []).filter(v => v != null).length, 0) }));
+    check(`参加者 ID 欄で ${key}：カーソルが外れ、ID が確定し、数字は ID に入らず答えになる`, r.focus === 'BODY' && r.field === r.pid && r.pid === 'Q' + (key === 'Enter' ? '1' : '2') && r.n === 1, JSON.stringify(r));
+    await p.close();
+  }
   console.log('errors:', errs.length ? errs.join('|') : 'none');
   await browser.close();
 })();
