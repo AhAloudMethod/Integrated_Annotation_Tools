@@ -259,7 +259,7 @@ table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
 .cutBox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .cutBox .refTitle{flex-basis:100%;margin-bottom:0}
 img.xlAg:not([hidden]){display:block}   /* 高さは右の列に収まるよう core/layout.js が決める */
-img.xlAg{width:100%;object-fit:contain;margin-bottom:8px}
+img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:border-box;background:#fff;border-radius:4px}   /* 透過 PNG の黒い線をダークモードでも読めるよう、紙と同じ白い下地にする */
 .planeBox textarea{width:100%}
 
 /* SAM */

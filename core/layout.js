@@ -50,8 +50,10 @@
     const ag = panel.querySelector('img.xlAg:not([hidden])');
     if (ag) {
       ag.style.height = '0px';
+      const box = ag.parentElement, cs = getComputedStyle(box);
+      const colW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);   // 図の幅は高さで決まるので、枠の幅で上限を出す
       const rest = panel.offsetHeight, ratio = ag.naturalWidth ? ag.naturalHeight / ag.naturalWidth : 0.9;
-      ag.style.height = Math.round(Math.max(150, Math.min(ag.clientWidth * ratio, side.clientHeight - rest - f0h - 4))) + 'px';
+      ag.style.height = Math.round(Math.max(150, Math.min(colW * ratio, side.clientHeight - rest - f0h - 4))) + 'px';
     }
     // SAM：2行の絵が右の列に収まる高さにする
     if (panel.querySelector('.sam')) {
