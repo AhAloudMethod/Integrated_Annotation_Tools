@@ -11,7 +11,7 @@
 @media (prefers-color-scheme: dark){
   :root{ --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
     --val:#4FB3C6; --aro:#E0A64A; --f0:#B39DDB; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E;
-    --fig:#A4ADB6; }   /* 白だと暗い画面で眩しいので落とす。黒い線は読める濃さに留める */
+    --fig:#eeeeee; }   /* 眩しいので少し暗く。*/
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
