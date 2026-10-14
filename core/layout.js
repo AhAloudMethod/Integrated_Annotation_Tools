@@ -29,7 +29,7 @@
   $('tlBtn').addEventListener('click', e => { setTimeline(document.body.classList.contains('noTl')); e.currentTarget.blur(); });
 
   // ---------- ツールの入力面を空いている高さに合わせる ----------
-  // 右の列（.side）に収まるよう、入力面（平面・スライダー・軌跡・AffectRank）の大きさを決める。
+  // 右の列（.side）に収まるよう、入力面（平面・スライダー・軌跡・AffectRank）と Excel の Affect Grid の図の大きさを決める。
   // 下の欄の SAM の絵は、画面の高さに合わせて縮める
   function fitTools() {
     const side = document.querySelector('.side'), panel = $('panel');
@@ -45,6 +45,13 @@
       const colW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       if (square) el.style.width = Math.max(150, Math.min(colW, avail)) + 'px';
       else el.style.height = Math.max(150, Math.min(el.matches('canvas.bars') ? 360 : 320, avail)) + 'px';
+    }
+    // Excel の Affect Grid の図：メモ欄を押し出さない高さにする（枠の幅いっぱいまで）
+    const ag = panel.querySelector('img.xlAg:not([hidden])');
+    if (ag) {
+      ag.style.height = '0px';
+      const rest = panel.offsetHeight, ratio = ag.naturalWidth ? ag.naturalHeight / ag.naturalWidth : 0.9;
+      ag.style.height = Math.round(Math.max(150, Math.min(ag.clientWidth * ratio, side.clientHeight - rest - f0h - 4))) + 'px';
     }
     // SAM：2行の絵が右の列に収まる高さにする
     if (panel.querySelector('.sam')) {

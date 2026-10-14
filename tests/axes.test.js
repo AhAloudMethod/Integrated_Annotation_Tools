@@ -54,10 +54,15 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
     const q = await open('excel', 'pana');
     const th = await q.$$eval('table.xl tr th:first-child', x => x.map(e => e.textContent));
-    const ref = await q.$eval('table.ref', t => t.hidden);
+    const ref = await q.$eval('img.xlAg', t => t.hidden);
     check('PANA：Excel の行の見出し', th[1] === 'ポジティブ(1:ポジティブ低ー9:ポジティブ高)' && th[2] === 'ネガティブ(1:ネガティブ低ー9:ネガティブ高)', JSON.stringify(th));
-    check('PANA：Excel の感情ラベルの表は隠す', ref === true);
+    check('PANA：Excel の Affect Grid の図は隠す', ref === true);
     await q.close();
+    const g = await open('excel', 'va');
+    await g.waitForFunction(() => document.querySelector('img.xlAg').complete);
+    const ag = await g.$eval('img.xlAg', i => ({ hidden: i.hidden, w: i.naturalWidth, shown: i.getBoundingClientRect().width > 0 }));
+    check('VA：Excel の右の欄に Affect Grid の図を出す', !ag.hidden && ag.w > 0 && ag.shown, JSON.stringify(ag));
+    await g.close();
   }
   // 4. VA 前提の方式は VA のまま
   for (const mode of ['sam', 'affectgrid', 'feeltrace', 'affectrank']) {

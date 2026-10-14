@@ -283,13 +283,13 @@
     const a = Math.round(c.from), b = Math.round(c.to);
     return `${a === b ? a : a + '→' + b}<small>${SHAPE_MARK[c.shape] || ''}</small>`;
   };
-  // Excel の右の欄：ラベル・プロット表（VA のときだけ）とメモ
-  const XL_LABELS = [['ストレス', 1, 9], ['覚醒', 5, 9], ['興奮', 9, 9], ['快', 9, 5], ['不快', 1, 5], ['憂鬱', 1, 1], ['眠気', 5, 1], ['安堵', 9, 1]];   // [ラベル, 快度, 覚醒度]
+  // Excel の右の欄：Affect Grid の図（VA のときだけ。実験の説明で見せる図と同じもの）とメモ
   function xlRef(panel) {
-    const ref = h('div', { class: 'planeBox' }, '<div class="refTitle">ラベル・プロット表</div>');
-    const t = h('table', { class: 'ref' }, '<tr><th>感情ラベル</th><th>快度</th><th>覚醒度</th></tr>' + XL_LABELS.map(([l, v, a]) => `<tr><td>${l}</td><td>${v}</td><td>${a}</td></tr>`).join(''));
-    ref.appendChild(t);
-    if (AH._.axesCurrent() !== 'va') t.hidden = true;
+    const ref = h('div', { class: 'planeBox' }, '<div class="refTitle">Affect Grid</div>');
+    const fig = h('img', { class: 'xlAg', src: 'img/affectgrid_jp.png', alt: 'Affect Grid（横軸＝快度 1〜9、縦軸＝覚醒度 1〜9）' });
+    fig.addEventListener('load', () => AH._.resize());   // 読み込むまで縦横比が分からないので、読み込んでから高さを合わせ直す
+    ref.appendChild(fig);
+    if (AH._.axesCurrent() !== 'va') fig.hidden = true;
     const memo = h('textarea', { rows: '3', placeholder: '判断に迷ったなど何かあればメモ' });
     memo.addEventListener('change', () => { S.data.memo = memo.value; AH.addLog('memo', { detail: memo.value.length + ' chars' }); });
     ref.appendChild(memo); panel.appendChild(ref);
