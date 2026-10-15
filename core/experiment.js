@@ -161,6 +161,7 @@
     _.closePops();
     $('pid').value = pid; S.meta.participant = pid;
     document.body.classList.add('exp');
+    trap();
     startTrial(from);
   }
   function restoreSettings() {
@@ -183,6 +184,17 @@
     location.reload();
   }
   window.addEventListener('pagehide', () => restoreSettings());
+
+  // ---------- 実験モードの間はページを離れない ----------
+  // マウスの戻る・進むボタンとトラックパッドのスワイプでは前のページへ移らず、ページやウィンドウを閉じるときは確認を出す（Chrome・Edge・Firefox）。
+  // Ctrl+Shift+E で抜けるときは X を空にしてから読み込み直すので、確認は出ない
+  const guarded = () => !!X && !!X.backup;
+  // 履歴を 1 つ積んでおき、戻ったら積み直す（ボタンを止められないブラウザや、スワイプで戻ったときもこのページに留まる）
+  function trap() { try { history.pushState({ ahExp: 1 }, ''); } catch (_e) {} }
+  window.addEventListener('popstate', () => { if (guarded()) trap(); });
+  // マウスの戻る（button 3）・進む（button 4）
+  for (const t of ['mousedown', 'mouseup', 'auxclick']) window.addEventListener(t, e => { if (guarded() && (e.button === 3 || e.button === 4)) e.preventDefault(); }, true);
+  window.addEventListener('beforeunload', e => { if (!guarded()) return; e.preventDefault(); e.returnValue = ''; });
 
   // ---------- 設定を当てる ----------
   // 各欄の既存の処理（操作ログ・ブラウザへの保存）をそのまま使うため、欄の値を変えて change を送る
