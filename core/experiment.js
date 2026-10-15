@@ -483,6 +483,7 @@
   // （手や Agent で直した設定を、評価区間を直すための書き出し直しで消さないため）。動画はフォルダの中のものを並べ、
   // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。覚えていなければ setup.json の区間を使い、どちらも無い動画は「未設定」と出して書き出さない。
   // 基準音声の時刻 ref と発声なしの区間 novoice は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
+  // 録画の試行の録画をフォルダに入れたときは、発声者の結果（zip か _session.json）から評価区間と区切りを取り込める（core/speaker.js）
   function currentSettings() {
     return { ...DEF, axes: _.axesId(), rate: +$('rate').value, afterWrite: $('afterWrite').value, timeline: !document.body.classList.contains('noTl'),
       graphEdit: $('graphEdit').checked, grid: _.gridShown(), f0: _.f0Shown(), voiced: _.voicedShown(), listen: _.listenOn(), videoSize: +$('vidSize').value,
@@ -531,8 +532,12 @@
       return `<label>${esc(d.label)} <select id="${id}">${ch.map(([k, l]) => `<option value="${k}"${String(k) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
     };
     const span = e => (e.edges ? `${e.edges[0]}〜${e.edges[e.edges.length - 1]} 秒（自分で区切った ${e.edges.length - 1} 区間）` : `${e.start}〜${e.end} 秒，${e.bin} 秒ごと`);
-    const missing = rows.filter(r => !r.entry && !r.refOnly).length;
-    cover(`<h2>実験用の設定を書き出す</h2>
+    const cell = r => (r.entry ? esc(span(r.entry)) + (r.from ? `（発声者 ${esc(r.from)} から）` : r.kept ? '（setup.json のまま）' : '') : r.refOnly ? '基準音声の動画（評価区間は要りません）' : '<b class="expMiss">未設定</b>');
+    let notes = [];   // 発声者の結果を取り込んだときの案内
+    const render = () => {
+      const missing = rows.filter(r => !r.entry && !r.refOnly).length;
+      for (const d of E.SETTINGS) { const el = $('es_' + d.key); if (el) cur[d.key] = d.type === 'check' ? el.checked : el.value; }   // 描き直しても欄の値を残す
+      cover(`<h2>実験用の設定を書き出す</h2>
       <p class="muted">実験中の画面の設定と、動画ごとの評価区間を setup.json に書き出します。ダウンロードした setup.json を実験フォルダ（experiment.json と同じ場所）に入れてください。</p>
       ${old ? '<p class="muted">フォルダの setup.json の設定を初めの値にしています（setup.json に無い項目は今の画面の値）。</p>' : ''}
       ${oldErr ? `<p class="expMiss">フォルダの setup.json を読めないので、今の画面の値を初めの値にしています（${esc(oldErr)}）。</p>` : ''}
@@ -541,20 +546,57 @@
       <div class="refTitle">実験中に出すボタン</div>
       <div class="expForm">${E.SETTINGS.filter(d => d.exp).map(ctl).join('')}</div>
       <div class="refTitle">動画ごとの評価区間（通常の画面で動画を開いて合わせたもの）</div>
-      ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${r.entry ? esc(span(r.entry)) + (r.kept ? '（setup.json のまま）' : '') : r.refOnly ? '基準音声の動画（評価区間は要りません）' : '<b class="expMiss">未設定</b>'}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
+      ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${cell(r)}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
       ${missing ? `<p class="expMiss">未設定の動画が ${missing} 本あります。実験で使う動画なら、通常の画面で開いて評価区間を合わせてから書き出し直してください（このまま書き出すと、その動画の試行は始められません）。</p>` : ''}
-      <div class="expBtns"><button id="esSave" type="button">setup.json を書き出す</button><button id="esClose" type="button">閉じる</button></div>`);
-    $('esClose').addEventListener('click', () => cover(''));
-    $('esSave').addEventListener('click', () => {
-      const settings = {};
-      for (const d of E.SETTINGS) {
-        const el = $('es_' + d.key);
-        settings[d.key] = d.type === 'check' ? el.checked : d.type === 'number' || d.key === 'rate' ? +el.value : el.value;
+      <p class="muted">録画の試行の録画をこのフォルダに入れたときは、発声者の結果（試行の zip か _session.json。複数可）を取り込むと、発声者が評価した区間と区切りをその録画の評価区間にします。</p>
+      ${notes.map(m => `<p class="expMiss">${esc(m)}</p>`).join('')}
+      <div class="expBtns"><button id="esSpk" type="button" title="発声者の結果（試行の zip か _session.json）を選ぶか、ここに落とす">発声者の結果を取り込む</button><button id="esSave" type="button">setup.json を書き出す</button><button id="esClose" type="button">閉じる</button></div>
+      <input id="esSpkFile" type="file" accept=".zip,.json,application/zip,application/json" multiple hidden>`);
+      $('esClose').addEventListener('click', () => cover(''));
+      $('esSpk').addEventListener('click', () => $('esSpkFile').click());
+      $('esSpkFile').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) takeSpeaker(list); });
+      dropTarget($('esSpk'), list => takeSpeaker(list.map(it => it.file || it)));
+      $('esSave').addEventListener('click', () => {
+        const settings = {};
+        for (const d of E.SETTINGS) {
+          const el = $('es_' + d.key);
+          settings[d.key] = d.type === 'check' ? el.checked : d.type === 'number' || d.key === 'rate' ? +el.value : el.value;
+        }
+        const vids = Object.fromEntries(rows.filter(r => r.entry).map(r => [r.path, r.entry]));
+        _.download('setup.json', JSON.stringify({ settings, videos: vids }, null, 2), 'application/json');
+        $('status').textContent = 'setup.json を書き出しました';
+      });
+    };
+    // 発声者の結果を取り込む：録画のファイル名（同じ名前が 2 つ以上なら大きさも）でフォルダの動画を引き、評価区間を置き換える。
+    // 基準音声の録画を選んでいて、それがフォルダにあれば refVideo にする（ref は同じ基準音声の動画のときだけ残す）。
+    // 取り込んだ区間はブラウザにも覚え、通常の画面でその動画を開いたときと、書き出し直したときに同じ区間になる
+    async function takeSpeaker(files) {
+      notes = [];
+      const vids = new Map(videos.map(v => [v.path, v]));
+      for (const f of files) {
+        let list;
+        try { list = await _.readSpeaker(f); } catch (err) { notes.push('読めません：' + err.message); continue; }
+        for (const sp of list) {
+          const named = rows.filter(r => r.path.split('/').pop() === sp.video), row = named.length > 1 && sp.size ? named.find(r => vids.get(r.path).file.size === sp.size) || named[0] : named[0];
+          const tag = [sp.pid, sp.trial ? `試行 ${sp.trial}` : ''].filter(Boolean).join(' ') || sp.src;
+          if (!row) { notes.push(`${tag} の録画「${sp.video}」がフォルダにありません（録画をこのフォルダに入れてから取り込んでください）`); continue; }
+          const vf = vids.get(row.path).file;
+          if (sp.size && vf.size !== sp.size) notes.push(`${tag}：「${row.path}」の大きさが発声者の録画と違います（取り込みました。同じ録画かを確かめてください）`);
+          const end = sp.range.edges ? sp.range.edges[sp.range.edges.length - 1] : sp.range.target;
+          if (row.dur && end > row.dur + 0.02) { notes.push(`${tag}：評価区間の終了（${end} 秒）が「${row.path}」の長さを超えるので取り込みません`); continue; }
+          const prev = row.entry || {}, refPath = sp.refVideo ? [...vids.keys()].find(p => p.split('/').pop() === sp.refVideo) : null;
+          if (sp.refVideo && !refPath) notes.push(`${tag}：基準音声の録画「${sp.refVideo}」がフォルダに無いので、refVideo は付けません`);
+          const ref = refPath ? { refVideo: refPath, ...(prev.refVideo === refPath && typeof prev.ref === 'number' ? { ref: prev.ref } : {}) }
+            : { ...(typeof prev.refVideo === 'string' ? { refVideo: prev.refVideo } : {}), ...(typeof prev.ref === 'number' ? { ref: prev.ref } : {}) };
+          row.entry = { ...videoEntry(sp.range, row.dur), ...ref, ...(Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) };
+          row.from = tag; row.kept = false;
+          if (row.dur) _.storeRange(vf.name, `${vf.size}:${row.dur.toFixed(2)}`, sp.range);
+          if (refPath) { const rr = rows.find(r => r.path === refPath); if (rr && !rr.entry) rr.refOnly = true; }
+        }
       }
-      const vids = Object.fromEntries(rows.filter(r => r.entry).map(r => [r.path, r.entry]));
-      _.download('setup.json', JSON.stringify({ settings, videos: vids }, null, 2), 'application/json');
-      $('status').textContent = 'setup.json を書き出しました';
-    });
+      render();
+    }
+    render();
   }
 
   // ---------- 操作の制限 ----------

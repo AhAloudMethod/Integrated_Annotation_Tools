@@ -13,8 +13,8 @@ if (!fs.existsSync(VID)) {
   if (r.status !== 0) process.exit(1);
 }
 
-const TESTS = ['structure', 'modes', 'features', 'layout', 'restore', 'samimg', 'fixes', 'vwin', 'spec', 'controls', 'voice', 'vosk', 'f0', 'axes', 'pad', 'listen', 'review', 'display', 'frame', 'custom', 'curve', 'export', 'panas', 'platform', 'novoice', 'experiment', 'expcheck', 'refvideo', 'zoom'];
-const SERIAL = ['modes', 'listen', 'review', 'pad', 'controls', 'frame', 'vosk', 'custom', 'refvideo'];
+const TESTS = ['structure', 'modes', 'features', 'layout', 'restore', 'samimg', 'fixes', 'vwin', 'spec', 'controls', 'voice', 'vosk', 'f0', 'axes', 'pad', 'listen', 'review', 'display', 'frame', 'custom', 'curve', 'export', 'panas', 'platform', 'novoice', 'experiment', 'expcheck', 'refvideo', 'zoom', 'speaker'];
+const SERIAL = ['modes', 'listen', 'review', 'pad', 'controls', 'frame', 'vosk', 'custom', 'refvideo', 'speaker'];
 const only = process.argv.slice(2);
 const BAD = [/\bFAIL\b/, /^\s*ERR /m, /ERRORS: (?!none)/, /errors: (?!none)/, /errs: '(?!none)/, /Error:/];
 const JOBS = Math.max(1, +process.env.AH_JOBS || 4);

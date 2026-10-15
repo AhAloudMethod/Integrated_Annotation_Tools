@@ -55,12 +55,16 @@
     return get(rangeKey(file)) || (sig ? get(sigKey(sig)) : null);
   }
   // 実験モードでは覚えない（setup.json の区間で、通常の画面で合わせた区間を上書きしない）
+  // 動画（名前と見分け）の評価区間を覚える。setup.json の書き出しの画面で発声者の区切りを取り込んだときにも使う
+  function storeRange(file, sig, r) {
+    try {
+      localStorage.setItem(rangeKey(file), JSON.stringify(r));
+      if (sig) localStorage.setItem(sigKey(sig), JSON.stringify(r));
+    } catch (_) {}
+  }
   function saveRange() {
     if (!S.meta.video_file || (_.expOn && _.expOn())) return;
-    try {
-      localStorage.setItem(rangeKey(S.meta.video_file), JSON.stringify(RG()));
-      if (S.videoSig) localStorage.setItem(sigKey(S.videoSig), JSON.stringify(RG()));
-    } catch (_) {}
+    storeRange(S.meta.video_file, S.videoSig, RG());
   }
   function setRange(r) {
     S.meta.range = { ...RG(), ...r };
@@ -80,6 +84,7 @@
     if (document.activeElement !== $('cutList')) $('cutList').value = E() ? E().slice(1, -1).join(', ') : '';
     $('cutReset').disabled = !E();
     $('rgBtn').textContent = `${+binStart(0).toFixed(2)}秒〜${+rangeEnd().toFixed(2)}秒`;
+    if (_.segListSync) _.segListSync();   // 区間ごとに再生する一覧（core/speaker.js）
   }
   $('rgBtn').addEventListener('click', e => { const open = $('rgPanel').hidden; if (_.closePops) _.closePops(); $('rgPanel').hidden = !open; e.target.blur(); });
   function onRangeInput(changed) {
@@ -199,5 +204,5 @@
     setEdges([e0[0], ...inner, e0[e0.length - 1]]); addLog('range_cut', { value: 'list', detail: inner.join(' ') }); e.target.blur();
   }));
 
-  Object.assign(_, { uniformRange, hintMsg, countFor, addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
+  Object.assign(_, { uniformRange, hintMsg, countFor, addCut, delCut, moveCut, cutEdges: edgesNow, setCutEdges: setEdges, loadRange, storeRange, saveRange, setRange, setEnd, defaultRange, RG, nSec, binStart, binEnd, rangeEnd, binAt, curSec, inputSec, inRange, secLabel, rangeSig, syncRangeUI });
 })();

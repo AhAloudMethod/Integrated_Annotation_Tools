@@ -43,6 +43,13 @@
       </div>
       <label>列の表記 <select id="rgLabel"><option value="countdown">カウントダウン</option><option value="elapsed">カウントアップ</option></select></label>
       <p class="muted">Excel・Affect Grid・SAMの入力単位と、書き出しの <code>_bins.csv</code> の集計単位になります。</p>
+      <div class="sub">
+        <div class="refTitle">区間ごとに再生する</div>
+        <button id="spkLoad" type="button" title="発声者の結果（試行の zip か _session.json）を選び、その評価区間と区切りをこの動画に当てる">発声者の区切りを読み込む</button>
+        <input id="spkFile" type="file" accept=".zip,.json,application/zip,application/json" multiple hidden>
+        <p class="muted" id="spkInfo"></p>
+        <div id="segList" class="segList"></div>
+      </div>
     </div>
   </span>
   <span class="spacer"></span>
@@ -186,6 +193,7 @@
 <script src="core/voice.js"></script>
 <script src="core/exp-check.js"></script>
 <script src="core/zip.js"></script>
+<script src="core/speaker.js"></script>
 <script src="core/experiment.js"></script>
 <script src="core/init.js"></script>
 <!-- 入力方式（modes/）：_shared.js のあと、登録順＝入力方式の選択肢の並び順 -->
