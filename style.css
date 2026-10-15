@@ -178,7 +178,7 @@ canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 .padBtn.on{background:var(--pen);border-color:var(--pen);color:#fff}
 
 /* 実験モード：参加者が選べる要素を隠す。開始前・完了後は全画面の覆いで操作を止める */
-body.exp header .inline,body.exp #openBtn,body.exp #expBtn,body.exp header .rgWrap,body.exp #tlBtn,body.exp #exportBtn{display:none}
+body.exp header .inline,body.exp #openBtn,body.exp #expBtn,body.exp header .rgWrap,body.exp #tlBtn,body.exp #exportBtn,body.exp #importBtn{display:none}
 body.exp:not(.expVoicedBtn) #voicedBtn,body.exp:not(.expReview) #reviewBtn,body.exp:not(.expRef) #refBtn,body.exp:not(.expVoice) #voiceBtn,body.exp:not(.expVwin) #vwinBtn{display:none}
 body.exp .optCtl{display:none}
 html:has(body.exp),body.exp{overscroll-behavior-x:none}

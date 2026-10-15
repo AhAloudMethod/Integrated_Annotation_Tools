@@ -136,6 +136,8 @@
       <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。</p>
     </div>
   </span>
+  <button id="importBtn" title="書き出した結果（_session.json，実験モードの zip，評価値の CSV）を読み込んで続きを編集する">読み込む</button>
+  <input id="importFile" type="file" accept=".json,.zip,.csv" multiple hidden>
   <button id="exportBtn">書き出す</button>
   <button id="expDoneBtn" class="expDone" hidden>完了</button>
 </header>
@@ -184,6 +186,7 @@
 <script src="core/keys.js"></script>
 <script src="core/export.js"></script>
 <script src="core/storage.js"></script>
+<script src="core/import.js"></script>
 <script src="core/layout.js"></script>
 <script src="core/vwin.js"></script>
 <script src="core/colors.js"></script>

@@ -35,9 +35,10 @@
       _.tlViewReset();   // 評価グラフのズームを動画全体に戻す（core/timeline.js）
       S.meta.range = null; S.meta.ref = null;   // 基準音声の時刻は実験モードで setup.json から当てる（core/ref.js）
       S.videoSig = `${f.size}:${video.duration.toFixed(2)}`;
-      if (!_.tryRestore()) newSession(`${f.name} dur=${video.duration.toFixed(3)} mode=${S.meta.mode}`);
-      // この動画に覚えてある評価区間を使う（ファイル名を変えていても）。実験モードでは使わない（区間は setup.json か、再開した試行の区間）
-      const saved = _.expOn && _.expOn() ? null : _.loadRange(f.name, S.videoSig);
+      const imported = _.takeImport();   // 動画を開く前に読み込んだ結果（core/import.js）
+      if (!imported && !_.tryRestore()) newSession(`${f.name} dur=${video.duration.toFixed(3)} mode=${S.meta.mode}`);
+      // この動画に覚えてある評価区間を使う（ファイル名を変えていても）。実験モードでは使わない（区間は setup.json か、再開した試行の区間）。読み込んだ結果は、その区間を使う
+      const saved = imported || (_.expOn && _.expOn()) ? null : _.loadRange(f.name, S.videoSig);
       if (saved) {
         if (JSON.stringify(saved) !== JSON.stringify(S.meta.range)) { S.meta.range = saved; addLog('range_restore', { detail: JSON.stringify(saved) }); }
         _.saveRange();   // 今の名前でも覚え直す

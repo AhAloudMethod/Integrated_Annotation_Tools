@@ -37,6 +37,7 @@ core/                 共通部分（読み込み順に依存するので，inde
   keys.js             キー操作
   export.js           書き出し（CSV，JSON）
   storage.js          自動保存と復元（localStorage）
+  import.js           結果の読み込み（書き出した _session.json・zip・評価値の CSV から評価を戻す）
   layout.js           画面の配置，設定と説明のパネル，グラフの開閉，動画の大きさ
   vwin.js             動画を別ウィンドウに出す
   colors.js           色の設定欄
@@ -111,7 +112,7 @@ tests/                自動テスト（Playwright で Edge を動かす）
 ```
 npm install        # 初回のみ（playwright-core）
 npm test           # 全テストを実行する（tests/run-all.js．4 本ずつ並べて約 8 分．AH_JOBS=1 なら順に）
-npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom curve export experiment expcheck speaker）
+npm test -- modes  # 一部だけ（structure modes features layout restore samimg fixes vwin spec controls voice vosk f0 axes pad listen review display frame custom curve export experiment expcheck speaker import）
 npm run check      # 全 JS に node --check をかける
 ```
 
@@ -371,6 +372,12 @@ Excel（専用の方式とカスタムの Excel）のセルには，1〜9 に加
 - **練習モード**：動画を開く前でも，各ツールを操作できる．値は画面上で動くだけである．動画を開いた時点で，練習中の入力と記録オンの状態は消え，そこから記録が始まる．
 - **方式の切り替え**：評価の途中でも切り替えられる．切り替える前の評価は自動保存され，同じ方式に戻すと続きから再開できる．自動保存は「方式＋参加者ID＋動画名」ごとに分ける．
 - **参加者 ID の変更**：動画を開いた後に参加者 ID を変えると，この動画の保存データ（全方式分）を新しい ID へ移す．移し先に保存データがあれば確認を出し，キャンセルすると ID を元に戻す．操作ログに `participant_change` を残す．
+- **結果の読み込み**：ヘッダーの「読み込む」で，書き出した結果を読み込み，続きを編集できる．書き出し直すと，同じ名前のファイルになる．
+  - 選べるのは，`_session.json`，実験モードの zip（中の `_session.json` を使う），評価値の CSV（`_bins.csv`，`_changepoints.csv`，`_60hz.csv`，`_ranks.csv`，`_panas.csv`）である．複数を一度に選べる．
+  - `_session.json` は，方式，方式の設定，参加者 ID，評価軸の組，値，評価区間，操作ログをまとめて戻す．操作ログは続きから数え，`import` を残す．一緒に選んだ CSV の値は，`_session.json` の値を上書きする．表計算ソフトで直した値を戻すときに使う．
+  - CSV だけのときは，ファイル名（`<ID>_<動画名>_<方式id>_bins.csv` など）から方式と参加者 ID を読み，値と評価区間（`t_start`・`t_end`）を戻す．方式の設定と操作ログは戻らない．連続の方式は `_changepoints.csv` を使い，無ければ `_60hz.csv` の値が変わる所を変化点にする．区間方式は `_bins.csv`，AffectRank・変化ボタンは `_ranks.csv`，PANAS は `_panas.csv` を使う．方式に合わない CSV は使わず，理由を画面の上に出す．カスタムと，区間内で変化を使う方式は，`_session.json` から読み込む．
+  - 動画を開いていれば，今の評価を置き換えてよいかを確認する．動画を開く前に読み込むと，次に開いた動画に当てる（動画名が違えば確認を出す）．覚えてある評価区間より，読み込んだ評価区間を優先する．
+  - 実験モードの間は読み込めない．
 
 ### コントローラー（ゲームパッド）
 
@@ -728,7 +735,7 @@ exp2/
 
 | 分類 | type |
 |---|---|
-| セッション | `session_start`，`restore`，`mode_switch`，`export` |
+| セッション | `session_start`，`restore`，`mode_switch`，`export`，`import`（結果を読み込んだ．detail はファイル名） |
 | 実験モード | `exp_trial`（試行を読み込んだ．value は試行の番号，detail は実験名・方式・動画・練習か），`task_start`（開始），`task_end`（完了），`task_abort`（試行の途中で実験モードを抜けた） |
 | 再生 | `play`，`pause`，`seek`（detail は移動前の時刻），`ended`，`rate`，`fps`（フレームレートの推定・手入力） |
 | 評価区間 | `range`，`range_cut`（区切りを置いた・動かした・消した） |
