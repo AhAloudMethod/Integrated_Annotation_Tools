@@ -26,6 +26,7 @@
     setArmed(false); pen.down = false;   // 練習中の記録オンも解除
     if (video.src) { endStroke('reload'); _.autosave(); URL.revokeObjectURL(video.src); }
     video.src = URL.createObjectURL(f);
+    _.videoFile = f;   // フレームレートをファイルの情報から読むのに使う（core/frame.js）
     S.videoSig = '';
     video.hidden = false; $('empty').hidden = true;
     S.meta.video_file = f.name; S.meta.participant = $('pid').value.trim();

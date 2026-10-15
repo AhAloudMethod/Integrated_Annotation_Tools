@@ -13,12 +13,12 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   await p.waitForFunction(() => AH.S.meta.duration > 0); await p.evaluate(() => document.activeElement && document.activeElement.blur());
   const st = () => p.evaluate(() => ({ t: +AH.video.currentTime.toFixed(4), paused: AH.video.paused, fps: document.getElementById('rgFps').value, info: document.getElementById('frInfo').textContent }));
 
-  // 推定：再生すると 30 fps（テスト動画）と推定する
+  // テスト動画（MP4）はファイルの情報から 30 fps と読む（再生中の推定は tests/fps-estimate.test.js）
   await p.keyboard.press('Space'); await p.waitForTimeout(1500);
   await p.keyboard.press('Period'); await p.waitForTimeout(150);   // 再生中に . を押すと止まって1フレーム進む
   await p.click('#rgBtn'); await p.waitForTimeout(100);
   const a = await st();
-  check('再生中に表示されたフレームから 30 fps と推定し、欄に「推定」と出る', a.fps === '30' && /推定/.test(a.info), JSON.stringify(a));
+  check('ファイルの情報から 30 fps と読み、欄に「ファイル」と出る', a.fps === '30' && /ファイル/.test(a.info), JSON.stringify(a));
   check('再生中に . を押すと止まる', a.paused, JSON.stringify(a));
 
   // 1フレーム移動：1.0 秒（フレーム30）から . で 31、, を2回で 29
