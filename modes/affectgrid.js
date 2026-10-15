@@ -1,8 +1,8 @@
 // ---- Affect Grid（9×9） ----
 (() => {
   const { S } = AH;
-  const { h, toggle, planeCanvas, secStrip, setBoth, autoNext } = AH.ui;
-  let c, g, strip; const PAD = 34;
+  const { h, toggle, planeCanvas, secStrip, setBoth, autoNext, lockNote } = AH.ui;
+  let c, g, strip, lock; const PAD = 34;
   AH.register({
     vaOnly: true,   // 絵・感情語が VA 前提なので、評価の軸の組にかかわらず VA（core/axes.js）
     id: 'affectgrid', group: '離散', label: 'Affect Grid（9×9・クリック）', model: 'table', side: 'wide', init: { v: 5, a: 5 },
@@ -11,7 +11,7 @@
     mount({ panel, under }) {
       ({ c } = planeCanvas(panel, 'Affect Grid'));
       const o = h('div', { class: 'opts' }); toggle(o, 'autoNext', '入力後に次の区間へ'); c.parentNode.appendChild(o);
-      strip = secStrip(under);
+      strip = secStrip(under); lock = lockNote(c.parentNode);
       c.addEventListener('pointerdown', e => {
         const r = c.getBoundingClientRect(), s9 = (c.clientWidth - PAD * 2) / 9;
         const i = Math.floor((e.clientX - r.left - PAD) / s9), j = Math.floor((e.clientY - r.top - PAD) / s9);
@@ -22,6 +22,7 @@
     },
     resize() { g = AH.fitCanvas(c); },
     update() {
+      if (lock) lock();
       if (!g) return;
       const w = c.clientWidth, s9 = (w - PAD * 2) / 9, s = AH.curSec();
       g.clearRect(0, 0, w, w);

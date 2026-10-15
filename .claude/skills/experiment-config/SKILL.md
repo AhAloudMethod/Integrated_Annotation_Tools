@@ -129,11 +129,14 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 | `excel` | Excel | 区間ごと | `cuts`（`"fixed"`＝事前設定の区切り（既定），`"sec1"`＝1秒固定，`"self"`＝参加者が区切る） |
 | `affectgrid` | Affect Grid（9×9） | 区間ごと | `autoNext`（false） |
 | `sam` | SAM（9 段階の絵） | 区間ごと | `autoNext`（false） |
+| `panas` | PANAS（日本語版 16 項目・6 件法．軸は常に PANA） | 区間ごと | `autoNext`（false．全項目に答えたら次の区間へ），`to9`（false．true で合計を 1〜9 にして区間の値に入れる．false では区間の値を入れずに評価グラフと区間の帯へ合計 8〜48 を出す） |
 | `affectrank` | AffectRank（変化時に 8 方向） | 相対の変化 | ― |
 | `change` | 変化ボタン | 変化の時点 | ― |
 | `custom` | カスタム（設計軸の組み合わせ） | 組み合わせによる | `rep`，`time`，`values`，`input`，`dims`，`scale`，`face`，`trail`，`color`，`border`，`autoNext`，`cuts`，`curve`，`curveInput`（README の「カスタム方式」．`rep: "excel"` と `cuts: "self"` で参加者が区切る Excel になる．`rep: "excel"` と `curve: "on"` で，選んだ区間だけ区間の中の動きをグラフで入れられる（区間内で変化）．`curveInput` で入れ方（`"both"`・`"draw"`・`"template"`）を決める） |
 
 - 参加者が区間を自分で区切る Excel（`cuts: "self"`）は，ユーザが「グラフは使わない」と言わない限り，区間内で変化を使う形にする．`custom` で `rep: "excel"`，`cuts: "self"`，`curve: "on"` と書く．グラフで入れるボタン（「なぞって評価する」）は `curve: "on"` のときだけ出るからである．専用の `excel` には `curve` が無いので，自分で区切る Excel を頼まれたら `custom` に置き換える（専用と同じ 9 段階にするなら `values: "int"`）．「連続値」は `values: "real"`（セルに小数を打てる）のことで，`curve` とは別の設定である．
+- PANAS（`panas`）は 1 区間に 16 項目へ答えるので，再生しながらは答えられない．1 秒ごとの区間で使うなら，試行の `options` に `"autoNext": true` を書き（全項目に答えたら次の区間へ進む．既定は false），`listen` は実験モードの既定（true）のままにする．所要時間の目安は，30 秒の動画を 1 秒ごとで 1 本 8〜12 分．`to9` の既定は false（合計 8〜48 を評価グラフと帯に出す）．声のない区間は 0 キーで「発声なし」の印を付けて飛ばす（評価の対象外．`_panas.csv` の `no_voice`）ので，参加者への説明に入れる．発声者の自己評価の後に他者が評価するときなど，評価の対象にする区間を評価者によらず同じにしたいときは，`setup.json` の `videos` の `novoice`（発声なしの範囲．区間ごとに値を入れる方式 excel・affectgrid・sam・panas・custom に効く．事前に値 0 になり，参加者は変えられない）を使う．発声者の PANAS の `_panas.csv` からは `node tools/novoice-from-panas.js <csv> <動画名>` で作れる（README の「発声なしを事前に設定する」）．`novoice` は `setup.json` に書くので，この skill は書かず，ユーザに貼ってもらう．連続の方式・変化の方式・録画の試行には効かない（`exp-check` が警告する）．依頼に書かれていなければ，区間の長さと動画の長さを聞いて，所要時間を伝える．`exp-check` は `options` の綴りを検査しないので，書いた後に綴りを読み返す．
+- 聴いてから入力（`listen`）は，テンキー，AffectRank，変化ボタンには効かない（区間の終わりで止まらない）．`autoNext` があるのは Affect Grid，SAM，PANAS，カスタムの区間ごとだけで，ほかの方式に書いても何も起きない．対応の表は README の「聴いてから入力」の節にある．
 - CARMA と RankTrace は 1 軸ずつ評価する．快度と覚醒度の両方を取るなら，`options.axis` を `"v"` と `"a"` にした 2 つの試行にする．このとき同じ動画を 2 回使うと方式と動画の組が重複するので，`custom` の 1 軸（`dims`）を使うか，動画を分ける．どうするかはユーザに確かめる．
 
 ## アンケートの事前入力 URL

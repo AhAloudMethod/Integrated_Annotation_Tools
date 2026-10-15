@@ -120,6 +120,13 @@
     out.push({ ...cur, age: 0 }); return out;
   }
 
+  // 発声なしの事前設定の区間（実験モード。core/table.js の novoiceLocked）では、パネルの上に目印を出して全体を薄くする（Affect Grid・SAM）。
+  // 返す関数を update() で呼ぶ（今の区間が固定かで切り替える）
+  function lockNote(box) {
+    const note = h('div', { class: 'nvNote', hidden: '' }, '発声なし（事前設定）　変更できません');
+    box.insertBefore(note, box.firstChild);
+    return () => { const lk = AH.novoiceLocked(AH.curSec()); note.hidden = !lk; box.classList.toggle('nvLock', lk); };
+  }
   // 1秒ごとの入力状況の帯（AffectGrid・SAM）
   function secStrip(under) {
     const wrap = h('div', { class: 'strip' }); under.appendChild(wrap);
@@ -138,9 +145,10 @@
       const cur = AH.curSec();
       [...wrap.children].forEach((c, s) => {
         c.classList.toggle('cur', s === cur);
-        c.querySelector('.v').textContent = S.data.cells.v[s] ?? '–';
-        c.querySelector('.a').textContent = S.data.cells.a[s] ?? '–';
-        c.classList.toggle('done', S.data.cells.v[s] != null && S.data.cells.a[s] != null);
+        const M = AH.mode, cv = ax => (M.graphCell ? M.graphCell(ax, s) : S.data.cells[ax][s]);   // 方式が区間の値を別に持つとき（PANAS の合計）はそれを出す
+        c.querySelector('.v').textContent = cv('v') ?? '–';
+        c.querySelector('.a').textContent = cv('a') ?? '–';
+        c.classList.toggle('done', cv('v') != null && cv('a') != null);
       });
       const cc = wrap.children[cur];
       if (cc && !video.paused) cc.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -235,17 +243,18 @@
             if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.setVoicedShown(!AH._.voicedShown(), 'key'); return; }   // 発声の区間の表示   // 今の時間で区切る（区切れるときだけ）
             if (!move) return;
             e.preventDefault();
-            // 次のセル。変化の区間のセル（入力欄が無い）は飛ばして、同じ向きに進む
+            // 次のセル。変化の区間のセル（入力欄が無い）と、発声なしの事前設定の列（固定）は飛ばして、同じ向きに進む
             let rr = r, ss = s, nx = null;
             for (let k = 0; k < axes.length * n && !nx; k++) {
               if (e.key === 'Enter') { rr += move[0] === 0 ? 0 : back; if (rr < 0 || rr > last) { rr = rr < 0 ? last : 0; ss += back; } }
               else { rr += move[0]; ss += move[1]; }
               if (rr < 0 || rr > last || ss < 0 || ss >= n) break;
               nx = grid.querySelector(`input[data-ax="${axes[rr]}"][data-s="${ss}"]`);
+              if (nx && AH.novoiceLocked(ss)) nx = null;
             }
             if (nx) { nx.focus(); nx.select(); }
             // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
-            if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(s + 1);
+            if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(ss);   // 移った先の区間（固定の列は飛ばす）
           });
           inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
@@ -265,7 +274,8 @@
       for (const td of grid.querySelectorAll('td.cv')) { const x = curveText(AH.curveInfo(td.dataset.ax, +td.dataset.s)); if (td.innerHTML !== x) td.innerHTML = x; }
       const ro = AH.reviewing();   // 視聴の間はセルに打てない
       for (const inp of grid.querySelectorAll('input')) {
-        inp.readOnly = ro;
+        const nvl = AH.novoiceLocked(+inp.dataset.s);   // 発声なしの事前設定の列は打てない
+        inp.readOnly = ro || nvl; inp.classList.toggle('nvLock', nvl);
         const v = S.data.cells[inp.dataset.ax][+inp.dataset.s];
         if (document.activeElement !== inp && inp.value !== String(v ?? '')) inp.value = v ?? '';
       }
@@ -307,9 +317,11 @@
   const setBoth = (s, v, a, how) => AH.setCells(s, { v, a }, how);
   // 入力後に次の区間へ。聴いてから入力で止まっているときは、次の区間を始めから聴く（シークだけだと Enter で 1 区間飛ばす）
   function autoNext(s) {
-    if (!opts().autoNext || s + 1 >= AH.nSec()) return;
-    if (AH._.listenUsable() && AH._.listenWaiting()) AH._.listenPlayBin(s + 1);
-    else AH.seekTo(AH.binStart(s + 1) + 0.001);
+    if (!opts().autoNext) return;
+    let t = s + 1; while (t < AH.nSec() && AH.novoiceLocked(t)) t++;   // 発声なしの事前設定の区間は飛ばす
+    if (t >= AH.nSec()) return;
+    if (AH._.listenUsable() && AH._.listenWaiting()) AH._.listenPlayBin(t);
+    else AH.seekTo(AH.binStart(t) + 0.001);
   }
 
   // SAM の絵：annotator/sam/ に原典の画像（valence_figure_1〜5.png、arousal_figure_1〜5.png）があればそれを使い、なければ簡略版を描く
@@ -480,6 +492,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, xlTable, cellSec, setCellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, lockNote, xlTable, cellSec, setCellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

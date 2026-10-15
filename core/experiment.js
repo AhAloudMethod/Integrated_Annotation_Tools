@@ -119,7 +119,7 @@
       <label>始める試行 <select id="expFrom"></select></label>
       <div class="expBtns"><button id="expGo" type="button">実験を始める</button><button id="expCancel" type="button">やめる</button></div>
       <div class="expSaved"><div class="refTitle">ブラウザに残っている結果</div><div id="expZips" class="expZips"></div></div>
-      <p class="muted">実験中は Ctrl+Shift+E で実験モードを抜けます。結果は試行ごとに 1 つの zip としてダウンロード先に書き出し、ブラウザにも残します。</p>`);
+      <p class="muted">実験中は ${_.mod('Ctrl')}+Shift+E で実験モードを抜けます。結果は試行ごとに 1 つの zip としてダウンロード先に書き出し、ブラウザにも残します。</p>`);
     const fill = () => {
       const pid = $('expPid').value, done = loadProgress(pid), ts = cfg.participants[pid];
       const first = ts.findIndex((_t, k) => !done[k] || done[k].partial);
@@ -236,7 +236,7 @@
     if (document.body.classList.contains('vwin') && _.closeVideoWindow) _.closeVideoWindow();
     endStroke('trial'); setArmed(false); pen.down = false;
     if (video.src) _.autosave();
-    S.meta.video_file = ''; delete S.meta.save_key; S.data = null; S.undo = []; S.redo = []; S.log = [];
+    S.meta.video_file = ''; delete S.meta.save_key; delete S.meta.novoice_preset; S.data = null; S.undo = []; S.redo = []; S.log = [];
   }
   function startTrial(i) {
     teardown();
@@ -257,6 +257,9 @@
     const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
     const vref = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].ref;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
     S.meta.ref = typeof vref === 'number' ? vref : null;
+    // 発声なしの区間（setup.json の novoice。PANAS で事前に印を付け、参加者は変えられない．modes/panas.js）
+    const vnv = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].novoice;
+    if (Array.isArray(vnv) && vnv.length) S.meta.novoice_preset = vnv.map(x => [x[0], x[1]]); else delete S.meta.novoice_preset;
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
       name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
     if (!started && t.record) {
@@ -339,7 +342,7 @@
     $('expDoneBtn').hidden = st !== 'running';
     const head = `<p class="expProg">${esc(progText())}</p>`;
     if (st === 'loading') cover(head + '<p>読み込んでいます…</p>');
-    else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、Ctrl+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
+    else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、${_.mod('Ctrl')}+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
     else if (st === 'pick') {
       const prev = loadRec(X.i);
       cover(head + '<h2>録画を選ぶ（実験者の方へ）</h2>'
@@ -438,7 +441,7 @@
     if (playAt != null) play += w1 - playAt;
     if (revAt != null) rev += w1 - revAt;
     // 値を入れた区間の数。区間内で変化（core/curve.js）の変化の区間は、書き込みがかかった区間を数える
-    const bins = _.nSec(), filled = ax => S.data.cells[ax].slice(0, bins).filter((x, s) => (x === 'curve' ? (_.curveInfo(ax, s) || {}).entered : x != null && x !== '')).length;
+    const bins = _.nSec(), filled = ax => _.M.filledCount ? _.M.filledCount(ax) : S.data.cells[ax].slice(0, bins).filter((x, s) => (x === 'curve' ? (_.curveInfo(ax, s) || {}).entered : x != null && x !== '')).length;
     return { trial: X.i + 1, practice: t.practice ? 1 : 0, mode: t.mode, condition: cond(t), video: vidName(t),
       start_iso: S.meta.experiment.start_iso || '', end_iso: S.meta.experiment.end_iso || '',
       task_ms: +(w1 - w0).toFixed(1), play_ms: +play.toFixed(1), review_ms: +rev.toFixed(1),
@@ -451,7 +454,7 @@
   // 設定の欄は exp-check.js の SETTINGS から作る。フォルダに setup.json があればその値を、無い項目は今の画面の値を初めの値にする
   // （手や Agent で直した設定を、評価区間を直すための書き出し直しで消さないため）。動画はフォルダの中のものを並べ、
   // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。覚えていなければ setup.json の区間を使い、どちらも無い動画は「未設定」と出して書き出さない。
-  // 基準音声の時刻 ref は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
+  // 基準音声の時刻 ref と発声なしの区間 novoice は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
   function currentSettings() {
     return { ...DEF, axes: _.axesId(), rate: +$('rate').value, afterWrite: $('afterWrite').value, timeline: !document.body.classList.contains('noTl'),
       graphEdit: $('graphEdit').checked, grid: _.gridShown(), f0: _.f0Shown(), voiced: _.voicedShown(), listen: _.listenOn(), videoSize: +$('vidSize').value,
@@ -486,7 +489,7 @@
       const dur = await durationOf(v.file);
       const r = dur ? _.loadRange(v.file.name, `${v.file.size}:${dur.toFixed(2)}`) : null;
       const prev = isObj(oldVids[v.path]) ? oldVids[v.path] : null;
-      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}) } : prev;
+      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}), ...(prev && Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) } : prev;
       rows.push({ path: v.path, dur, entry, kept: !r && !!prev });
     }
     const cur = { ...currentSettings(), ...Object.fromEntries(E.SETTINGS.filter(d => d.key in oldSet).map(d => [d.key, oldSet[d.key]])) };
@@ -528,7 +531,7 @@
   // 開始前・完了後はキーを効かせない（覆いの中の欄とボタンは除く）。視聴を許していなければ V も効かせない。
   // 他のキー操作（core/keys.js）より先に受け取るため、window の捕捉段階で止める
   window.addEventListener('keydown', e => {
-    if (e.code === 'KeyE' && e.ctrlKey && e.shiftKey) { if (X && X.state !== 'setup') { e.preventDefault(); exit(); } return; }
+    if (e.code === 'KeyE' && (e.ctrlKey || e.metaKey) && e.shiftKey) { if (X && X.state !== 'setup') { e.preventDefault(); exit(); } return; }
     const inCover = !$('expCover').hidden && $('expCover').contains(e.target);
     if (!X) { if (inCover) e.stopImmediatePropagation(); return; }   // setup.json の書き出しの画面の欄
     const block = () => { e.preventDefault(); e.stopImmediatePropagation(); };

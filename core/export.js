@@ -104,6 +104,7 @@
       }
       out('_bins.csv', [...binHead, 'n_changes', 'sum_d_valence', 'sum_d_arousal'], rows);
     }
+    if (_.M.extraCsv) for (const f of _.M.extraCsv()) out(f.suffix, f.header, f.rows);   // 方式が持つ追加の表（PANAS の項目ごとの回答）
     if (_.F0 && _.F0.status === 'ready') {   // 動画の音声の F0（10ms ごと。t は窓の中心、声なしは空欄）
       const F = _.F0, rows = [];
       for (let k = 0; k < F.f0.length; k++) rows.push([(k * F.hop + 0.02).toFixed(3), F.f0[k] > 0 ? F.f0[k].toFixed(1) : '', F.rms[k].toFixed(5)]);

@@ -170,7 +170,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     // 値「連続値」：セルに小数（小数第1位まで）が入り、確定のときに 1〜9 の外を弾く。全角の数字も入る
     await pick(p, '値', 'real');
     const realTb = await p.evaluate(() => ({ values: AH.S.meta.options.values, real: !!document.querySelector('table.xl.real'), int: AH.mode.isInteger() }));
-    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.press('Control+a');
+    await p.click('input[data-ax=v][data-s="0"]'); await p.keyboard.press('ControlOrMeta+a');
     await p.keyboard.type('7.25'); await p.keyboard.press('Enter');   // 3 文字（7.2）までしか入らない
     await p.keyboard.type('３．５'); await p.keyboard.press('Enter');
     await p.keyboard.type('9.5'); await p.keyboard.press('Enter');

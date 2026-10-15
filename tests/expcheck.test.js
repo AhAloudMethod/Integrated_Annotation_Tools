@@ -27,7 +27,7 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   { mode: M[m], video: 'practice.mp4', practice: true }, { mode: M[m], video: V[LV[p][k]] }])]));
 
 {
-  check('方式の一覧は index.html の読み込み順で、表示名も取れる', modeList().length === 15 && modeList()[0].id === 'key' && modeList().find(m => m.id === 'change').label.startsWith('変化ボタン'), JSON.stringify(modeList().map(m => m.id)));
+  check('方式の一覧は index.html の読み込み順で、表示名も取れる', modeList().length === 16 && modeList()[0].id === 'key' && modeList().some(m => m.id === 'panas') && modeList().find(m => m.id === 'change').label.startsWith('変化ボタン'), JSON.stringify(modeList().map(m => m.id)));
   check('評価軸の組は core/axes.js から取る', JSON.stringify(axesList()) === '["va","pana","thayer"]', JSON.stringify(axesList()));
 }
 {

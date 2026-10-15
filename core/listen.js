@@ -78,7 +78,7 @@
   // ---------- Enter／ボタン0：聴いた区間を始めから再生し直して記録する ----------
   function startRecord() {
     if (!waiting()) return false;
-    if (table()) return playBin(_.curSec() + 1);   // 区間方式：次の区間を聴く
+    if (table()) { let t = _.curSec() + 1; while (t < nSec() && _.novoiceLocked(t)) t++; return playBin(t); }   // 区間方式：次の区間を聴く（発声なしの事前設定の区間は飛ばす）
     const s = inputSec(); if (s == null) return true;
     recStart = binStart(s);
     ownSeek = true; video.currentTime = recStart;

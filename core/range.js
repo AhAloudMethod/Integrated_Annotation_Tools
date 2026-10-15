@@ -124,8 +124,10 @@
     setRange({ edges: e, start: e[0], target: e[e.length - 1], count: e.length - 1 });
     return true;
   }
-  function cellsSplit(s) { for (const ax of ['v', 'a']) { const c = S.data && S.data.cells[ax]; if (c && c.length > s) c.splice(s + 1, 0, c[s]); } }
-  function cellsMerge(s) { for (const ax of ['v', 'a']) { const c = S.data && S.data.cells[ax]; if (c && c.length > s) { if (c[s - 1] == null && c[s] != null) c[s - 1] = c[s]; c.splice(s, 1); } } }
+  function itemsSplit(s) { const it = S.data && S.data.items; if (it && it.length > s) it.splice(s + 1, 0, it[s] ? it[s].slice() : it[s]); }   // PANAS の項目の回答も区間に付いて動く
+  function itemsMerge(s) { const it = S.data && S.data.items; if (it && it.length > s) { if (!it[s - 1] && it[s]) it[s - 1] = it[s]; it.splice(s, 1); } }
+  function cellsSplit(s) { itemsSplit(s); for (const ax of ['v', 'a']) { const c = S.data && S.data.cells[ax]; if (c && c.length > s) c.splice(s + 1, 0, c[s]); } }
+  function cellsMerge(s) { itemsMerge(s); for (const ax of ['v', 'a']) { const c = S.data && S.data.cells[ax]; if (c && c.length > s) { if (c[s - 1] == null && c[s] != null) c[s - 1] = c[s]; c.splice(s, 1); } } }
   function hintMsg(msg) {
     const el = $('hint'); el.classList.remove('ok'); el.textContent = msg; el.hidden = false;
     clearTimeout(hintMsg.tm); hintMsg.tm = setTimeout(() => { el.hidden = true; }, 2500);
@@ -165,7 +167,7 @@
       start = r4(Math.max(0, start)); let drop = 0;
       while (e.length > 2 && e[1] <= start + tailTol()) { e.shift(); drop++; }
       e[0] = start;
-      if (drop) for (const ax of ['v', 'a']) if (S.data) S.data.cells[ax].splice(0, drop);
+      if (drop && S.data) { for (const ax of ['v', 'a']) S.data.cells[ax].splice(0, drop); if (S.data.items) S.data.items.splice(0, drop); }
     }
     if (end != null) {
       end = r4(end);

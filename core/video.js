@@ -58,7 +58,10 @@
   $('pid').addEventListener('change', e => {
     const id = e.target.value.trim();
     if (!_.renameParticipant(S.meta.participant, id)) e.target.value = S.meta.participant;
+    _.refresh();   // 参加者 ID で変わる表示（PANAS の項目の並び）をすぐ更新する
   });
+  // Enter・Esc で入力欄を抜ける（カーソルが残ると、数字キーが方式の入力にならず ID の末尾に入る）。change は blur で確定する
+  $('pid').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.target.blur(); } });
   $('mode').addEventListener('change', e => { switchMode(e.target.value); e.target.blur(); });
   $('playBtn').addEventListener('click', e => { togglePlay(); e.target.blur(); });
   $('backBtn').addEventListener('click', e => { seekTo(seekTarget() - 1); e.target.blur(); });
@@ -66,7 +69,7 @@
   $('armBtn').addEventListener('click', e => { setArmed(!S.armed); e.target.blur(); });
   $('resetBtn').addEventListener('click', e => {
     e.currentTarget.blur();
-    if (!S.data || !confirm('この動画・方式の評価の値をすべて消して、初期値に戻します（Ctrl+Z で戻せます）。よろしいですか？')) return;
+    if (!S.data || !confirm(_.mod('この動画・方式の評価の値をすべて消して、初期値に戻します（Ctrl+Z で戻せます）。よろしいですか？'))) return;
     _.resetData();
   });
   $('graphEdit').addEventListener('change', e => { addLog('graph_edit', { value: e.target.checked }); e.target.blur(); });

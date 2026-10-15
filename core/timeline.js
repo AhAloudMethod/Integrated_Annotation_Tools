@@ -15,6 +15,8 @@
     const f0Lane = FH ? { y0: H2 + 8, y1: h - RULER - 4, top: H2 } : null;
     for (const L of lanes) {
       L.lo = 1; L.hi = 9;
+      const gs = _.M && _.M.graphScale && _.M.graphScale();   // 方式が評価グラフの軸を決めるとき（PANAS の合計：lo・hi・中央 mid・欄の名前に足す語 tag）
+      if (gs) { L.lo = gs.lo; L.hi = gs.hi; L.mid = gs.mid; L.tag = gs.tag || ''; } else { L.mid = 5; L.tag = ''; }
       if (_.M && _.M.unbounded && S.data) { const vs = S.data.points[L.ax].map(p => p.val); L.lo = Math.min(...vs) - 1; L.hi = Math.max(...vs) + 1; }
       L.yOf = v => L.y1 - (v - L.lo) / (L.hi - L.lo) * (L.y1 - L.y0);
       L.vOf = y => L.lo + (L.y1 - y) / (L.y1 - L.y0) * (L.hi - L.lo);
@@ -60,11 +62,11 @@
     g.strokeStyle = css('--pen'); g.lineWidth = 1.5;   // 赤
     g.beginPath(); g.moveTo(0, yDiv); g.lineTo(w, yDiv); g.stroke();
     for (const L of G.lanes) {
-      g.fillStyle = css('--muted'); g.fillText(L.name, 2, L.y0 + 10);
+      g.fillStyle = css('--muted'); g.fillText(L.name + L.tag, 2, L.y0 + 10);
       if (!(_.M && _.M.unbounded)) {
-        g.fillText('5', PAD_L - 12, L.yOf(5) + 4);
+        g.fillText(String(L.mid), PAD_L - (L.mid > 9 ? 18 : 12), L.yOf(L.mid) + 4);
         g.strokeStyle = css('--line'); g.lineWidth = 1;   // 中立（5）の線は実線
-        g.beginPath(); g.moveTo(PAD_L, L.yOf(5)); g.lineTo(w - PAD_R, L.yOf(5)); g.stroke();
+        g.beginPath(); g.moveTo(PAD_L, L.yOf(L.mid)); g.lineTo(w - PAD_R, L.yOf(L.mid)); g.stroke();
       }
       if (!D || !S.data) continue;
       g.strokeStyle = L.col; g.fillStyle = L.col; g.lineWidth = 2;
@@ -82,12 +84,13 @@
       } else if (model() === 'table') {
         const c = S.data.cells[L.ax];
         for (let s = 0; s < nSec(); s++) {
-          if (c[s] == null) continue;
+          const cv = _.M.graphCell ? _.M.graphCell(L.ax, s) : c[s];   // 方式が区間の値を別に持つとき（PANAS の合計）
+          if (cv == null) continue;
           if (_.curveIsCurve(L.ax, s)) { drawCurveSec(g, L, s, xOf, D); continue; }   // 変化の区間（core/curve.js）は系列の線
           const x0 = xOf(binStart(s)) + 1, bw = xOf(Math.min(_.binEnd(s), D)) - xOf(binStart(s)) - 2;
-          if (c[s] === 0) {   // 0 は発声なし：値の線ではなく、欄の高さの灰色の帯にする
+          if (cv === 0) {   // 0 は発声なし：値の線ではなく、欄の高さの灰色の帯にする
             g.fillStyle = css('--muted'); g.globalAlpha = 0.25; g.fillRect(x0, L.y0, bw, L.y1 - L.y0); g.globalAlpha = 1; g.fillStyle = L.col;
-          } else g.fillRect(x0, L.yOf(c[s]) - 1.5, bw, 3);
+          } else g.fillRect(x0, L.yOf(cv) - 1.5, bw, 3);
         }
       } else if (model() === 'events') {
         const mid = (L.y0 + L.y1) / 2;
@@ -154,7 +157,7 @@
   // グラフ直接編集：連続方式はなぞった範囲の値を描き換え、区間方式は区間の値を設定する
   let edit = null, seeking = false;
   // 区間内で変化（core/curve.js）はグラフだけで入れるので、設定に関わらずいつも編集できる
-  const graphEditable = () => ($('graphEdit').checked || _.curveOn()) && model() !== 'events' && !!video.src && !_.reviewing();
+  const graphEditable = () => ($('graphEdit').checked || _.curveOn()) && model() !== 'events' && !(_.M && _.M.derivedCells) && !!video.src && !_.reviewing();   // derivedCells：区間の値を回答から作る方式（PANAS）は、グラフで値を置けない（押すとシークになる）
   // なぞった範囲の値を描き換え、その直後は編集前の値に戻す（core/series.js の rewriteFrames）。
   // フレームが続いている所ごとに描き換える（区間内で変化では、変化の区間のフレームだけを描くので、間が空くことがある）
   function editRebuild() {
@@ -173,7 +176,7 @@
     if (!(_.M && _.M.unbounded)) v = clamp(v, 1, 9);
     v = edit.series && model() === 'table' ? r2(v) : isInt() ? Math.round(v) : _.M && _.M.decimals === 1 ? Math.round(v * 10) / 10 : r2(v);   // Excel の連続値は小数第1位まで（変化の区間は連続の方式と同じ）
     if (!edit.series) {
-      const s = binAt(t); if (s < 0 || s >= nSec() || _.curveIsCurve(edit.axis, s)) return;   // 変化の区間のセルは、セルの値で上書きしない
+      const s = binAt(t); if (s < 0 || s >= nSec() || _.curveIsCurve(edit.axis, s) || _.novoiceLocked(s)) return;   // 変化の区間のセルは、セルの値で上書きしない
       if (S.data.cells[edit.axis][s] !== v) { if (!edit.changed) pushUndo(edit.before); edit.changed = true; S.data.cells[edit.axis][s] = v; edit.bins.add(s); }
     } else {
       const f = Math.round(t * FPS), q = x => (isInt() && model() === 'series' ? Math.round(x) : r2(x));
@@ -270,6 +273,7 @@
   tl.addEventListener('pointerup', tlUp); tl.addEventListener('pointercancel', tlUp);
 
   function refresh() {
+    _.applyNoVoice();   // 発声なしの事前設定の区間を 0 にそろえる（core/table.js）
     const t = video.currentTime || 0;
     if (_.renderF0) _.renderF0();
     // 区間外は時刻の右上の札にする（文字に足すと幅が変わり、右のボタンがずれる）

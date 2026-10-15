@@ -22,7 +22,7 @@ const AH = { _: {} };
   // ---------- 状態 ----------
   const S = {
     meta: { participant: '', video_file: '', duration: 0, session_start_iso: '', tool: 'ah-annotator-v0.5', mode: '', options: {}, range: null },
-    data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, events:[], memo:''}
+    data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, items:[], events:[], memo:''}（items：区間ごとの項目の回答。PANAS だけが使う）
     log: [], undo: [], redo: [], t0: performance.now(), lastTime: 0,
     armed: false,
     videoSig: '',   // 動画の見分け（ファイルの大きさ＋長さ）。ファイル名を変えても評価区間を復元するため
@@ -30,11 +30,22 @@ const AH = { _: {} };
   const emptyData = () => {
     const iv = _.M ? _.M.init : { v: 5, a: 5 };
     return { points: { v: [{ t: 0, val: iv.v, init: true }], a: [{ t: 0, val: iv.a, init: true }] },
-             strokes: [], cells: { v: [], a: [] }, events: [], memo: '' };
+             strokes: [], cells: { v: [], a: [] }, items: [], events: [], memo: '' };
   };
   const model = () => (_.M ? _.M.model : 'series');
   // 値が整数か。方式が isInteger を持てばそれに従う（カスタムの「値」）。なければ区間表と integer の方式が整数
   const isInt = () => !!(_.M && (_.M.isInteger ? _.M.isInteger() : model() === 'table' || _.M.integer));
+
+  // ---------- OS ----------
+  // Mac では Ctrl を ⌘ と表示する（キーは Ctrl も ⌘ も効く。core/keys.js）。説明文・ツールチップ・ダイアログの「Ctrl」を置き換える
+  const isMac = /Mac/i.test(navigator.platform || (navigator.userAgentData && navigator.userAgentData.platform) || '');
+  const mod = s => (isMac ? String(s).replace(/Ctrl/g, '⌘') : s);
+  function localizeKeys(root = document.body) {
+    if (!isMac || !root) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) if (n.nodeValue.includes('Ctrl') && !/^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName)) n.nodeValue = mod(n.nodeValue);
+    for (const e of root.querySelectorAll('[title*="Ctrl"]')) e.title = mod(e.title);
+  }
 
   const wall = () => +(performance.now() - S.t0).toFixed(1);
   const vt = () => +video.currentTime.toFixed(4);
@@ -68,5 +79,5 @@ const AH = { _: {} };
     addLog('redo'); _.refresh();
   }
 
-  Object.assign(_, { FPS, SNAP, $, video, tl, tctx, modes, S, emptyData, model, isInt, wall, vt, r2, clamp, addLog, snapshot, undoPoint: () => entry(), pushUndo, undo, redo });
+  Object.assign(_, { isMac, mod, localizeKeys, FPS, SNAP, $, video, tl, tctx, modes, S, emptyData, model, isInt, wall, vt, r2, clamp, addLog, snapshot, undoPoint: () => entry(), pushUndo, undo, redo });
 })();

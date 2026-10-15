@@ -26,7 +26,7 @@
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true },
   ];
   const DEF = Object.fromEntries(SETTINGS.map(s => [s.key, s.def]));
-  const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref'];   // ref：基準音声の時刻（秒。無ければ最初の声）
+  const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref', 'novoice'];   // ref：基準音声の時刻（秒。無ければ最初の声）。novoice：発声なしの区間 [[始め, 終わり（秒）], …]（PANAS。事前に印が付き、参加者は変えられない）
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
 
   // experiment.json と setup.json を合わせる（settings と videos は setup.json から取る）
@@ -40,7 +40,7 @@
     const spec = t.range || (cfg.videos && cfg.videos[t.video]) || {};
     const r = { ...(cfg.range || {}), ...spec };
     if (!spec.edges) delete r.edges;
-    delete r.duration; delete r.ref;
+    delete r.duration; delete r.ref; delete r.novoice;
     return r;
   }
 
@@ -81,6 +81,8 @@
       if (r.start != null && !(r.start >= 0)) errors.push(`${where}：start は 0 以上です`);
       if (r.end != null && !(r.end > (r.start || 0))) errors.push(`${where}：end は start より後です`);
       if (r.ref != null && !(typeof r.ref === 'number' && r.ref >= 0 && !(r.duration > 0 && r.ref > r.duration))) errors.push(`${where}：ref（基準音声の秒）は 0 以上、動画の長さ以下の数です`);
+      if (r.novoice != null && !(Array.isArray(r.novoice) && r.novoice.every(x => Array.isArray(x) && x.length === 2 && typeof x[0] === 'number' && typeof x[1] === 'number' && x[0] >= 0 && x[1] > x[0] && !(r.duration > 0 && x[1] > r.duration + 0.05))))
+        errors.push(`${where}：novoice（発声なしの区間）は [始め, 終わり]（秒．0 以上，終わりは始めより後，動画の長さ以下）の並びです`);
       if (r.label != null && !['countdown', 'elapsed'].includes(r.label)) errors.push(`${where}：label は countdown か elapsed です`);
       if (r.edges != null && !(Array.isArray(r.edges) && r.edges.length >= 2 && r.edges.every((x, i) => typeof x === 'number' && x >= 0 && (i === 0 || x > r.edges[i - 1]))))
         errors.push(`${where}：edges は 2 つ以上の増えていく秒の配列です`);
@@ -141,6 +143,12 @@
     for (const v of noRange) errors.push(`動画「${v}」の評価区間がありません（通常の画面で評価区間を合わせ、setup.json を書き出し直してください）`);
     if (!useVideos && anyVideo) warnings.push('動画ごとの評価区間（setup.json の videos）がありません。どの動画も全体の range（無ければ動画全体を 1 秒ごと）で評価します');
     if (!errors.length) warnings.push(...orderWarnings(ps));
+    // novoice は区間ごとに値を入れる方式（区間表の方式）だけに効く。ほかの方式で使う動画に書いてあれば警告する（カスタムは設計しだい）
+    const NV_MODES = ['excel', 'affectgrid', 'sam', 'panas', 'custom'];
+    for (const [pid, ts] of Object.entries(ps)) for (const t of Array.isArray(ts) ? ts : []) {
+      const vr = isObj(t) && !t.record && isObj(videos[t.video]) ? videos[t.video] : null;
+      if (vr && Array.isArray(vr.novoice) && vr.novoice.length && !NV_MODES.includes(t.mode)) warnings.push(`${pid}：動画「${t.video}」に novoice がありますが、方式「${t.mode}」には効きません（区間ごとに値を入れる方式：excel・affectgrid・sam・panas・custom）`);
+    }
     return { errors, warnings };
   }
 
