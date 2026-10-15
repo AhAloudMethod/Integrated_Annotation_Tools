@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ============================================================
+     講義・解説資料テンプレート
+     使い方は同じディレクトリの design-guide.md を参照。
+     ▼ 差し替える箇所は【】で示しています。
+     ▼ 色の役割（厳守。内部規約であり、読み手には凡例として見せない）:
+        teal  = 見出し・リンク・要点（覚えてほしいこと）
+        ochre = 注意・禁止・非対応（気をつけること）
+        gray  = 中立の補足情報（緊急度なし）
+     ▼ 対話部品は opt-in。JS を切っても内容が全部見えるように作ってあるので、
+        クラスや data 属性を外せば静的な資料に戻る。
+     ============================================================ -->
+<title>評価ツールの使い方</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* --- カラートークン（役割で定義。ここだけ変えれば全体の色が変わる） --- */
+    --paper:#f6f4ee;      /* 背景（紙色ベース） */
+    --surface:#ffffff;    /* カード・表面 */
+    --ink:#232a2d;        /* 本文（地の文） */
+    --sub:#59636a;        /* 補助テキスト */
+    --teal:#1c5a62;       /* PRIMARY：見出し・リンク・要点 */
+    --teal-deep:#164249;  /* teal の濃い版（小見出し等） */
+    --teal-tint:#e6efee;  /* 要点ボックスの背景 */
+    --ochre:#9a5417;      /* ACCENT：注意・禁止・非対応 */
+    --ochre-tint:#f4ebdf; /* 注意ボックスの背景 */
+    --info:#6c7176;       /* NEUTRAL：補足 */
+    --info-tint:#ecebe4;  /* 補足ボックスの背景 */
+    --line:#e2dccf;       /* 細罫線 */
+    --rule:#d6cfc1;       /* 見出し下の太罫 */
+    --row-hover:#efece3;  /* 表の行ホバー */
+    --shell:1320px;       /* ページ全体の最大幅 */
+    --tocw:240px;         /* 目次カラム幅 */
+    --gutter:56px;        /* 目次と本文の間 */
+    --maxcol:980px;       /* 本文・表の共通カラム幅（表もこの幅まで使う） */
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Inter","Noto Sans JP",-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:16px;line-height:1.85;font-feature-settings:"palt";
+    overflow-wrap:break-word;}
+  /* ---- masthead ---- */
+  .masthead{border-bottom:2px solid var(--teal);background:var(--surface);}
+  .masthead .inner{max-width:var(--shell);margin:0 auto;padding:34px 28px 26px;}
+  .kicker{font-size:.78rem;letter-spacing:.14em;color:var(--teal);font-weight:600;text-transform:uppercase;margin:0 0 8px;}
+  .masthead h1{margin:0;font-size:1.8rem;font-weight:700;letter-spacing:.01em;line-height:1.35;}
+  .masthead p{margin:10px 0 0;color:var(--sub);font-size:.92rem;max-width:var(--maxcol);}
+  /* ---- layout ---- */
+  .layout{max-width:var(--shell);margin:0 auto;padding:0 28px;display:flex;gap:var(--gutter);align-items:flex-start;}
+  aside{position:sticky;top:0;flex:0 0 var(--tocw);padding:34px 0;align-self:flex-start;}
+  aside .toc-title{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);font-weight:600;margin:0 0 12px;}
+  aside ol{list-style:none;margin:0;padding:0;}
+  aside a{display:block;padding:6px 0 6px 14px;border-left:2px solid var(--line);
+    color:var(--sub);text-decoration:none;font-size:.86rem;line-height:1.5;transition:.15s;}
+  aside a:hover{color:var(--teal);border-color:var(--teal);}
+  aside a.active{color:var(--teal-deep);border-color:var(--teal);font-weight:600;}
+  /* ---- 目次：部でまとめる形（部制の資料のみ。部が無ければフラットな ol のまま） ---- */
+  aside .toc-part{border:0;background:none;border-radius:0;margin:0;overflow:visible;}
+  aside .toc-part>summary{display:flex;align-items:baseline;gap:6px;
+    padding:8px 0 8px 14px;border-left:2px solid var(--line);
+    font-size:.78rem;font-weight:700;color:var(--teal-deep);letter-spacing:.03em;}
+  aside .toc-part>summary::before{content:"▸";color:var(--sub);font-size:.7rem;}
+  aside .toc-part[open]>summary::before{content:"▾";}
+  aside .toc-part>summary::after{content:none;}          /* Q&A 用の ＋／－ を出さない */
+  aside .toc-part[open]>summary{border-bottom:0;}         /* details[open] の罫を打ち消す */
+  aside .toc-part.current>summary{border-left-color:var(--teal);}
+  aside .part-progress{margin-left:auto;font-weight:400;font-size:.72rem;color:var(--sub);
+    font-variant-numeric:tabular-nums;}
+  aside .toc-part>ol{margin:0 0 10px;}
+  aside .toc-part>ol a{padding-left:26px;}
+  aside .part-lbl{display:block;font-size:.68rem;font-weight:700;letter-spacing:.08em;color:var(--teal);}
+  main{flex:1 1 auto;min-width:0;max-width:var(--maxcol);padding:34px 0 80px;}
+  /* ---- sections ---- */
+  section{padding-top:26px;margin-top:20px;}
+  section:first-child{margin-top:0;}
+  .secnum{font-size:.8rem;font-weight:700;color:var(--teal);letter-spacing:.05em;}
+  h2{font-size:1.42rem;font-weight:700;margin:4px 0 4px;line-height:1.4;}
+  .h2rule{height:2px;background:var(--rule);border:0;margin:0 0 20px;}
+  h3{font-size:1.04rem;font-weight:700;color:var(--teal-deep);margin:26px 0 8px;}
+  p{margin:12px 0;}
+  .lead{font-size:1.02rem;}
+  strong{font-weight:700;}
+  a.inline{color:var(--teal);text-underline-offset:2px;}
+  /* ---- 部の中扉（本文側。部制のときだけ使う） ---- */
+  .partmark{margin:52px 0 0;padding-top:22px;border-top:2px solid var(--teal);}
+  .partmark .lbl{font-size:.78rem;font-weight:700;letter-spacing:.12em;color:var(--teal);}
+  .partmark h2{font-size:1.24rem;margin:2px 0 0;}
+  /* ---- tables（横罫のみ・縦罫なし） ---- */
+  .tablewrap{overflow-x:auto;margin:18px 0;}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;line-height:1.6;min-width:520px;}
+  th,td{text-align:left;padding:10px 14px;vertical-align:top;border-bottom:1px solid var(--line);}
+  thead th{border-bottom:2px solid var(--teal);color:var(--teal-deep);font-weight:600;white-space:nowrap;}
+  td:first-child,th:first-child{padding-left:0;}
+  .rowhead{font-weight:600;color:var(--ink);text-wrap:balance;line-break:strict;min-width:6.5em;}
+  tbody tr:hover{background:var(--row-hover);}
+  /* 短い項目名の列に付けると内容ぴったりまで詰まり，余った幅が文章の列へ回る */
+  th.c-min{width:1%;white-space:nowrap;}
+  /* 5 列以上の密な表．1 行あたりの情報量を増やす */
+  table.dense{font-size:.84rem;}
+  table.dense th,table.dense td{padding:7px 10px;}
+  /* 長いパスやコマンドが列幅を吊り上げないよう，セル内では途中でも折り返す */
+  .tablewrap code{overflow-wrap:anywhere;}
+  /* 列ソート：table.sortable。JS が無ければただの表 */
+  table.sortable thead th{cursor:pointer;user-select:none;position:relative;padding-right:22px;}
+  table.sortable thead th::after{content:"⇅";position:absolute;right:6px;color:var(--rule);font-size:.78em;font-weight:400;}
+  table.sortable thead th[aria-sort="ascending"]::after{content:"↑";color:var(--teal);}
+  table.sortable thead th[aria-sort="descending"]::after{content:"↓";color:var(--teal);}
+  /* 行折りたたみ：.tablewrap[data-collapse="8"]。JS が無ければ全行表示 */
+  .rowmore{appearance:none;background:none;border:0;border-bottom:1px solid var(--line);width:100%;
+    padding:8px 0;font:inherit;font-size:.82rem;font-weight:600;color:var(--teal);cursor:pointer;text-align:left;}
+  .rowmore:hover{color:var(--teal-deep);}
+  /* ---- callouts（3種：役割ごとに色を固定） ---- */
+  .note{border-left:3px solid var(--teal);background:var(--teal-tint);padding:14px 18px;margin:18px 0;border-radius:0 4px 4px 0;}
+  .note .lbl{display:block;font-size:.76rem;font-weight:700;letter-spacing:.08em;color:var(--teal-deep);text-transform:uppercase;margin-bottom:4px;}
+  .caution{border-left:3px solid var(--ochre);background:var(--ochre-tint);padding:14px 18px;margin:18px 0;border-radius:0 4px 4px 0;}
+  .caution .lbl{display:block;font-size:.76rem;font-weight:700;letter-spacing:.08em;color:var(--ochre);text-transform:uppercase;margin-bottom:4px;}
+  .info{border-left:3px solid var(--info);background:var(--info-tint);padding:14px 18px;margin:18px 0;border-radius:0 4px 4px 0;}
+  .info .lbl{display:block;font-size:.76rem;font-weight:700;letter-spacing:.08em;color:var(--info);text-transform:uppercase;margin-bottom:4px;}
+  .note p,.caution p,.info p{margin:6px 0;}
+  /* ---- flow ---- */
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0;}
+  .flow .node{border:1px solid var(--rule);background:var(--surface);padding:9px 15px;font-size:.86rem;font-weight:600;border-radius:3px;}
+  .flow .node small{display:block;font-weight:400;color:var(--sub);font-size:.74rem;}
+  .flow .sep{color:var(--teal);font-weight:700;}
+  /* 段階表示：.flow[data-steps]。JS が無ければ全ノードが等しく見える */
+  .flow[data-ready] .node,.flow[data-ready] .sep{transition:opacity .18s;}
+  .flow[data-ready] .ahead{opacity:.22;}
+  .flow[data-ready] .node.now{border-color:var(--teal);box-shadow:inset 3px 0 0 var(--teal);}
+  .flow-ctl{display:flex;align-items:center;gap:12px;margin:-8px 0 18px;font-size:.8rem;color:var(--sub);}
+  .flow-ctl button{appearance:none;background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+    padding:4px 12px;font:inherit;font-size:.8rem;font-weight:600;color:var(--teal);cursor:pointer;}
+  .flow-ctl button:disabled{color:var(--sub);opacity:.5;cursor:default;}
+  .flow-ctl .pos{font-variant-numeric:tabular-nums;}
+  /* ---- tabs（同じ主題の複数バリアント。JS が無ければ全パネルが縦に並ぶ） ---- */
+  .tabs{margin:18px 0;}
+  .tablist{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--line);}
+  .tablist button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;
+    padding:8px 14px;font:inherit;font-size:.86rem;font-weight:600;color:var(--sub);cursor:pointer;}
+  .tablist button[aria-selected="true"]{color:var(--teal-deep);border-bottom-color:var(--teal);}
+  .tabs .panel>*:first-child{margin-top:14px;}
+  .tabs[data-ready] .panel[hidden]{display:none;}
+  .tabs:not([data-ready]) .tablist{display:none;}
+  .tabs:not([data-ready]) .panel::before{content:attr(data-label);display:block;margin-top:16px;
+    font-size:.82rem;font-weight:700;color:var(--teal-deep);}
+  /* ---- lists（teal＝通常 / ochre＝注意項目） ---- */
+  ul.clean{margin:12px 0;padding-left:0;list-style:none;}
+  ul.clean li{position:relative;padding-left:20px;margin:7px 0;}
+  ul.clean li::before{content:"";position:absolute;left:2px;top:.72em;width:6px;height:6px;background:var(--teal);border-radius:50%;}
+  ul.clean li.warn::before{background:var(--ochre);}
+  /* ---- definition block ---- */
+  .def{border:1px solid var(--line);border-radius:5px;padding:2px 20px 6px;margin:16px 0;background:var(--surface);}
+  .def h3{margin-top:16px;}
+  /* ---- Q&A（開閉式） ---- */
+  details{border:1px solid var(--line);border-radius:5px;margin:12px 0;background:var(--surface);overflow:hidden;}
+  summary{cursor:pointer;padding:14px 18px;font-weight:600;font-size:.95rem;list-style:none;position:relative;padding-right:44px;}
+  summary::-webkit-details-marker{display:none;}
+  summary::after{content:"＋";position:absolute;right:18px;top:13px;color:var(--teal);font-weight:700;}
+  details[open] summary::after{content:"－";}
+  details[open] summary{border-bottom:1px solid var(--line);}
+  .qbody{padding:14px 18px;font-size:.92rem;}
+  .qbody p:first-child{margin-top:0;}
+  /* ---- links list ---- */
+  .doclist .grp{font-size:.82rem;font-weight:700;color:var(--teal-deep);letter-spacing:.04em;margin:18px 0 8px;}
+  .doclist a{display:block;padding:8px 0;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:.9rem;transition:.15s;}
+  .doclist a:hover{color:var(--teal);padding-left:6px;}
+  .doclist a .u{display:block;font-size:.74rem;color:var(--sub);overflow-wrap:anywhere;}
+  .muted{color:var(--sub);font-size:.84rem;}
+  footer{border-top:1px solid var(--rule);margin-top:40px;padding-top:18px;color:var(--sub);font-size:.8rem;line-height:1.7;}
+  code{font-family:"SFMono-Regular",Consolas,monospace;font-size:.86em;background:#efece4;padding:1px 5px;border-radius:3px;}
+  /* 整形済みブロック（ASCII 図・コード）．折り返すと図が崩れるため，枠の中だけ横スクロールさせる */
+  pre{overflow-x:auto;max-width:100%;}
+  pre code{overflow-wrap:normal;}
+  @media(max-width:1120px){
+    :root{--tocw:200px;--gutter:36px;}
+  }
+  @media(max-width:820px){
+    aside{display:none;}
+    .layout{padding:0 20px;}
+    .masthead .inner{padding:26px 20px 22px;}
+    main{padding:24px 0 60px;max-width:none;}
+    .masthead h1{font-size:1.5rem;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto;}
+    *{transition:none !important;}
+  }
+  /* ---- 印刷・PDF（目次を落とし，折りたたみとタブを開いて全内容を出す） ---- */
+  @media print{
+    body{background:#fff;font-size:11pt;line-height:1.6;}
+    aside,.flow-ctl,.rowmore{display:none !important;}
+    .layout{display:block;max-width:none;padding:0;}
+    main{max-width:none;padding:0;}
+    .masthead{border-bottom-width:1px;}
+    .masthead .inner{max-width:none;padding:0 0 14px;}
+    .tablewrap{overflow:visible;}
+    table{min-width:0;}
+    th,td{overflow-wrap:break-word;}
+    tr[hidden]{display:table-row !important;}
+    .tabs[data-ready] .tablist{display:none;}
+    .tabs[data-ready] .panel[hidden]{display:block !important;}
+    .tabs .panel::before{content:attr(data-label);display:block;margin-top:14px;
+      font-size:.82rem;font-weight:700;color:var(--teal-deep);}
+    .flow[data-ready] .ahead{opacity:1 !important;}
+    tbody tr:hover{background:none;}
+    tr,.note,.caution,.info,.def,details{break-inside:avoid;}
+    h2,h3{break-after:avoid;}
+    .partmark{break-before:page;}
+    a.inline::after{content:" (" attr(href) ")";font-size:.85em;color:var(--sub);}
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="inner">
+    <p class="kicker">あアラウド 評価ツール　評価する人のための手引き</p>
+    <h1>動画を見ながら快度と覚醒度を入れる：評価ツールの使い方</h1>
+    <p>この手引きは，実験で評価ツールを使う人（発声者・分析者）のためのものである．画面の見方，区間の区切り方，値の入れ方，終え方を順に説明する．細かい操作は練習のときに画面で確かめられるので，最初は第 2 部の流れだけをつかめばよい．</p>
+  </div>
+</div>
+
+<div class="layout">
+  <aside>
+    <p class="toc-title">目次</p>
+    <nav id="toc">
+      <details class="toc-part" open>
+        <summary>第1部　準備と画面<span class="part-progress">0/3</span></summary>
+        <ol>
+          <li><a href="#s1">1. このツールですること</a></li>
+          <li><a href="#s2">2. 評価を始めるまで</a></li>
+          <li><a href="#s3">3. 画面の見方</a></li>
+        </ol>
+      </details>
+      <details class="toc-part" open>
+        <summary>第2部　評価の手順<span class="part-progress">0/4</span></summary>
+        <ol>
+          <li><a href="#s4">4. 区間を区切る</a></li>
+          <li><a href="#s5">5. 値を入れる</a></li>
+          <li><a href="#s6">6. 区間の中で気持ちが変わるとき</a></li>
+          <li><a href="#s7">7. 見直して完了する</a></li>
+        </ol>
+      </details>
+      <details class="toc-part" open>
+        <summary>第3部　困ったとき<span class="part-progress">0/2</span></summary>
+        <ol>
+          <li><a href="#s8">8. キー操作の一覧</a></li>
+          <li><a href="#s9">9. よくある疑問</a></li>
+        </ol>
+      </details>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="partmark"><span class="lbl">第1部</span><h2>準備と画面</h2></div>
+
+    <section id="s1">
+      <span class="secnum">SECTION 1</span>
+      <h2>このツールですること</h2>
+      <hr class="h2rule">
+      <p class="lead">動画を見ながら，時間の区間ごとに「快度」と「覚醒度」を 1〜9 の数で表に入れる．</p>
+
+      <div class="def">
+        <h3>快度と覚醒度</h3>
+        <ul class="clean">
+          <li><strong>快度</strong>：快適さや幸福感の度合い．1 が非常に不快，5 が中立，9 が非常に快適である．</li>
+          <li><strong>覚醒度</strong>：興奮やエネルギーの度合い．1 が非常に眠い・リラックス，5 が普通，9 が非常に興奮している．</li>
+        </ul>
+        <p>どちらも 1〜9 の範囲で入れる．5.3 のような小数も使える．</p>
+      </div>
+
+      <p>何を思い浮かべて評価するかは，役によって違う．</p>
+      <div class="tabs">
+        <div class="tablist" role="tablist" aria-label="評価する人の役">
+          <button type="button" role="tab" aria-controls="p-spk">発声者</button>
+          <button type="button" role="tab" aria-controls="p-ana">分析者</button>
+        </div>
+        <div class="panel" id="p-spk" role="tabpanel" data-label="発声者の場合">
+          <p>プレイの直後に，<strong>自分のプレイの録画</strong>を評価する．声がどう聞こえるかではなく，<strong>プレイ中に自分が感じていたこと</strong>を思い出して入れる．</p>
+          <p>録画は実験者が選び，評価する範囲（プレイの始めから終わり）を合わせてから渡す．</p>
+        </div>
+        <div class="panel" id="p-ana" role="tabpanel" data-label="分析者の場合">
+          <p><strong>他の人（発声者）の動画</strong>を評価する．何を手がかりに評価するかは，実験者の説明に従う．</p>
+          <p>動画と評価する範囲は，実験者があらかじめ決めてある．</p>
+        </div>
+      </div>
+
+      <div class="info"><span class="lbl">補足</span><p>動画はこの PC の中だけで処理される．インターネットへ送られることはない．</p></div>
+    </section>
+
+    <section id="s2">
+      <span class="secnum">SECTION 2</span>
+      <h2>評価を始めるまで</h2>
+      <hr class="h2rule">
+      <p class="lead">準備は実験者が行う．評価する人は，画面に「開始」が出たら押すだけでよい．</p>
+
+      <div class="flow" data-steps>
+        <span class="node">実験者が準備する<small>フォルダを開き，参加者を選ぶ</small></span>
+        <span class="sep">→</span>
+        <span class="node">「開始」を押す<small>ここから時間を測る</small></span>
+        <span class="sep">→</span>
+        <span class="node">評価する<small>第 2 部の手順</small></span>
+        <span class="sep">→</span>
+        <span class="node">「完了」を押す<small>右上のボタン</small></span>
+        <span class="sep">→</span>
+        <span class="node">アンケート・「次へ」<small>次の動画へ進む</small></span>
+      </div>
+
+      <ul class="clean">
+        <li>最初の 1 本は<strong>練習</strong>である．画面の上に「練習」と出る．練習で操作に慣れてから本番に進む．</li>
+        <li>画面の上には「2 / 4」のように，今が何本目かが出る．</li>
+        <li>「開始」の画面が出ている間は，キーを押しても何も起きない．準備ができたらマウスで「開始」を押す．</li>
+      </ul>
+
+      <div class="caution"><span class="lbl">注意</span><p>実験の間は，ブラウザのタブやウィンドウを閉じない．困ったときは操作を止めて実験者を呼ぶ．</p></div>
+    </section>
+
+    <section id="s3">
+      <span class="secnum">SECTION 3</span>
+      <h2>画面の見方</h2>
+      <hr class="h2rule">
+      <p class="lead">画面は上から，ボタンの列，動画と表，評価グラフの 3 段でできている．</p>
+
+<pre><code>┌──────────────────────────────────────────────────────────┐
+│ −1秒  再生  ＋1秒  0:12.40 / 0:42.11  視聴  基準音声 … 完了 │ ← ボタンの列
+├───────────────────────────┬──────────────────────────────┤
+│                           │  表（上の行＝快度，下の行＝覚醒度）│
+│          動画             │  なぞって評価する／描く／…    │
+│                           │  感情の図・メモ欄              │
+├───────────────────────────┴──────────────────────────────┤
+│ 評価グラフ：快度の欄／覚醒度の欄／声の高さ（F0）            │
+│ ────────────── 下端の目盛りの帯（ここを押すと移動） ──────── │
+└──────────────────────────────────────────────────────────┘</code></pre>
+      <p class="muted">配置は画面の大きさで多少変わる．</p>
+
+      <h3>ボタンの列</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="c-min">ボタン</th><th>はたらき</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">−1秒・＋1秒</td><td>1 秒戻る・進む．</td></tr>
+            <tr><td class="rowhead">再生</td><td>再生と停止を切り替える．Space キーでも同じ．</td></tr>
+            <tr><td class="rowhead">時刻</td><td>今の位置と動画の長さ．評価する範囲の外にいるときは「区間外」と出る．</td></tr>
+            <tr><td class="rowhead">視聴</td><td>入れた値を見ながら止まらずに再生する．この間は値を変えられない（見直し用）．</td></tr>
+            <tr><td class="rowhead">基準音声</td><td>基準の「あ」の声をもう一度聴く．評価の途中で基準と比べたいときに使う．</td></tr>
+            <tr><td class="rowhead">別ウィンドウ</td><td>動画だけを別のウィンドウに出す．ダブルクリックで全画面になる．</td></tr>
+            <tr><td class="rowhead">完了</td><td>評価を終える．押すと確認が出る（7 章）．</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>表</h3>
+      <ul class="clean">
+        <li>上の行が<strong>快度</strong>，下の行が<strong>覚醒度</strong>である．</li>
+        <li>列が<strong>区間</strong>（評価する時間のまとまり）である．列の見出しは，評価する範囲の終わりまでの残りの秒である．</li>
+        <li>表の右には，感情と数の対応を示す図と，メモ欄がある．判断に迷ったことなどをメモ欄に書いてよい．</li>
+      </ul>
+
+      <h3>評価グラフ</h3>
+      <ul class="clean">
+        <li>入れた値が線で出る．上の欄が快度，その下の欄が覚醒度，いちばん下が声の高さ（F0）である．</li>
+        <li>声のある所は薄い紫で塗られる．声の無い区間を見分けるのに使う．グラフの右上の「発声」（H キー）で表示を切り替えられる．</li>
+        <li>グラフの<strong>下端の目盛りの帯</strong>を押すと，その時刻へ移る．</li>
+        <li>評価する範囲の外は薄く表示される．区間の区切りは縦線で示される．</li>
+        <li>Ctrl を押しながらマウスのホイールを回すと，グラフの時間軸を拡大・縮小できる．</li>
+      </ul>
+    </section>
+
+    <div class="partmark"><span class="lbl">第2部</span><h2>評価の手順</h2></div>
+
+    <section id="s4">
+      <span class="secnum">SECTION 4</span>
+      <h2>区間を区切る</h2>
+      <hr class="h2rule">
+      <p class="lead">最初は動画全体が 1 つの区間である．気持ちが変わった所で「今の時間で区切る」を押し，区間を分けていく．</p>
+
+      <h3>区切り方</h3>
+      <ol>
+        <li>動画を再生し，気持ちが変わった所で止める（Space）．</li>
+        <li>位置を細かく合わせたいときは，<code>,</code> キーで 1 コマ戻り，<code>.</code> キーで 1 コマ進む．Shift+←→ で 0.1 秒ずつ動く．</li>
+        <li>表の近くにある「今の時間で区切る」を押す（C キーでもよい）．その位置で区間が 2 つに分かれ，表の列が 1 つ増える．</li>
+      </ol>
+
+      <h3>区切りを直す</h3>
+      <ul class="clean">
+        <li>「近くの区切りを消す」：今の位置にいちばん近い区切りを消す．</li>
+        <li>評価グラフを<strong>右クリック</strong>すると，そこに区切りを置ける．区切りの線の上で右ドラッグすると動かせ，動かさずに右クリックすると消せる．</li>
+        <li>Ctrl+Z で 1 つ前の操作に戻せる．Ctrl+Y でやり直せる．</li>
+      </ul>
+
+      <div class="note"><span class="lbl">要点</span><p>区切る前に入れた値は，区切った後の 2 つの区間の両方に引き継がれる．先に大まかに値を入れてから区切ってもよいし，先に区切ってから値を入れてもよい．</p></div>
+      <div class="info"><span class="lbl">補足</span><p>← → キーで，前・次の区間の始めへ移れる．区切った区間を順に見直すときに便利である．</p></div>
+    </section>
+
+    <section id="s5">
+      <span class="secnum">SECTION 5</span>
+      <h2>値を入れる</h2>
+      <hr class="h2rule">
+      <p class="lead">表のセルをクリックし，1〜9 の数を打って Enter を押す．声の無い区間には 0 を入れる．</p>
+
+      <h3>数の入れ方</h3>
+      <ol>
+        <li>入れたい区間のセルをクリックする．</li>
+        <li>数を打つ．小数は「5.3」と打つか，数字を 2 つ続けて「5」「3」と打つ（5.3 になる）．小数は第 1 位まで入る．</li>
+        <li>Enter・Tab・矢印キーで確定し，隣のセルへ移る．</li>
+      </ol>
+      <p>評価グラフの快度・覚醒度の欄をなぞって値を入れることもできる．なぞった区間の値がその高さになる．</p>
+
+      <h3>声の無い区間：0</h3>
+      <ul class="clean">
+        <li>声の無い区間には <strong>0</strong> を入れる．0 は「評価の値」ではなく「発声なし」の印である．</li>
+        <li>片方の行に 0 を入れると，もう片方も自動で 0 になる．</li>
+        <li>0 の区間に 1〜9 を入れ直すと，もう片方の行は空欄に戻る．両方の行に入れ直す．</li>
+        <li>グラフでは，0 の区間は灰色の帯で示される．</li>
+      </ul>
+
+      <div class="caution"><span class="lbl">注意</span><p>1〜9 の外の数（10 や 0.5 など）は入らない．打っても確定するときに消える．</p></div>
+
+      <h3>再生が区間の終わりで止まるとき</h3>
+      <p>実験の設定によっては，再生すると<strong>区間の終わりで自動で止まる</strong>．止まったら，その区間の値を入れて Enter を押す．次の区間が始まり，その終わりでまた止まる．同じ区間をもう一度聴きたいときは R キーを押す．</p>
+    </section>
+
+    <section id="s6">
+      <span class="secnum">SECTION 6</span>
+      <h2>区間の中で気持ちが変わるとき</h2>
+      <hr class="h2rule">
+      <p class="lead">1 つの区間の中で気持ちがだんだん変わったときは，そのセルを選んで「なぞって評価する」を押し，評価グラフで変化を入れる．</p>
+      <p>細かい区切りをたくさん入れる代わりに使う，例外的な入れ方である．ふつうは 4 章と 5 章の入れ方で足りる．</p>
+
+      <h3>変化の区間にする</h3>
+      <ol>
+        <li>変化を入れたい区間のセルをクリックする．</li>
+        <li>表の近くの「なぞって評価する」を押す．ボタンが光り，その区間が<strong>変化の区間</strong>になる．対象の区間は，表とグラフに点線の枠で示される．</li>
+        <li>下のどちらかの入れ方で，評価グラフに変化を入れる．</li>
+      </ol>
+
+      <div class="tabs">
+        <div class="tablist" role="tablist" aria-label="変化の入れ方">
+          <button type="button" role="tab" aria-controls="p-draw">描く（D）</button>
+          <button type="button" role="tab" aria-controls="p-tmpl">テンプレート（T）</button>
+        </div>
+        <div class="panel" id="p-draw" role="tabpanel" data-label="描く（D キー）">
+          <p>「描く」を押し，評価グラフの快度または覚醒度の欄を，変化の区間の中でなぞる．なぞった線がそのまま値の動きになる．なぞった線が隣の区間にかかっても，描かれるのは変化の区間の中だけである．</p>
+        </div>
+        <div class="panel" id="p-tmpl" role="tabpanel" data-label="テンプレート（T キー）">
+          <p>「テンプレート」を押し，形を選ぶ．</p>
+          <ul class="clean">
+            <li>「直線」（Q）：一定の速さで変わる．</li>
+            <li>「前半で変化」（W）：始めに大きく変わり，後は落ち着く．</li>
+            <li>「後半で変化」（E）：始めはゆっくりで，終わりに大きく変わる．</li>
+          </ul>
+          <p>評価グラフの変化の区間の中で，<strong>始めの高さから終わりの高さへドラッグ</strong>する．選んだ形の曲線が入る．後から形のボタンを押すと，始めと終わりの値はそのままで形だけが変わる．</p>
+        </div>
+      </div>
+
+      <h3>表での見え方と戻し方</h3>
+      <ul class="clean">
+        <li>変化の区間のセルには，「3→7 直」のように始めの値→終わりの値と形が出る（直＝直線，前＝前半で変化，後＝後半で変化，描＝自分で描いた）．</li>
+        <li>変化の区間のセルには数を打てない．値はグラフで直す．</li>
+        <li>もう一度「なぞって評価する」を押すと，普通のセルに戻る．値は区間の平均になる．</li>
+        <li>変化の区間を声なしにするときは「発声なし」を押す．もう一度押すと空欄に戻る．</li>
+      </ul>
+      <div class="info"><span class="lbl">補足</span><p>D・T・Q・W・E のキーは，セルに入力している途中でも効く．セルに文字は入らない．</p></div>
+    </section>
+
+    <section id="s7">
+      <span class="secnum">SECTION 7</span>
+      <h2>見直して完了する</h2>
+      <hr class="h2rule">
+      <p class="lead">すべての区間に値が入ったか確かめてから，右上の「完了」を押す．完了した後は値を変えられない．</p>
+
+      <ol>
+        <li>表に空欄のセルが残っていないかを確かめる．</li>
+        <li>必要なら「視聴」（V キー）で，入れた値を見ながら最初から再生する．視聴の間は値を変えられないので，直すときはもう一度「視聴」を押して戻る．</li>
+        <li>右上の「完了」を押す．「評価を終えて完了しますか？」と出るので，よければ OK を押す．</li>
+        <li>アンケートがあるときは「アンケートを開く」が出る．押して別のタブで答える．</li>
+        <li>「次へ」を押して次の動画へ進む．最後の動画では「すべての試行が終わりました」と出る．</li>
+      </ol>
+
+      <div class="caution"><span class="lbl">注意</span><p>完了すると，その動画の評価は<strong>変えられない</strong>．押す前に，空欄と 0 の付け忘れを確かめる．</p></div>
+      <div class="info"><span class="lbl">補足</span><p>評価の結果は自動で保存される．評価する人がファイルを保存する操作は要らない．</p></div>
+    </section>
+
+    <div class="partmark"><span class="lbl">第3部</span><h2>困ったとき</h2></div>
+
+    <section id="s8">
+      <span class="secnum">SECTION 8</span>
+      <h2>キー操作の一覧</h2>
+      <hr class="h2rule">
+      <p class="lead">よく使うのは Space（再生・停止），C（区切る），Ctrl+Z（取り消し）の 3 つである．</p>
+      <div class="tablewrap" data-collapse="8">
+        <table>
+          <thead><tr><th class="c-min">キー</th><th>はたらき</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">Space</td><td>再生・停止</td></tr>
+            <tr><td class="rowhead">C</td><td>今の時間で区切る</td></tr>
+            <tr><td class="rowhead">Ctrl+Z ／ Ctrl+Y</td><td>取り消し ／ やり直し</td></tr>
+            <tr><td class="rowhead">← →</td><td>前の区間・次の区間の始めへ移る（セルに入力中はセルの移動）</td></tr>
+            <tr><td class="rowhead">Shift+← →</td><td>0.1 秒戻る・進む</td></tr>
+            <tr><td class="rowhead"><code>,</code> ／ <code>.</code></td><td>1 コマ戻る ／ 1 コマ進む（Ctrl+← → でも同じ）</td></tr>
+            <tr><td class="rowhead">Enter ／ Tab</td><td>セルの値を確定して隣のセルへ移る</td></tr>
+            <tr><td class="rowhead">V</td><td>視聴（見直し）の開始・終了</td></tr>
+            <tr><td class="rowhead">H</td><td>声のある所の表示を切り替える</td></tr>
+            <tr><td class="rowhead">R</td><td>区間の終わりで止まる設定のとき，同じ区間をもう一度聴く</td></tr>
+            <tr><td class="rowhead">D ／ T</td><td>変化の区間で「描く」／「テンプレート」に切り替える</td></tr>
+            <tr><td class="rowhead">Q ／ W ／ E</td><td>テンプレートの形：直線 ／ 前半で変化 ／ 後半で変化</td></tr>
+            <tr><td class="rowhead">Ctrl+ホイール</td><td>評価グラフの時間軸を拡大・縮小する（Shift+ホイールで横に送る）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info"><span class="lbl">補足</span><p>Mac では Ctrl を ⌘（Command）に読み替える．ボタンの右下に小さく出ている文字が，そのボタンのキーである．</p></div>
+    </section>
+
+    <section id="s9">
+      <span class="secnum">SECTION 9</span>
+      <h2>よくある疑問</h2>
+      <hr class="h2rule">
+      <p class="lead">迷ったら Ctrl+Z で戻せる．戻せないのは「完了」だけである．</p>
+
+      <details>
+        <summary>動画を巻き戻して何度見てもよいか</summary>
+        <div class="qbody"><p>ツールでは何度でも巻き戻せる．実験の中で巻き戻してよいかは，実験者の説明に従う．</p></div>
+      </details>
+      <details>
+        <summary>区切りを間違えた</summary>
+        <div class="qbody"><p>すぐなら Ctrl+Z で戻す．後で気づいたときは，その区切りの近くへ移って「近くの区切りを消す」を押すか，評価グラフの区切りの線の上で右クリックする．</p></div>
+      </details>
+      <details>
+        <summary>数を打ったのにセルに入らない</summary>
+        <div class="qbody"><p>次のどれかに当たっていないかを確かめる．</p>
+          <ul class="clean">
+            <li>1〜9（声なしは 0）の外の数を打った．</li>
+            <li>そのセルが変化の区間である（「3→7 直」のような表示）．値は評価グラフで直す．</li>
+            <li>「視聴」の途中である．画面の上端に「視聴中（値は変えられません）」と出ていれば，もう一度「視聴」を押して戻る．</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>片方の行が勝手に空欄になった</summary>
+        <div class="qbody"><p>0（声なし）の区間に 1〜9 を入れると，もう片方の行の 0 は空欄に戻る．空欄になった行にも値を入れる．</p></div>
+      </details>
+      <details>
+        <summary>再生しても区間の終わりで止まってしまう</summary>
+        <div class="qbody"><p>区間ごとに止まる設定になっている．値を入れて Enter を押すと次の区間へ進む．もう一度聴くには R キーを押す．</p></div>
+      </details>
+      <details>
+        <summary>キーを押しても何も起きない</summary>
+        <div class="qbody"><p>「開始」の画面が出ている間と，完了した後はキーが効かない．評価の途中で効かないときは，動画か表を一度クリックしてから押し直す．それでも効かなければ実験者を呼ぶ．</p></div>
+      </details>
+      <details>
+        <summary>完了を押してしまった</summary>
+        <div class="qbody"><p>完了した評価は評価する人の画面では直せない．操作を止めて実験者に伝える．</p></div>
+      </details>
+    </section>
+
+    <footer>
+      出典：あアラウド 統合アノテーションツール（v1.0）の README.md と画面（index.html）．実験モード，カスタム方式（Excel の表・小数・自分で区切る・区間内で変化）を前提に作成した．<br>
+      作成日：2026-10-15
+    </footer>
+  </main>
+</div>
+
+<script>
+/* 対話部品。いずれも編集不要で、外部ライブラリにも依存しない。
+   JS が動かない環境では内容が全部見えたまま止まるよう、隠す処理は
+   スクリプトが data-ready を付けてから初めて効くようにしてある。 */
+(function () {
+  'use strict';
+
+  /* ---- 目次のスクロール追従。部制なら現在の部を開いて進捗を出す ---- */
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var seen = {};
+
+  function updateParts() {
+    document.querySelectorAll('#toc .toc-part').forEach(function (part) {
+      var items = Array.prototype.slice.call(part.querySelectorAll('a'));
+      var done = items.filter(function (a) { return seen[a.getAttribute('href').slice(1)]; }).length;
+      var counter = part.querySelector('.part-progress');
+      if (counter) counter.textContent = done + '/' + items.length;
+      var current = items.some(function (a) { return a.classList.contains('active'); });
+      part.classList.toggle('current', current);
+      if (current) part.open = true;
+    });
+  }
+
+  // 追従ハイライトは装飾なので、使えない環境では静かに諦める。ここで例外を投げると
+  // 以降の対話部品まで初期化されず、タブが開かないといった実害が出る
+  if (typeof IntersectionObserver === 'function') {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        seen[entry.target.id] = true;
+        links.forEach(function (a) { a.classList.remove('active'); });
+        if (byId[entry.target.id]) byId[entry.target.id].classList.add('active');
+        updateParts();
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    document.querySelectorAll('main section').forEach(function (s) { observer.observe(s); });
+  }
+
+  /* ---- 表の行折りたたみ（.tablewrap[data-collapse]） ---- */
+  function applyCollapse(wrap) {
+    if (!wrap || !wrap.dataset.collapse || !wrap.dataset.expanded) return;
+    var limit = parseInt(wrap.dataset.collapse, 10);
+    var rows = Array.prototype.slice.call(wrap.querySelectorAll('tbody tr'));
+    var expanded = wrap.dataset.expanded === 'true';
+    rows.forEach(function (row, index) { row.hidden = !expanded && index >= limit; });
+    var button = wrap.querySelector('.rowmore');
+    if (!button) return;
+    button.textContent = expanded ? '折りたたむ' : '残り ' + (rows.length - limit) + ' 行を表示';
+    button.setAttribute('aria-expanded', String(expanded));
+  }
+
+  document.querySelectorAll('.tablewrap[data-collapse]').forEach(function (wrap) {
+    var limit = parseInt(wrap.dataset.collapse, 10);
+    var rows = wrap.querySelectorAll('tbody tr');
+    if (!limit || rows.length <= limit) return;
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'rowmore';
+    button.addEventListener('click', function () {
+      wrap.dataset.expanded = wrap.dataset.expanded === 'true' ? 'false' : 'true';
+      applyCollapse(wrap);
+    });
+    wrap.appendChild(button);
+    wrap.dataset.expanded = 'false';
+    applyCollapse(wrap);
+  });
+
+  /* ---- 表の列ソート（table.sortable） ---- */
+  function cellValue(row, index) {
+    var cell = row.cells[index];
+    return cell ? cell.textContent.trim() : '';
+  }
+
+  // セル全体が数値のときだけ数値として比較する。数字を拾い出す方式にすると
+  // 「A1」と「B1」がどちらも 1 に潰れて、別物が同じ値として並んでしまう
+  var NUMERIC = /^[+-]?\d[\d,]*(?:\.\d+)?$/;
+
+  function compareValues(x, y) {
+    if (NUMERIC.test(x) && NUMERIC.test(y)) {
+      return parseFloat(x.replace(/,/g, '')) - parseFloat(y.replace(/,/g, ''));
+    }
+    // 文字と数字が混ざる列（prep_2 と prep_10、A1 と B1）を見た目どおりの順に並べる
+    return x.localeCompare(y, 'ja', { numeric: true });
+  }
+
+  function comparator(index, descending) {
+    return function (a, b) {
+      var result = compareValues(cellValue(a, index), cellValue(b, index));
+      return descending ? -result : result;
+    };
+  }
+
+  document.querySelectorAll('table.sortable').forEach(function (table) {
+    if (!table.tHead || !table.tBodies.length) return;
+    var headers = Array.prototype.slice.call(table.tHead.rows[0].cells);
+    headers.forEach(function (th, index) {
+      th.setAttribute('tabindex', '0');
+      th.setAttribute('role', 'button');
+      function sort() {
+        var descending = th.getAttribute('aria-sort') === 'ascending';
+        headers.forEach(function (other) { other.removeAttribute('aria-sort'); });
+        th.setAttribute('aria-sort', descending ? 'descending' : 'ascending');
+        var body = table.tBodies[0];
+        Array.prototype.slice.call(body.rows)
+          .sort(comparator(index, descending))
+          .forEach(function (row) { body.appendChild(row); });
+        // 並べ替えで行の順序が変わるため、折りたたみの表示・非表示を付け直す
+        applyCollapse(table.closest('.tablewrap'));
+      }
+      th.addEventListener('click', sort);
+      th.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        sort();
+      });
+    });
+  });
+
+  /* ---- タブ切替（.tabs） ---- */
+  document.querySelectorAll('.tabs').forEach(function (tabs) {
+    var buttons = Array.prototype.slice.call(tabs.querySelectorAll('[role="tab"]'));
+    var panels = buttons.map(function (b) { return document.getElementById(b.getAttribute('aria-controls')); });
+    if (!buttons.length || panels.indexOf(null) !== -1) return;
+
+    function select(index) {
+      buttons.forEach(function (button, i) {
+        button.setAttribute('aria-selected', String(i === index));
+        button.setAttribute('tabindex', i === index ? '0' : '-1');
+        panels[i].hidden = i !== index;
+      });
+    }
+
+    buttons.forEach(function (button, index) {
+      button.addEventListener('click', function () { select(index); });
+      button.addEventListener('keydown', function (e) {
+        var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        var next = (index + step + buttons.length) % buttons.length;
+        select(next);
+        buttons[next].focus();
+      });
+    });
+    tabs.dataset.ready = 'true';
+    select(0);
+  });
+
+  /* ---- フローの段階表示（.flow[data-steps]） ---- */
+  document.querySelectorAll('.flow[data-steps]').forEach(function (flow) {
+    var nodes = Array.prototype.slice.call(flow.querySelectorAll('.node'));
+    if (nodes.length < 3) return;
+    var parts = Array.prototype.slice.call(flow.children);
+    var position = 0;
+
+    var control = document.createElement('div');
+    control.className = 'flow-ctl';
+    var prev = document.createElement('button');
+    prev.type = 'button';
+    prev.textContent = '前へ';
+    var next = document.createElement('button');
+    next.type = 'button';
+    next.textContent = '次へ';
+    var label = document.createElement('span');
+    label.className = 'pos';
+    control.appendChild(prev);
+    control.appendChild(label);
+    control.appendChild(next);
+    flow.parentNode.insertBefore(control, flow.nextSibling);
+
+    function render() {
+      // 現在位置より先は薄く落とすだけにして、レイアウトが動かないようにする
+      var head = nodes[position];
+      var passed = false;
+      parts.forEach(function (part) {
+        part.classList.toggle('ahead', passed);
+        part.classList.toggle('now', part === head);
+        if (part === head) passed = true;
+      });
+      label.textContent = (position + 1) + ' / ' + nodes.length;
+      prev.disabled = position === 0;
+      next.disabled = position === nodes.length - 1;
+    }
+
+    prev.addEventListener('click', function () { position = Math.max(0, position - 1); render(); });
+    next.addEventListener('click', function () { position = Math.min(nodes.length - 1, position + 1); render(); });
+    flow.dataset.ready = 'true';
+    render();
+  });
+})();
+/* 印刷時だけ Q&A を開く．閉じていたものは印刷後に閉じ直す（CSS では開けないため） */
+addEventListener('beforeprint', function () {
+  document.querySelectorAll('details:not([open])').forEach(function (d) {
+    d.dataset.printClosed = '1';
+    d.open = true;
+  });
+});
+addEventListener('afterprint', function () {
+  document.querySelectorAll('details[data-print-closed]').forEach(function (d) {
+    d.open = false;
+    delete d.dataset.printClosed;
+  });
+});
+</script>
+</body>
+</html>
