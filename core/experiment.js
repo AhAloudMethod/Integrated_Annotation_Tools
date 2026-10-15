@@ -4,6 +4,7 @@
 // 録画の試行（record: true）は、その前に pick（実験者が録画を選ぶ）→ align（実験者が評価区間の開始・終了を合わせる）を通る。
 // タスク遂行時間は「開始」から「完了」まで。操作ログに task_start・task_end を残し、内訳（再生時間・シークの回数など）を要約にする。
 // 書き出しは 1 試行 1 つの zip（その時点までの要約も入れる）。zip はブラウザ（IndexedDB）にも残し、参加者を選ぶ画面から書き出し直せる。
+// 終えた試行は、実験者が選び直してやり直せる（前の評価を zip から戻して直すか、空から評価し直す）。やり直した回の zip には _redo1 などを付ける。
 // 当てた設定はブラウザに保存されるので、実験モードを抜けるとき（とページを閉じるとき）に元の値へ戻す。Ctrl+Shift+E で抜ける（試行の途中なら _partial の zip を書き出す）。
 // setup.json は通常の画面の「実験用の設定を書き出す」で作る（設定の欄と、フォルダの動画ごとに覚えてある評価区間）
 (() => {
@@ -13,10 +14,11 @@
   const E = _.expCheck, { DEF } = E;
   const LS_KEYS = ['ahann_axes', 'ahann_after', 'ahann_grid', 'ahann_pad_square', 'ahann_f0', 'ahann_voiced', 'ahann_listen', 'ahann_tl', 'ahann_vidsize', 'ahann_pad_joy', 'ahann_pad_slider'];
   const SUM_COLS = ['trial', 'practice', 'mode', 'condition', 'video', 'start_iso', 'end_iso', 'task_ms', 'play_ms', 'review_ms', 'n_play', 'n_seek', 'n_undo', 'n_redo',
-    'n_strokes', 'n_events', 'bins', 'filled_v', 'filled_a', 'n_restore', 'partial', 'survey_opened'];
+    'n_strokes', 'n_events', 'bins', 'filled_v', 'filled_a', 'n_restore', 'partial', 'survey_opened', 'redo', 'prev_end_iso', 'task_ms_prev'];
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
   const VIDEO_RE = /\.(mp4|m4v|mov|webm|mkv|avi|ogv|mpe?g|wmv)$/i;
-  // X：実験の状態。cfg（experiment.json に setup.json を合わせたもの）、get（相対パス→File）、pid、trials、i（今の試行）、set（今の設定）、range、state、backup（元の設定）
+  // X：実験の状態。cfg（experiment.json に setup.json を合わせたもの）、get（相対パス→File）、res（検査の結果）、pid、trials、i（今の試行）、set（今の設定）、range、state、backup（元の設定）、
+  // redo（終えた試行をやり直すときの { n, prev_end_iso, task_ms_prev, from, session }。試行の動画を開いたときに当てる）
   let X = null;
 
   // ---------- フォルダの読み込みと検査 ----------
@@ -42,7 +44,7 @@
   const env = get => ({ modes: Object.keys(modes), axes: Object.keys(_.AXES), has: p => !!get(p) });
 
   // ---------- 結果の zip をブラウザ（IndexedDB）に残す ----------
-  // キーは「実験名|参加者|試行の番号」（途中で抜けたものは末尾に |partial）。値は { name, blob, exp, pid, trial, time }
+  // キーは「実験名|参加者|試行の番号」（やり直した回は |redo1 など、途中で抜けたものは末尾に |partial）。値は { name, blob, exp, pid, trial, time }
   function idb() {
     return new Promise((ok, ng) => {
       const r = indexedDB.open('ahann_exp', 1);
@@ -61,6 +63,10 @@
   }
   const zipPut = (key, v) => idbDo('readwrite', st => st.put(v, key));
   const zipAll = () => idbDo('readonly', st => st.getAll());
+  // 試行の完了した zip のうち、いちばん新しいもの（やり直した回を含む。途中で抜けたものは除く）。無いか読めなければ null
+  async function lastZip(pid, k) {
+    try { return (await zipAll()).filter(z => z.exp === X.cfg.name && z.pid === pid && z.trial === k && !/_partial\.zip$/.test(z.name)).sort((a, b) => b.time - a.time)[0] || null; } catch (_e) { return null; }
+  }
   const zipDel = async (exp, pid) => {
     const keys = await idbDo('readonly', st => st.getAllKeys());
     await idbDo('readwrite', st => { for (const k of keys) if (k.startsWith(`${exp}|${pid}|`)) st.delete(k); });
@@ -105,8 +111,10 @@
   const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}${cond(t) ? `（${cond(t)}）` : ''}　${t.record ? '（録画）' : t.video}`;
   // 今の試行の動画の名前。録画の試行は選んだ録画のファイル名（選ぶ前は空）
   const vidName = t => (t.record ? ((S.meta.experiment || {}).record || {}).file || '' : t.video);
-  function setup(cfg, get, { errors: errs, warnings = [] }) {
-    X = { cfg, get, state: 'setup', backup: null };
+  // pid0 は初めに選んでおく参加者（やり直しの画面から戻ったとき）
+  function setup(cfg, get, res, pid0) {
+    const { errors: errs, warnings = [] } = res;
+    X = { cfg, get, res, state: 'setup', backup: null };
     if (errs.length) {
       cover(`<h2>実験フォルダの誤り</h2>${errList(errs)}<button id="expCancel" type="button">閉じる</button>`);
       $('expCancel').addEventListener('click', () => { X = null; cover(''); });
@@ -117,7 +125,7 @@
       ${warnings.length ? `<p>確かめてください（このままでも始められます）：</p><ul class="expWarn">${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
       <label>参加者 <select id="expPid">${pids.map(p => `<option>${esc(p)}</option>`).join('')}</select></label>
       <label>始める試行 <select id="expFrom"></select></label>
-      <div class="expBtns"><button id="expGo" type="button">実験を始める</button><button id="expCancel" type="button">やめる</button></div>
+      <div class="expBtns"><button id="expGo" type="button">実験を始める</button><button id="expRedoBtn" type="button" title="書き出した試行の zip か _session.json を選び、その評価を戻して直す（別の PC で続けるときなど）">結果のファイルから試行をやり直す</button><button id="expCancel" type="button">やめる</button></div>
       <div class="expSaved"><div class="refTitle">ブラウザに残っている結果</div><div id="expZips" class="expZips"></div></div>
       <p class="muted">実験中は ${_.mod('Ctrl')}+Shift+E で実験モードを抜けます。結果は試行ごとに 1 つの zip としてダウンロード先に書き出し、ブラウザにも残します。</p>`);
     const fill = () => {
@@ -127,9 +135,66 @@
       $('expFrom').value = String(first < 0 ? 0 : first);
       listZips(pid);
     };
+    if (pid0 && pids.includes(pid0)) $('expPid').value = pid0;
     $('expPid').addEventListener('change', fill); fill();
     $('expCancel').addEventListener('click', () => { X = null; cover(''); });
-    $('expGo').addEventListener('click', () => enter($('expPid').value, +$('expFrom').value));
+    // 終えた試行（（済））を選んだら、やり直し方を選ばせる（取り違えの確認も兼ねる）
+    $('expGo').addEventListener('click', () => {
+      const pid = $('expPid').value, k = +$('expFrom').value, row = loadProgress(pid)[k];
+      if (row && !row.partial) askRedo(pid, k, row); else enter(pid, k);
+    });
+    $('expRedoBtn').addEventListener('click', () => pickRedo($('expPid').value, null));
+  }
+
+  // ---------- 終えた試行をやり直す（実験者向けの画面） ----------
+  // 「前の評価を読み込んで直す」はブラウザに残った zip（無ければ実験者が選んだ zip か _session.json）から評価を戻し、「開始」の覆いから続ける。
+  // 「空から評価し直す」は値の無い状態から始める。どちらも前の zip は消さず、やり直しの回数・前の完了の時刻を記録に残す
+  function askRedo(pid, k, row, msg = '') {
+    const t = X.cfg.participants[pid][k], when = row.end_iso ? new Date(row.end_iso).toLocaleString('ja-JP') : '（時刻なし）';
+    cover(`<h2>終えた試行をやり直す（実験者の方へ）</h2>
+      <p>参加者 ${esc(pid)} の「${esc(trialName(t, k))}」は ${esc(when)} に完了しています${row.redo ? `（やり直し ${row.redo} 回）` : ''}。</p>
+      <p class="muted">「前の評価を読み込んで直す」は、完了した評価（値・評価区間・区切り・形の記録）を戻して「開始」から続けます。「空から評価し直す」は、値の無い状態から始めます。どちらも前の zip は残し、新しい zip の名前に _redo と回数を付けます。</p>
+      ${msg}
+      <div class="expBtns"><button id="expRedoLoad" type="button">前の評価を読み込んで直す</button><button id="expRedoEmpty" type="button">空から評価し直す</button><button id="expRedoBack" type="button">戻る</button></div>`);
+    $('expRedoBack').addEventListener('click', () => setup(X.cfg, X.get, X.res, pid));
+    $('expRedoEmpty').addEventListener('click', () => { X.redo = redoInfo(row, null, 'empty'); enter(pid, k); });
+    $('expRedoLoad').addEventListener('click', async () => {
+      const z = await lastZip(pid, k);
+      let s = null, err = '';
+      if (z) { try { s = await _.readSession(new File([z.blob], z.name)); } catch (e) { err = e.message; } }
+      if (s) { X.redo = redoInfo(row, s, 'browser'); enter(pid, k); return; }
+      askRedo(pid, k, row, `<p class="expMiss">${z ? `ブラウザに残った zip（${esc(z.name)}）を読めません（${esc(err)}）。` : 'このブラウザにはこの試行の zip が残っていません。'}書き出した zip か _session.json を選んでください。</p>
+        <button id="expRedoPick" type="button">ファイルを選ぶ</button>`);
+      $('expRedoPick').addEventListener('click', () => pickRedo(pid, k));
+    });
+  }
+  // やり直しの記録：回数は前の回の要約（読み込む評価があればその要約）の redo に 1 を足す。task_ms_prev は前の回までのタスク遂行時間の合計
+  function redoInfo(row, s, from) {
+    const m = (s && s.meta.experiment) || {}, p = (s ? m.task : row) || {};
+    return { n: (+p.redo || 0) + 1, prev_end_iso: p.end_iso || m.end_iso || '', task_ms_prev: +((+p.task_ms_prev || 0) + (+p.task_ms || 0)).toFixed(1), from, session: s };
+  }
+  // 実験者が zip か _session.json を選ぶ。k が null なら、ファイルの試行の番号（meta.experiment.trial）の試行をやり直す
+  function pickRedo(pid, k) {
+    X.redoPick = { pid, k };
+    $('expRedoFile').click();
+  }
+  async function takeRedoFile(f) {
+    const { pid, k: k0 } = X.redoPick; X.redoPick = null;
+    let s;
+    try { s = await _.readSession(f); } catch (err) { alert('結果を読み込めませんでした：' + err.message); return; }
+    const m = s.meta.experiment || {}, ts = X.cfg.participants[pid], k = k0 != null ? k0 : m.trial;
+    if (!Number.isInteger(k) || !ts[k]) { alert(`${f.name} は、参加者 ${pid} の試行の結果ではありません（試行の番号：${Number.isInteger(m.trial) ? m.trial + 1 : 'なし'}）`); return; }
+    const t = ts[k];
+    if (s.meta.mode !== t.mode) { alert(`${f.name} は方式「${modes[s.meta.mode].label}」の結果です。試行 ${k + 1} の方式「${modes[t.mode] ? modes[t.mode].label : t.mode}」には当てられません`); return; }
+    const diff = [];
+    if (m.name !== X.cfg.name) diff.push(`実験：${m.name || 'なし'}（この実験は ${X.cfg.name}）`);
+    if (m.participant !== pid) diff.push(`参加者：${m.participant || 'なし'}（選んだ参加者は ${pid}）`);
+    if (m.trial !== k) diff.push(`試行：${Number.isInteger(m.trial) ? m.trial + 1 : 'なし'}（やり直す試行は ${k + 1}）`);
+    if (!t.record && s.meta.video_file !== t.video.split('/').pop()) diff.push(`動画：${s.meta.video_file}（この試行は ${t.video}）`);
+    if (m.partial) diff.push('途中で抜けた試行の結果です（_partial）');
+    if (diff.length && !confirm(`選んだファイル（${f.name}）は、この試行の結果と次の点が違います。\n${diff.map(d => '・' + d).join('\n')}\nこのファイルの評価で直しますか？`)) return;
+    X.redo = redoInfo(null, s, 'file');
+    enter(pid, k);
   }
   // 参加者の zip の一覧：1 つずつ・まとめて書き出し直す。書き出しを確かめたら、ブラウザから消せる（進行と自動保存も消す）
   async function listZips(pid) {
@@ -264,9 +329,30 @@
     setState('loading');
     _.openVideoFile(X.get(t.video), () => loaded(i));
   }
+  // 試行の進み：操作ログの最後の task_start・task_end・exp_redo で決める（やり直した試行は、前の回の task_start・task_end がログに残る）。
+  // new（まだ始めていない）・redo（やり直しの開始の前）・running（開始の後）・ended（完了の後）
+  function phase(log) {
+    for (let k = log.length - 1; k >= 0; k--) {
+      const ty = log[k].type;
+      if (ty === 'exp_redo') return 'redo';
+      if (ty === 'task_start') return 'running';
+      if (ty === 'task_end') return 'ended';
+    }
+    return 'new';
+  }
   function loaded(i) {
-    const t = X.trials[i], log = S.log;
-    const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
+    const t = X.trials[i];
+    // やり直し：自動保存から同じ回のやり直しを再開したときは当て直さない。評価を読み込むときは、方式の設定・値・評価区間・形の記録・操作ログを戻す
+    let r = X.redo; X.redo = null;
+    const cur = S.meta.experiment && S.meta.experiment.trial === i && S.meta.experiment.redo;
+    if (r && cur && cur.n === r.n) r = null;
+    if (r && r.session) {
+      if (t.record && r.session.meta.video_file !== S.meta.video_file
+        && !confirm(`読み込む評価は録画「${r.session.meta.video_file}」の評価です。開いた録画「${S.meta.video_file}」に当てますか？\n（キャンセルすると、録画を選び直します）`)) { X.redo = r; setState('pick'); return; }
+      _.installSession(r.session);
+      S.meta.participant = X.pid; $('pid').value = X.pid;
+    }
+    const log = S.log, ph = phase(log);
     const vs = (!t.record && X.cfg.videos && X.cfg.videos[t.video]) || {};
     S.meta.ref = typeof vs.ref === 'number' ? vs.ref : null;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
     // 基準音声の動画：setup.json の refVideo。録画の試行は実験者が選んだ録画（同じ参加者の後の試行にも使う）。無ければ評価する動画の最初の声
@@ -277,7 +363,23 @@
     if (Array.isArray(vnv) && vnv.length) S.meta.novoice_preset = vnv.map(x => [x[0], x[1]]); else delete S.meta.novoice_preset;
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
       name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
-    if (!started && t.record) {
+    if (r) {
+      const ex = S.meta.experiment;
+      delete ex.start_iso; delete ex.end_iso; delete ex.task; delete ex.partial;
+      ex.redo = { n: r.n, prev_end_iso: r.prev_end_iso, task_ms_prev: r.task_ms_prev, from: r.from };
+      addLog('exp_redo', { value: r.n, detail: JSON.stringify({ ...ex.redo, file: r.session ? r.session.name : '' }) });
+      if (ph !== 'new') {   // 読み込んだ評価の区間のまま「開始」の覆いへ。録画の試行は、開いた録画を記録し、進行に区間が無ければ（別の PC）残す
+        if (t.record) {
+          const rec = { ...(ex.record || {}), file: X.file.name, size: X.file.size, duration: +S.meta.duration.toFixed(3) };
+          ex.record = rec;
+          if (!loadRec(i) && rec.start != null) saveRec(i, { file: rec.file, size: rec.size, duration: rec.duration, start: rec.start, end: rec.end });
+        }
+        logTrial(S.meta.range);
+        setState('ready');
+        return;
+      }
+    }
+    if (ph === 'new' && t.record) {
       // 渡した後に止まった試行は、残した区間で開始の覆いに戻る（区間が録画に収まらなければ合わせ直す）。まだなら区間合わせ
       const prev = loadRec(i);
       if (prev && !applyRange(recRange(prev))) { handOff(prev); return; }
@@ -286,12 +388,12 @@
       setState('align'); showAlign();
       return;
     }
-    if (!started) {   // 復元したときは、その時点の評価区間のまま続ける
+    if (ph === 'new') {   // 復元したときは、その時点の評価区間のまま続ける
       const err = applyRange(X.range);
       if (err) { setState('error', err); return; }
       logTrial(X.range);
     }
-    setState(ended ? (i + 1 < X.trials.length ? 'done' : 'finished') : started ? 'running' : 'ready');
+    setState(ph === 'ended' ? (i + 1 < X.trials.length ? 'done' : 'finished') : ph === 'running' ? 'running' : 'ready');
   }
   function logTrial(range) {
     const t = X.trials[X.i];
@@ -432,27 +534,29 @@
     setState(X.i + 1 >= X.trials.length ? 'finished' : 'done');
     await saveZip(false);
   }
-  // 今の試行を 1 つの zip にして書き出し、ブラウザにも残す。書き出せたら、この試行の自動保存は消す（ブラウザの容量を空けるため）
+  // 今の試行を 1 つの zip にして書き出し、ブラウザにも残す。書き出せたら、この試行の自動保存は消す（ブラウザの容量を空けるため）。
+  // やり直した回は名前に _redo1 などを付け、前の回の zip と同じ名前にしない（ダウンロード先で (1) が付かず、ブラウザの zip も上書きしない）
   async function saveZip(partial) {
     const files = _.buildFiles(); if (!files) return;
     files.push({ name: summaryName(), text: summaryCSV() });
-    const session = files.find(f => f.name.endsWith('_session.json')).name;
-    const name = session.replace(/_session\.json$/, partial ? '_partial.zip' : '.zip');
+    const session = files.find(f => f.name.endsWith('_session.json')).name, rd = S.meta.experiment.redo;
+    const name = session.replace(/_session\.json$/, `${rd ? `_redo${rd.n}` : ''}${partial ? '_partial' : ''}.zip`);
     const blob = new Blob([_.makeZip(files.map(f => ({ name: f.name, data: '﻿' + f.text })))], { type: 'application/zip' });
     downloadBlob(name, blob);
     $('status').textContent = `書き出しました（${name}）`;
     const key = _.saveKey();
     try {
-      await zipPut(`${X.cfg.name}|${X.pid}|${X.i}${partial ? '|partial' : ''}`, { name, blob, exp: X.cfg.name, pid: X.pid, trial: X.i, time: Date.now() });
+      await zipPut(`${X.cfg.name}|${X.pid}|${X.i}${rd ? `|redo${rd.n}` : ''}${partial ? '|partial' : ''}`, { name, blob, exp: X.cfg.name, pid: X.pid, trial: X.i, time: Date.now() });
       if (!partial) { S.meta.video_file = ''; localStorage.removeItem(key); }   // video_file を空にして、以後の操作で自動保存を作り直さない
     } catch (_e) { /* 残せなくても、ダウンロードと自動保存はある */ }
   }
 
   // ---------- 要約 ----------
   // 最後の task_start から task_end（なければ今）までの操作ログを数える。再生・視聴の時間は、開始と終わりの組の間の合計。
-  // 途中で抜けて（task_abort）再開した試行も、抜けていた間は経過時間に入らない（再開すると操作ログの経過時間が続きから数える）
+  // 途中で抜けて（task_abort）再開した試行も、抜けていた間は経過時間に入らない（再開すると操作ログの経過時間が続きから数える）。
+  // やり直した試行も、やり直した回（最後の task_start から）だけを数える。前の回までのタスク遂行時間は task_ms_prev に別に残す
   function summarize() {
-    const log = S.log, t = X.trials[X.i];
+    const log = S.log, t = X.trials[X.i], rd = S.meta.experiment.redo;
     let k0 = -1; for (let k = log.length - 1; k >= 0; k--) if (log[k].type === 'task_start') { k0 = k; break; }
     const seg = k0 < 0 ? [] : log.slice(k0);
     const kEnd = seg.findIndex(l => l.type === 'task_end');
@@ -475,7 +579,8 @@
       task_ms: +(w1 - w0).toFixed(1), play_ms: +play.toFixed(1), review_ms: +rev.toFixed(1),
       n_play: n('play'), n_seek: n('seek'), n_undo: n('undo'), n_redo: n('redo'),
       n_strokes: S.data.strokes.length, n_events: S.data.events.length, bins, filled_v: filled('v'), filled_a: filled('a'),
-      n_restore: log.filter(l => l.type === 'restore').length };
+      n_restore: log.filter(l => l.type === 'restore').length,
+      redo: rd ? rd.n : 0, prev_end_iso: rd ? rd.prev_end_iso : '', task_ms_prev: rd ? rd.task_ms_prev : 0 };
   }
 
   // ---------- 実験用の設定（setup.json）を書き出す（通常の画面） ----------
@@ -665,12 +770,14 @@
   dropTarget($('expSetupBtn'), list => { _.closePops(); setupExport(list); });
   $('expDoneBtn').addEventListener('click', e => { e.currentTarget.blur(); complete(); });
   $('expRecFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'pick') pickFile(f); });
+  $('expRedoFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'setup' && X.redoPick) takeRedoFile(f); });
   $('expRefFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'align') setRef(f); });
 
-  // 自動保存から再開してよいか：この実験・参加者・試行の保存データで、「開始」を押した後のもの（core/storage.js）
+  // 自動保存から再開してよいか：この実験・参加者・試行の保存データで、「開始」を押した後のもの（core/storage.js）。
+  // やり直しの「開始」の前（前の回の task_start がログに残る）は再開せず、やり直しを当て直す
   const expResumable = s => {
     const m = s && s.meta && s.meta.experiment;
-    return !!X && !!m && m.name === X.cfg.name && m.participant === X.pid && m.trial === X.i && (s.log || []).some(l => l.type === 'task_start');
+    return !!X && !!m && m.name === X.cfg.name && m.participant === X.pid && m.trial === X.i && phase(s.log || []) === 'running';
   };
   Object.assign(_, { expResumable, expOn: () => !!X, expBlocked: () => !!X && X.state !== 'running', expAligning: () => !!X && X.state === 'align', expState: () => (X ? X.state : null) });
 })();

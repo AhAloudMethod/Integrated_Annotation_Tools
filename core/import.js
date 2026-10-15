@@ -332,8 +332,21 @@
     report(p, res);
   }
 
+  // ---------- 実験モードのやり直し（core/experiment.js） ----------
+  // zip か _session.json から _session.json の中身を読む（name に読んだファイルの名前）
+  async function readSession(f) {
+    const r = await readFiles([f]);
+    if (!r.session) throw new Error(`${f.name} は _session.json でも実験モードの zip でもありません`);
+    return r.session;
+  }
+  // 試行の _session.json を開いた動画に当てる（方式の設定・値・評価区間・形の記録・操作ログ）。動画は開いていること
+  function installSession(s) {
+    install({ session: s, csvs: [], names: [s.name || '_session.json'], mode: s.meta.mode });
+    _.selectMode(S.meta.mode, true); _.syncRangeUI(); _.refresh();
+  }
+
   $('importBtn').addEventListener('click', e => { e.currentTarget.blur(); $('importFile').click(); });
   $('importFile').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) importFiles(fs); });
 
-  Object.assign(_, { importFiles, takeImport, parseCSV, unzip });
+  Object.assign(_, { importFiles, takeImport, parseCSV, unzip, readSession, installSession });
 })();

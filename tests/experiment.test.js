@@ -1,12 +1,14 @@
 // 実験モード（core/experiment.js）：setup.json の書き出し、実験フォルダの読み込みと検査、隠す要素、開始前に操作が効かないこと、
 // 開始から完了までの時間と zip の書き出し、動画ごとの評価区間、次の試行への切り替えと設定の適用、アンケート、
 // 途中で抜けたときの _partial の zip と書き出し直し、抜けたときに設定が戻ること、
-// 録画の試行（録画を選び、区間を合わせて参加者に渡す。中断したら同じ録画を選び直す）
+// 録画の試行（録画を選び、区間を合わせて参加者に渡す。中断したら同じ録画を選び直す）、
+// 終えた試行のやり直し（ブラウザの zip か選んだファイルから評価を戻す・空から評価し直す、_redo1 の zip と要約の列）
 const { chromium } = require('playwright-core');
 const fs = require('fs');
 const path = require('path');
 const { URL, VID, BROWSER, out } = require('./_env');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
 
 // 実験フォルダを作る（tests/out/ の下。動画はテスト動画の複製）
@@ -358,6 +360,85 @@ const BAD = makeFolder('exp_bad', {
   await exitExp();
   await p.waitForTimeout(500);
 
+  // ---- 終えた試行をやり直す：自分で区切る試行（P04）で区切りと値を入れて完了し、選び直して「前の評価を読み込んで直す」
+  const openP04 = async () => { await p.setInputFiles('#expDir', GOOD); await p.waitForSelector('#expGo'); await p.selectOption('#expPid', 'P04'); };
+  const evalState = () => p.evaluate(() => ({ cells: AH.S.data.cells, range: AH.S.meta.range, shapes: AH.S.data.shapes || null }));
+  await openP04();
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  await p.click('#expStart');
+  await p.evaluate(() => { AH._.setRange({ edges: [1, 4, 7, 11], count: 3 }); AH.setCell('v', 0, 7); AH.setCell('a', 0, 3); AH.setCell('v', 2, 2); });
+  const red0 = await evalState();
+  await p.click('#expDoneBtn');
+  await p.waitForFunction(() => AH._.expState() === 'finished');
+  await p.waitForTimeout(500);
+  const z0 = JSON.parse((await zip('P04_t01_a_excel.zip'))['P04_t01_a_excel_session.json'] || '{}');
+  const task0 = z0.meta.experiment.task;
+  await exitExp(); await p.waitForTimeout(300);
+  await openP04();
+  check('終えた試行は（済）と出る', (await p.$eval('#expFrom', s => s.options[s.selectedIndex].textContent)).includes('（済）'));
+  await p.click('#expGo');
+  await p.waitForSelector('#expRedoLoad');
+  const ask = await p.$eval('#expCard', c => c.textContent);
+  check('（済）の試行で始めると、実験者にやり直し方を選ばせる（試行の名前を出し、まだ始めない）', ask.includes('終えた試行をやり直す') && ask.includes('a.mp4') && ask.includes('完了しています') && (await vis('#expRedoEmpty')) && (await state()) === 'setup', ask);
+  await p.click('#expRedoLoad');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const red1 = await evalState();
+  const rx1 = await p.evaluate(() => ({ redo: AH.S.meta.experiment.redo, log: AH.S.log.map(l => l.type), end: AH.S.meta.experiment.end_iso || null }));
+  check('読み込んで直す：ブラウザの zip から値と区切りが元と一致して戻り、「開始」の覆いから続ける', same(red1.cells, red0.cells) && same(red1.range, red0.range) && JSON.stringify(red1.range.edges) === '[1,4,7,11]' && (await vis('#expStart')),
+    JSON.stringify([red1.range, red1.cells]));
+  check('読み込んで直す：やり直しの回数・前の完了の時刻を meta.experiment.redo と操作ログ（exp_redo）に残す', !!rx1.redo && rx1.redo.n === 1 && rx1.redo.prev_end_iso === task0.end_iso && rx1.redo.from === 'browser'
+    && rx1.log.includes('exp_redo') && rx1.log.lastIndexOf('exp_redo') > rx1.log.lastIndexOf('task_end') && !rx1.end, JSON.stringify(rx1.redo));
+  await p.click('#expStart');
+  await p.evaluate(() => AH.setCell('v', 1, 5));
+  await p.waitForTimeout(300);
+  await p.click('#expDoneBtn');
+  await p.waitForFunction(() => AH._.expState() === 'finished');
+  await p.waitForTimeout(500);
+  const zr1 = await zip('P04_t01_a_excel_redo1.zip');
+  const s1j = JSON.parse(zr1['P04_t01_a_excel_session.json'] || '{}'), t1 = ((s1j.meta || {}).experiment || {}).task || {};
+  const tcsv = (zr1['P04_exptest_trials.csv'] || '').trim().split('\n'), th = (tcsv[0] || '').split(','), tr = (tcsv[1] || '').split(',');
+  check('やり直した完了は、名前に _redo1 を付けた zip を書き出す（前の zip と同じ名前にしない）', !!s1j.meta && downloads.filter(d => d.suggestedFilename() === 'P04_t01_a_excel.zip').length === 1, JSON.stringify(downloads.map(d => d.suggestedFilename()).slice(-3)));
+  check('やり直した回の要約：task_ms はやり直した回だけ、前の回の時間は task_ms_prev、回数と前の完了の時刻も残す', t1.redo === 1 && t1.prev_end_iso === task0.end_iso && t1.task_ms_prev === task0.task_ms && t1.task_ms > 0 && t1.task_ms < task0.task_ms + t1.task_ms
+    && t1.start_iso > task0.end_iso && s1j.data.cells.v[1] === 5 && s1j.data.cells.v[0] === 7, JSON.stringify([task0, t1]));
+  check('_trials.csv に redo・prev_end_iso・task_ms_prev の列を足す', tr[th.indexOf('redo')] === '1' && tr[th.indexOf('prev_end_iso')] === task0.end_iso && +tr[th.indexOf('task_ms_prev')] === task0.task_ms, JSON.stringify(tcsv));
+  await exitExp(); await p.waitForTimeout(300);
+  await openP04();
+  await p.waitForSelector('#expZips li');
+  const zl2 = await p.$$eval('#expZips li', ls => ls.map(l => l.textContent));
+  check('ブラウザには前の zip とやり直した zip の両方が残る', zl2.some(t => t.endsWith('P04_t01_a_excel.zip')) && zl2.some(t => t.endsWith('P04_t01_a_excel_redo1.zip')), JSON.stringify(zl2));
+  await p.click('#expCancel');
+
+  // ---- ブラウザに zip が無いとき（記録を消した後・別の PC）：実験者が zip を選ぶ。違う試行のファイルなら確かめる
+  const zipPath = async name => ({ name, mimeType: 'application/zip', buffer: fs.readFileSync(await dl(name).path()) });   // 一時ファイルの名前には拡張子が無いので、名前を付けて渡す
+  await p.evaluate(() => new Promise(ok => { const r = indexedDB.deleteDatabase('ahann_exp'); r.onsuccess = r.onerror = r.onblocked = () => ok(); }));
+  await openP04();
+  await p.click('#expGo');
+  await p.click('#expRedoLoad');
+  await p.waitForSelector('#expRedoPick');
+  check('zip が無ければ、zip か _session.json を選ぶように出す', (await p.$eval('#expCard', c => c.textContent)).includes('zip が残っていません'));
+  const nd4 = dialogs.length; dismiss = true;
+  let [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('#expRedoPick')]);
+  await fc.setFiles(await zipPath('P01_t02_a_excel.zip')); await p.waitForTimeout(500);
+  const mis = dialogs.slice(nd4).join(' / ');
+  check('参加者・試行の違うファイルを選ぶと確かめ、キャンセルなら始めない', mis.includes('参加者：P01') && mis.includes('試行：2') && (await state()) === 'setup', mis);
+  [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click('#expRedoPick')]);
+  await fc.setFiles(await zipPath('P04_t01_a_excel_redo1.zip'));
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const red2 = await evalState(), rx2 = await p.evaluate(() => AH.S.meta.experiment.redo);
+  check('選んだ zip から値と区切りが戻り、2 回目のやり直しになる（前の回までの時間を足す）', red2.cells.v[1] === 5 && red2.cells.v[0] === 7 && JSON.stringify(red2.range.edges) === '[1,4,7,11]'
+    && rx2.n === 2 && rx2.from === 'file' && rx2.prev_end_iso === t1.end_iso && Math.abs(rx2.task_ms_prev - (task0.task_ms + t1.task_ms)) < 0.2, JSON.stringify(rx2));
+  await exitExp(); await p.waitForTimeout(500);
+
+  // ---- 空から評価し直す：値の無い 1 区間から始め、やり直しの記録は残す
+  await openP04();
+  await p.click('#expGo');
+  await p.click('#expRedoEmpty');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const em0 = await p.evaluate(() => ({ n: AH.nSec(), v: AH.S.data.cells.v.filter(x => x != null).length, redo: AH.S.meta.experiment.redo, ended: AH.S.log.some(l => l.type === 'task_end') }));
+  check('空から評価し直す：区切りの無い 1 区間・値なしで始め、redo（from: empty）を残す', em0.n === 1 && em0.v === 0 && !em0.ended && em0.redo.n === 2 && em0.redo.from === 'empty', JSON.stringify(em0));
+  await exitExp(); await p.waitForTimeout(500);
+
   // ---- 動画より長い評価区間：試行を始めない
   await p.setInputFiles('#expDir', GOOD);
   await p.waitForSelector('#expGo');
@@ -455,6 +536,19 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForFunction(() => AH._.expState() === 'ready');
   const r3 = await p.evaluate(() => ({ s0: AH.binStart(0), file: AH.S.meta.video_file, mode: AH.S.meta.mode }));
   check('「動画を選び直す」で選び直せ、渡した後に止まった試行は区間合わせを飛ばして開始の覆いに戻る', r3.file === 'other.mp4' && Math.abs(r3.s0 - 3) < 0.02 && r3.mode === 'sam', JSON.stringify(r3));
+  // 終えた録画の試行をやり直す：録画を選び直すと、区間合わせを飛ばして読み込んだ評価の区間で開始の覆いに戻る
+  await p.reload(); await p.waitForTimeout(300);
+  await p.setInputFiles('#expDir', REC);
+  await p.waitForSelector('#expGo');
+  await p.selectOption('#expFrom', '0');
+  await p.click('#expGo');
+  await p.click('#expRedoLoad');
+  await p.waitForFunction(() => AH._.expState() === 'pick');
+  await p.setInputFiles('#expRecFile', path.join(TAKES, 'take.mp4'));
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const r4 = await p.evaluate(() => ({ s0: AH.binStart(0), end: AH._.rangeEnd(), mode: AH.S.meta.mode, rec: AH.S.meta.experiment.record, redo: AH.S.meta.experiment.redo }));
+  check('終えた録画の試行をやり直す：同じ録画を選ぶと、区間合わせを飛ばして前の区間（2〜10.5 秒）のまま開始の覆いに戻る', r4.mode === 'excel' && Math.abs(r4.s0 - 2) < 0.02 && Math.abs(r4.end - 10.5) < 0.02
+    && r4.rec.file === 'take.mp4' && r4.redo.n === 1 && !(await alignShown()), JSON.stringify(r4));
 
   await p.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase('ahann_exp'); });
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');

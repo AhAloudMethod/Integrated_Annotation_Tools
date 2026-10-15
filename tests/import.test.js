@@ -208,6 +208,27 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     check('読めないファイルは知らせる', p.dialogs.some(m => /読み込めるファイルがありません/.test(m)), p.dialogs.join(' / '));
     await p.close();
   }
+  // 12. 実験モードのやり直し（core/experiment.js）が使う readSession・installSession：zip（BOM つき）から _session.json を読み、値・区切り・形の記録・操作ログを戻す
+  {
+    await src.evaluate(() => { AH.S.data.shapes = [{ axis: 'v', t0: 1, t1: 2.5, shape: 'rise' }]; });
+    const w = await src.evaluate(() => ({ cells: AH.S.data.cells, range: AH.S.meta.range, shapes: AH.S.data.shapes, n: AH.S.log.length, files: AH._.buildFiles().map(f => ({ name: f.name, text: f.text })) }));
+    const p = await page({ mode: 'carma', pid: 'X' });
+    const r = await p.evaluate(async files => {
+      const zip = new File([AH._.makeZip(files.map(f => ({ name: f.name, data: '﻿' + f.text })))], 'P07_t01_test_excel.zip');
+      const s = await AH._.readSession(zip);
+      AH._.installSession(s);
+      const json = files.find(f => f.name.endsWith('_session.json'));
+      const fromJson = await AH._.readSession(new File([json.text], json.name));
+      let noSession = '';
+      try { await AH._.readSession(new File([AH._.makeZip([{ name: 'a.csv', data: 'x' }])], 'only.zip')); } catch (e) { noSession = e.message; }
+      return { name: s.name, mode: AH.S.meta.mode, cells: AH.S.data.cells, range: AH.S.meta.range, shapes: AH.S.data.shapes, log: AH.S.log.map(l => l.type), json: fromJson.meta.mode, noSession };
+    }, w.files);
+    check('readSession：zip の中の _session.json を読む（_session.json だけでも読む）', r.name.endsWith('_session.json') && r.json === 'excel', r.name);
+    check('installSession：方式・値・区切り・形の記録が元と一致する', r.mode === 'excel' && same(r.cells, w.cells) && same(r.range, w.range) && same(r.shapes, w.shapes), JSON.stringify([r.range, r.shapes]));
+    check('installSession：操作ログを続けて import を残す', r.log.length > w.n && r.log.indexOf('export') >= 0 && r.log.lastIndexOf('import') > r.log.lastIndexOf('export'), r.log.slice(-4).join(','));
+    check('readSession：_session.json の無い zip は知らせる', /_session\.json がありません/.test(r.noSession), r.noSession);
+    await p.close();
+  }
   await src.close();
   console.log('errors:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
