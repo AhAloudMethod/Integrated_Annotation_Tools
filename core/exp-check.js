@@ -26,7 +26,7 @@
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true },
   ];
   const DEF = Object.fromEntries(SETTINGS.map(s => [s.key, s.def]));
-  const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref', 'novoice'];   // ref：基準音声の時刻（秒。無ければ最初の声）。novoice：発声なしの区間 [[始め, 終わり（秒）], …]（PANAS。事前に印が付き、参加者は変えられない）
+  const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref', 'refVideo', 'novoice'];   // ref：基準音声の時刻（秒。無ければ最初の声）。refVideo：基準音声の動画（フォルダからの相対パス。ref はこの動画の秒）。novoice：発声なしの区間 [[始め, 終わり（秒）], …]（PANAS。事前に印が付き、参加者は変えられない）
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
 
   // experiment.json と setup.json を合わせる（settings と videos は setup.json から取る）
@@ -40,7 +40,7 @@
     const spec = t.range || (cfg.videos && cfg.videos[t.video]) || {};
     const r = { ...(cfg.range || {}), ...spec };
     if (!spec.edges) delete r.edges;
-    delete r.duration; delete r.ref; delete r.novoice;
+    delete r.duration; delete r.ref; delete r.refVideo; delete r.novoice;
     return r;
   }
 
@@ -80,7 +80,9 @@
       if (r.bin != null && !(r.bin > 0)) errors.push(`${where}：bin は正の数です`);
       if (r.start != null && !(r.start >= 0)) errors.push(`${where}：start は 0 以上です`);
       if (r.end != null && !(r.end > (r.start || 0))) errors.push(`${where}：end は start より後です`);
-      if (r.ref != null && !(typeof r.ref === 'number' && r.ref >= 0 && !(r.duration > 0 && r.ref > r.duration))) errors.push(`${where}：ref（基準音声の秒）は 0 以上、動画の長さ以下の数です`);
+      if (r.ref != null && !(typeof r.ref === 'number' && r.ref >= 0 && !(r.refVideo == null && r.duration > 0 && r.ref > r.duration))) errors.push(`${where}：ref（基準音声の秒）は 0 以上、動画の長さ以下の数です`);
+      if (r.refVideo != null && !(typeof r.refVideo === 'string' && r.refVideo !== '')) errors.push(`${where}：refVideo（基準音声の動画）はフォルダからの相対パスの文字列です`);
+      else if (r.refVideo != null && env.has && !env.has(r.refVideo)) errors.push(`${where}：基準音声の動画「${r.refVideo}」がフォルダにありません`);
       if (r.novoice != null && !(Array.isArray(r.novoice) && r.novoice.every(x => Array.isArray(x) && x.length === 2 && typeof x[0] === 'number' && typeof x[1] === 'number' && x[0] >= 0 && x[1] > x[0] && !(r.duration > 0 && x[1] > r.duration + 0.05))))
         errors.push(`${where}：novoice（発声なしの区間）は [始め, 終わり]（秒．0 以上，終わりは始めより後，動画の長さ以下）の並びです`);
       if (r.label != null && !['countdown', 'elapsed'].includes(r.label)) errors.push(`${where}：label は countdown か elapsed です`);
