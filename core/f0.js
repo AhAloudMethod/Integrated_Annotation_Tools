@@ -30,8 +30,8 @@
     const shift = den !== 0 ? 0.5 * (a - c) / den : 0;
     return sr / (tau + (Math.abs(shift) < 1 ? shift : 0));
   }
-  // 音声全体を処理する（重いので少しずつ。途中でほかの動画に替わったら打ち切る）
-  async function analyse(samples, token) {
+  // 音声全体を処理する（重いので少しずつ。alive() が偽になったら（ほかの動画に替わったら）打ち切る）
+  async function analyse(samples, alive, progress) {
     const n = Math.max(0, Math.floor((samples.length - WIN) / (SR * HOP)) + 1);
     const f0 = new Float32Array(n).fill(NaN), rms = new Float32Array(n);
     for (let k = 0; k < n; k++) {
@@ -44,7 +44,7 @@
     const floor = Math.max(0.003, mx * 0.05);
     for (let k = 0; k < n; k++) {
       if (rms[k] >= floor) f0[k] = yin(samples, Math.round(k * SR * HOP));
-      if (k % 150 === 149) { await new Promise(r => setTimeout(r, 0)); if (token !== F0.token) return null; setStatus(`F0：計算中 ${Math.round(k / n * 100)}%`); }
+      if (k % 150 === 149) { await new Promise(r => setTimeout(r, 0)); if (!alive()) return null; progress(Math.round(k / n * 100)); }
     }
     return { f0, rms };
   }
@@ -59,22 +59,25 @@
   }
   function setStatus(t) { const el = $('f0Status'); if (el) el.textContent = t; }
 
+  // ファイルの音声を 16kHz・モノラルにして F0 を求める。alive() が偽になったら打ち切って null を返す（基準音声の動画も使う。core/ref.js）
+  async function compute(file, alive, progress = () => {}) {
+    const buf = await file.arrayBuffer();
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ac = new Ctx(); let decoded;
+    try { decoded = await ac.decodeAudioData(buf); } finally { try { ac.close(); } catch (_) {} }
+    if (!alive()) return null;
+    const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * SR), SR);
+    const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
+    const mono = (await off.startRendering()).getChannelData(0);
+    if (!alive()) return null;
+    return analyse(mono, alive, progress);
+  }
   async function load(file) {
     const token = F0.token = {};
     Object.assign(F0, { status: 'loading', f0: null, rms: null, file: file.name });
     setStatus('F0：音声を読み込み中…'); render();
     try {
-      const buf = await file.arrayBuffer();
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      const ac = new Ctx(); let decoded;
-      try { decoded = await ac.decodeAudioData(buf); } finally { try { ac.close(); } catch (_) {} }
-      if (token !== F0.token) return;
-      // 16kHz・モノラルに変換
-      const off = new OfflineAudioContext(1, Math.ceil(decoded.duration * SR), SR);
-      const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
-      const mono = (await off.startRendering()).getChannelData(0);
-      if (token !== F0.token) return;
-      const r = await analyse(mono, token); if (!r) return;
+      const r = await compute(file, () => token === F0.token, p => setStatus(`F0：計算中 ${p}%`)); if (!r) return;
       const [lo, hi] = range(r.f0);
       Object.assign(F0, { status: 'ready', f0: r.f0, rms: r.rms, lo, hi });
       const voiced = r.f0.filter(x => x > 0).length;
@@ -119,5 +122,5 @@
   document.body.classList.toggle('f0', shown);
   video.addEventListener('timeupdate', render);
 
-  Object.assign(_, { F0, loadF0: load, f0At, f0Shown: () => shown, renderF0: render, setF0Shown: setShown, yin });
+  Object.assign(_, { F0, loadF0: load, computeF0: compute, f0At, f0Shown: () => shown, renderF0: render, setF0Shown: setShown, yin });
 })();

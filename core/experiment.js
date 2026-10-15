@@ -267,10 +267,13 @@
   function loaded(i) {
     const t = X.trials[i], log = S.log;
     const started = log.some(l => l.type === 'task_start'), ended = log.some(l => l.type === 'task_end');
-    const vref = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].ref;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
-    S.meta.ref = typeof vref === 'number' ? vref : null;
+    const vs = (!t.record && X.cfg.videos && X.cfg.videos[t.video]) || {};
+    S.meta.ref = typeof vs.ref === 'number' ? vs.ref : null;   // 基準音声の時刻（setup.json。無ければ最初の声。core/ref.js）
+    // 基準音声の動画：setup.json の refVideo。録画の試行は実験者が選んだ録画（同じ参加者の後の試行にも使う）。無ければ評価する動画の最初の声
+    if (t.record) _.setRefVideo(X.refFile, 'record');
+    else _.setRefVideo(vs.refVideo ? X.get(vs.refVideo) : null, 'setup');
     // 発声なしの区間（setup.json の novoice。PANAS で事前に印を付け、参加者は変えられない．modes/panas.js）
-    const vnv = !t.record && X.cfg.videos && X.cfg.videos[t.video] && X.cfg.videos[t.video].novoice;
+    const vnv = vs.novoice;
     if (Array.isArray(vnv) && vnv.length) S.meta.novoice_preset = vnv.map(x => [x[0], x[1]]); else delete S.meta.novoice_preset;
     S.meta.experiment = { ...(S.meta.experiment && S.meta.experiment.trial === i ? S.meta.experiment : {}),
       name: X.cfg.name, participant: X.pid, trial: i, n_trials: X.trials.length, practice: !!t.practice, condition: cond(t), settings: X.set, options: { ...S.meta.options } };
@@ -317,12 +320,16 @@
     $('expAlign').innerHTML = `<b>評価区間を合わせる（実験者）</b><span>${esc(X.file.name)}</span>`
       + `<span>開始 ${f3(start)} 秒 〜 終了 ${f3(end)} 秒（動画 ${f3(S.meta.duration)} 秒）</span>`
       + '<span class="expBtns"><button id="expRecStart" type="button">今の時間を開始にする</button><button id="expRecEnd" type="button">今の時間を終了にする</button></span>'
+      + `<span>基準音声：${X.refFile ? '「' + esc(X.refFile.name) + '」の最初の声' : 'この録画の最初の声'}</span>`
+      + `<span class="expBtns"><button id="expRecRef" type="button">基準音声の録画を選ぶ</button>${X.refFile ? '<button id="expRecRefOff" type="button">外す</button>' : ''}</span>`
       + '<span class="expBtns"><button id="expRecRepick" type="button">動画を選び直す</button><button id="expRecGo" type="button" class="expDone">参加者に渡す</button></span>'
       + (msg ? `<span class="expMiss">${esc(msg)}</span>` : '');
     const now = () => _.frameStart(video.currentTime);
     const bind = (id, fn) => $(id).addEventListener('click', e => { e.currentTarget.blur(); fn(); });
     bind('expRecStart', () => { X.align.start = now(); showAlign(); });
     bind('expRecEnd', () => { X.align.end = now(); showAlign(); });
+    bind('expRecRef', () => $('expRefFile').click());
+    if (X.refFile) bind('expRecRefOff', () => setRef(null));
     bind('expRecRepick', () => { if (!video.paused) video.pause(); setState('pick'); });
     bind('expRecGo', () => {
       const D = S.meta.duration, a = X.align;
@@ -336,9 +343,17 @@
       handOff(rec);
     });
   }
+  // 録画の試行の基準音声の録画（null なら評価する録画の最初の声）。参加者ごとに進行に残し、中断の後に選び直す案内に使う
+  function setRef(f) {
+    X.refFile = f;
+    const prog = loadProg(X.pid); writeProg({ ...prog, refVideo: f ? { file: f.name, size: f.size } : null });
+    _.setRefVideo(f, 'record');
+    showAlign();
+  }
   // 区間を当てた後：記録して開始の覆いへ。中断の後に選び直した録画が違っても、実際に開いた録画を残す
   function handOff(prev) {
     const rec = { ...prev, file: X.file.name, size: X.file.size, duration: +S.meta.duration.toFixed(3) };
+    if (X.refFile) rec.ref_video = X.refFile.name; else delete rec.ref_video;
     S.meta.experiment.record = rec;
     addLog('exp_record', { detail: JSON.stringify(rec) });
     logTrial(recRange(rec));
@@ -356,10 +371,11 @@
     if (st === 'loading') cover(head + '<p>読み込んでいます…</p>');
     else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、${_.mod('Ctrl')}+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
     else if (st === 'pick') {
-      const prev = loadRec(X.i);
+      const prev = loadRec(X.i), pref = loadProg(X.pid).refVideo;
       cover(head + '<h2>録画を選ぶ（実験者の方へ）</h2>'
         + (prev ? `<p>この試行は「${esc(prev.file)}」で始めています。同じ録画を選び直してください。</p>`
           : '<p>この試行で評価する録画のファイルを選んでください。選んだ後、動画を見ながら評価区間の開始と終了を合わせます。</p>')
+        + (pref && !X.refFile ? `<p>基準音声の録画に「${esc(pref.file)}」を選んでいました。評価区間を合わせる画面で選び直してください。</p>` : '')
         + '<button id="expRecPick" type="button" class="expMain">録画した動画を選ぶ</button>');
       $('expRecPick').addEventListener('click', e => { e.currentTarget.blur(); $('expRecFile').click(); });
     } else if (st === 'align') cover('');
@@ -496,13 +512,15 @@
     let old = null, oldErr = '';
     try { old = setupFile ? await readJSON(setupFile) : null; } catch (err) { oldErr = err.message; }
     const oldSet = old && isObj(old.settings) ? old.settings : {}, oldVids = old && isObj(old.videos) ? old.videos : {};
+    const refPaths = new Set(Object.values(oldVids).filter(e => isObj(e) && typeof e.refVideo === 'string').map(e => e.refVideo));   // 基準音声の動画（評価区間は要らない）
     const rows = [];
     for (const v of videos) {
       const dur = await durationOf(v.file);
       const r = dur ? _.loadRange(v.file.name, `${v.file.size}:${dur.toFixed(2)}`) : null;
       const prev = isObj(oldVids[v.path]) ? oldVids[v.path] : null;
-      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}), ...(prev && Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) } : prev;
-      rows.push({ path: v.path, dur, entry, kept: !r && !!prev });
+      const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}), ...(prev && typeof prev.refVideo === 'string' ? { refVideo: prev.refVideo } : {}),
+        ...(prev && Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) } : prev;
+      rows.push({ path: v.path, dur, entry, kept: !r && !!prev, refOnly: !r && !prev && refPaths.has(v.path) });
     }
     const cur = { ...currentSettings(), ...Object.fromEntries(E.SETTINGS.filter(d => d.key in oldSet).map(d => [d.key, oldSet[d.key]])) };
     const ctl = d => {
@@ -513,7 +531,7 @@
       return `<label>${esc(d.label)} <select id="${id}">${ch.map(([k, l]) => `<option value="${k}"${String(k) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
     };
     const span = e => (e.edges ? `${e.edges[0]}〜${e.edges[e.edges.length - 1]} 秒（自分で区切った ${e.edges.length - 1} 区間）` : `${e.start}〜${e.end} 秒，${e.bin} 秒ごと`);
-    const missing = rows.filter(r => !r.entry).length;
+    const missing = rows.filter(r => !r.entry && !r.refOnly).length;
     cover(`<h2>実験用の設定を書き出す</h2>
       <p class="muted">実験中の画面の設定と、動画ごとの評価区間を setup.json に書き出します。ダウンロードした setup.json を実験フォルダ（experiment.json と同じ場所）に入れてください。</p>
       ${old ? '<p class="muted">フォルダの setup.json の設定を初めの値にしています（setup.json に無い項目は今の画面の値）。</p>' : ''}
@@ -523,7 +541,7 @@
       <div class="refTitle">実験中に出すボタン</div>
       <div class="expForm">${E.SETTINGS.filter(d => d.exp).map(ctl).join('')}</div>
       <div class="refTitle">動画ごとの評価区間（通常の画面で動画を開いて合わせたもの）</div>
-      ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${r.entry ? esc(span(r.entry)) + (r.kept ? '（setup.json のまま）' : '') : '<b class="expMiss">未設定</b>'}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
+      ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${r.entry ? esc(span(r.entry)) + (r.kept ? '（setup.json のまま）' : '') : r.refOnly ? '基準音声の動画（評価区間は要りません）' : '<b class="expMiss">未設定</b>'}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
       ${missing ? `<p class="expMiss">未設定の動画が ${missing} 本あります。実験で使う動画なら、通常の画面で開いて評価区間を合わせてから書き出し直してください（このまま書き出すと、その動画の試行は始められません）。</p>` : ''}
       <div class="expBtns"><button id="esSave" type="button">setup.json を書き出す</button><button id="esClose" type="button">閉じる</button></div>`);
     $('esClose').addEventListener('click', () => cover(''));
@@ -605,6 +623,7 @@
   dropTarget($('expSetupBtn'), list => { _.closePops(); setupExport(list); });
   $('expDoneBtn').addEventListener('click', e => { e.currentTarget.blur(); complete(); });
   $('expRecFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'pick') pickFile(f); });
+  $('expRefFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f && X && X.state === 'align') setRef(f); });
 
   // 自動保存から再開してよいか：この実験・参加者・試行の保存データで、「開始」を押した後のもの（core/storage.js）
   const expResumable = s => {
