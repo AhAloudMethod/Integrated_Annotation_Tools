@@ -172,6 +172,29 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => { AH._.setListen(false); localStorage.clear(); }); await p.close();
   }
 
+  // 10. Excel：入っているセルで数字を押すと打ち直す。セルを選んだままでも V・Space・, . はショートカットとして効く。セルの外の数字は今の区間のセルに入る
+  {
+    const p = await open('excel');
+    await p.evaluate(() => { AH._.setRange({ start: 0, bin: 1, count: 12, target: 12, edges: null }); AH.seekTo(3.5); }); await p.waitForTimeout(150);
+    await p.click('input[data-ax=v][data-s="2"]'); await p.keyboard.press('5'); await p.keyboard.press('7');
+    const retype = await p.evaluate(() => ({ cell: AH.S.data.cells.v[2], val: document.activeElement.value }));
+    const t0 = await p.evaluate(() => AH.video.currentTime);
+    await p.keyboard.press('Period'); await p.waitForTimeout(150);
+    const t1 = await p.evaluate(() => AH.video.currentTime);
+    await p.keyboard.press('Space'); await p.waitForTimeout(300);
+    const played = await p.evaluate(() => !AH.video.paused); await p.keyboard.press('Space'); await p.waitForTimeout(100);
+    await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
+    const rv = await p.evaluate(() => ({ on: AH.reviewing(), val: document.querySelector('input[data-ax=v][data-s="2"]').value }));
+    await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
+    await p.evaluate(() => { document.activeElement.blur(); AH.seekTo(4.5); }); await p.waitForTimeout(150);
+    await p.keyboard.press('Digit8');
+    const out = await p.evaluate(() => ({ cell: AH.S.data.cells.v[4], focus: document.activeElement.dataset.s, ax: document.activeElement.dataset.ax }));
+    check('Excel：入っているセルの数字は打ち直す，セルの中でも . Space V が効く，セルの外の数字は今の区間のセルに入る',
+      retype.cell === 7 && retype.val === '7' && t1 > t0 && played && rv.on && rv.val === '7' && out.cell === 8 && out.focus === '4' && out.ax === 'v',
+      JSON.stringify({ retype, t0, t1, played, rv, out }));
+    await p.evaluate(() => localStorage.clear()); await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

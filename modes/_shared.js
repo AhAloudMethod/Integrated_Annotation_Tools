@@ -183,7 +183,7 @@
   // curve：区間内で変化を使う（変化にした区間のセルは表示だけ。クリックでその区間へ移る）
   function xlTable(under, axes = ['v', 'a'], real = false, curve = false) {
     const { grid, follow } = xlWrap(under);
-    let sig = '';
+    let sig = '', lastAx = axes[0];   // lastAx：最後に入れていたセルの行（セルの外で数字を押したときの入れ先）
     const isCv = (ax, s) => curve && S.data.cells[ax][s] === 'curve';
     const sigNow = () => AH.rangeSig() + (curve ? '|' + axes.map(ax => [...Array(AH.nSec()).keys()].map(s => (isCv(ax, s) ? 1 : 0)).join('')).join('|') : '');
     const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
@@ -236,6 +236,9 @@
               : e.key === 'Tab' ? [0, back]
               : { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
             if (e.key === 'Escape') { inp.blur(); return; }
+            // 数字は確定した値を打ち直す。maxlength まで入っていると打てないので、中身を選んでから入れる（小数の打ちかけ 7.2 などはそのまま）
+            if (/^[0-9０-９]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && inp.selectionStart === inp.selectionEnd
+              && inp.value.length >= inp.maxLength && inp.value === String(S.data.cells[ax][s] ?? '')) inp.select();
             // R：入れているセルの区間を始めから終わりまで再生して止める（聴いてから入力がオフでも。セルに R は入らない）
             if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.listenPlaySec(s); return; }
             if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); AH._.frameStep(e.key === 'ArrowLeft' ? -1 : 1); return; }   // Ctrl+←→：1 フレーム移動
@@ -257,7 +260,7 @@
             // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
             if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(ss);   // 移った先の区間（固定の列は飛ばす）
           });
-          inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
+          inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; lastAx = ax; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
           inp.addEventListener('mouseup', e => { if (inp.selectionStart === inp.selectionEnd) { e.preventDefault(); inp.select(); } });
           td.appendChild(inp); tr.appendChild(td);
@@ -268,7 +271,7 @@
       const back = keep && grid.querySelector(`input[data-ax="${keep.ax}"][data-s="${keep.s}"]`);
       if (back) { back.value = S.data.cells[keep.ax][+keep.s] ?? ''; back.focus(); back.select(); }
     }
-    return () => {
+    const update = () => {
       if (!S.meta.duration) return;
       if (sig !== sigNow()) build();
       const cur = AH.curSec();
@@ -284,6 +287,17 @@
       // 区間内で変化：パネルのボタンの対象の区間を、表の列の枠で示す
       if (curve) { const t = cellSec(); for (const cell of grid.querySelectorAll('[data-s]')) if (cell.tagName !== 'INPUT') cell.classList.toggle('tgt', +cell.dataset.s === t); }
     };
+    // セルの外で数字キー：今の区間のセル（最後に入れていた行）に入れて、そのセルに移る。続けて Enter・Tab で次のセルへ進める
+    update.key = e => {
+      const m = /^(?:Digit|Numpad)([0-9])$/.exec(e.code);
+      if (!m || e.ctrlKey || e.metaKey || e.altKey) return false;
+      const s = AH.inputSec(); if (s == null) return true;   // 評価区間の外（案内を出す）
+      const inp = grid.querySelector(`input[data-ax="${lastAx}"][data-s="${s}"]`);
+      if (!inp || inp.readOnly) return true;   // 変化の区間・発声なしの固定の列
+      inp.focus(); inp.value = m[1]; inp.dispatchEvent(new Event('input'));
+      return true;
+    };
+    return update;
   }
   // 区間内で変化（カスタムの Excel。core/curve.js）の変化の区間のセル：表示だけ。区間の始めの値→終わりの値（整数に丸める）と形の印を出す。
   // 入れていない区間は空欄、発声なしは 0

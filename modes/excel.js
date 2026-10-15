@@ -10,7 +10,7 @@
     selfCuts: () => opts().cuts === 'self',
     cutsMode: () => opts().cuts,   // 実験モードで評価区間を当てるときに使う（core/experiment.js）   // 自分で区切る：実験モードでも参加者が区切れる
     get help() {
-      return '<p>現行の Excel 評価シートと同じ並びです。セルに 1〜9 を入力します。発声が無く、評価の出来ない区間に関しては0を入力します。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。'
+      return '<p>現行の Excel 評価シートと同じ並びです。セルに 1〜9 を入力します。発声が無く、評価の出来ない区間に関しては0を入力します。セルを選んでいないときに数字キーを押すと、今の区間のセルに入ります。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。'
         + (opts().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : opts().cuts === 'sec1' ? '区間は評価の開始から 1 秒間隔になっています。' : '') + '</p>';
     },
     mount({ panel, under }) {
@@ -22,6 +22,7 @@
       if (opts().cuts === 'self') cutBox(panel);
       memo = xlRef(panel);
     },
+    onKey: e => table.key(e),   // セルの外で数字キー：今の区間のセルに入れる
     update() { if (!S.meta.duration) return; table(); memo(); },
   });
 })();

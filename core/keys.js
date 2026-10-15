@@ -19,6 +19,10 @@
     if (tag === 'SELECT' && !e.altKey && !e.ctrlKey && !e.metaKey && (e.key.length === 1 || /^(Arrow|Page|Home$|End$)/.test(e.key))) {
       e.preventDefault(); e.target.blur(); tag = '';
     }
+    // Excel 方式のセル：数字（小数のセルは . も）は値として入れ、ほかの文字キー（V・Space・, . など）はセルを選んだままショートカットとして効かせる。
+    // セルが受け取ったキー（R・C・H・区間内で変化のキー、Enter・矢印の移動など）と Ctrl 等の組み合わせはセルに任せる
+    if (tag === 'INPUT' && e.target.closest('table.xl') && !e.defaultPrevented && !e.ctrlKey && !e.metaKey && !e.altKey
+      && e.key.length === 1 && !/[0-9０-９]/.test(e.key) && !(e.target.inputMode === 'decimal' && /[.．]/.test(e.key))) tag = '';
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;   // 入力欄（Excel方式のセル等）は各自で処理
     if ((e.code === 'Comma' || e.code === 'Period') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _.frameStep(e.code === 'Comma' ? -1 : 1); return; }   // 1フレーム移動
     if (e.code === 'KeyV' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _.setReview(!_.reviewing()); return; }
