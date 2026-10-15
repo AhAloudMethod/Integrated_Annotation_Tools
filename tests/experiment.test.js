@@ -439,6 +439,20 @@ const BAD = makeFolder('exp_bad', {
   check('空から評価し直す：区切りの無い 1 区間・値なしで始め、redo（from: empty）を残す', em0.n === 1 && em0.v === 0 && !em0.ended && em0.redo.n === 2 && em0.redo.from === 'empty', JSON.stringify(em0));
   await exitExp(); await p.waitForTimeout(500);
 
+  // ---- やり直した試行の後は、終えた試行を飛ばす：P01 は 2 試行とも終えているので、1 つ目をやり直して完了したら「次へ」を出さずに終わりの案内を出す
+  await p.setInputFiles('#expDir', GOOD); await p.waitForSelector('#expGo');
+  await p.selectOption('#expFrom', '0');
+  await p.click('#expGo');
+  await p.click('#expRedoEmpty');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  await p.click('#expStart');
+  await p.click('#expDoneBtn');
+  await p.waitForFunction(() => AH._.expState() === 'finished');
+  check('やり直した試行の後に終えていない試行が無ければ、「次へ」を出さずに終わりの案内を出す（最後の試行でなければ finalSurvey も出さない）',
+    !(await vis('#expNext')) && (await vis('#expSum')) && !(await p.$('.expSurvey')), await p.$eval('#expCard', c => c.textContent));
+  await p.waitForTimeout(500);
+  await exitExp(); await p.waitForTimeout(500);
+
   // ---- 動画より長い評価区間：試行を始めない
   await p.setInputFiles('#expDir', GOOD);
   await p.waitForSelector('#expGo');

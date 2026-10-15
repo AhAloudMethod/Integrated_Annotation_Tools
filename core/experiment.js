@@ -393,7 +393,7 @@
       if (err) { setState('error', err); return; }
       logTrial(X.range);
     }
-    setState(ph === 'ended' ? (i + 1 < X.trials.length ? 'done' : 'finished') : ph === 'running' ? 'running' : 'ready');
+    setState(ph === 'ended' ? (nextTrial(i) >= 0 ? 'done' : 'finished') : ph === 'running' ? 'running' : 'ready');
   }
   function logTrial(range) {
     const t = X.trials[X.i];
@@ -485,8 +485,9 @@
       cover(head + '<p>準備ができたら「開始」を押してください。</p><button id="expStart" type="button" class="expMain">開始</button>');
       $('expStart').addEventListener('click', start);   // フォーカスは置かない（Space で誤って始めないように）
     } else if (st === 'done' || st === 'finished') {
-      // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（最後なら終わりの案内）を出さない。最後の試行の後には finalSurvey も出す
-      const last = st === 'finished', sv = surveys(X.i, last), opened = new Set();
+      // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（残りが無ければ終わりの案内）を出さない。最後の試行の後には finalSurvey も出す
+      // （やり直した試行の後に残りが無くても、最後の試行でなければ finalSurvey は出さない）
+      const last = st === 'finished', sv = surveys(X.i, X.i + 1 >= X.trials.length), opened = new Set();
       const next = last ? '<p>すべての試行が終わりました。ありがとうございました。</p><button id="expSum" type="button">要約をもう一度書き出す</button>'
         : '<button id="expNext" type="button" class="expMain">次へ</button>';
       const many = sv.length > 1;
@@ -500,8 +501,15 @@
         if (opened.size === sv.length) $('expAfter').hidden = false;
       }));
       if (last) $('expSum').addEventListener('click', () => _.download(summaryName(), summaryCSV(), 'text/csv'));
-      else $('expNext').addEventListener('click', () => startTrial(X.i + 1));
+      else $('expNext').addEventListener('click', () => startTrial(nextTrial(X.i)));
     } else cover('');
+  }
+  // 次に進む試行：i より後で、終えていない最初の試行（途中で抜けたものを含む）。無ければ -1。
+  // やり直した試行の後は、終えた試行を飛ばす（「次へ」で終えた試行を空から始めない）
+  function nextTrial(i) {
+    const done = loadProgress(X.pid);
+    for (let k = i + 1; k < X.trials.length; k++) if (!done[k] || done[k].partial) return k;
+    return -1;
   }
   // アンケートの一覧 [{ url, label }]：試行の survey（false なら無し）、なければ全体の survey（練習の試行には使わない）。
   // final なら、実験の後に 1 回だけ答える finalSurvey を後ろに足す。
@@ -531,7 +539,7 @@
     const row = { ...summarize(), partial: 0, survey_opened: 0 };
     S.meta.experiment.task = row;
     saveProgress(X.i, row);
-    setState(X.i + 1 >= X.trials.length ? 'finished' : 'done');
+    setState(nextTrial(X.i) >= 0 ? 'done' : 'finished');
     await saveZip(false);
   }
   // 今の試行を 1 つの zip にして書き出し、ブラウザにも残す。書き出せたら、この試行の自動保存は消す（ブラウザの容量を空けるため）。
