@@ -33,7 +33,8 @@ const EXPECTED_API = ['S', 'pen', 'video', 'init', 'register', 'refresh', 'remou
   if (JSON.stringify(order) !== JSON.stringify(EXPECTED_ORDER)) console.log('FAIL order differs');
   if (initial !== 'key') console.log('FAIL initial mode', initial);
   if (missing.length) console.log('FAIL missing API', missing.join(' '));
-  if (JSON.stringify(keys) !== JSON.stringify(['ahann4:key:S1:test.mp4', 'ahann_vidsize'])) console.log('FAIL localStorage keys');
+  // 動画を開くとフレームレートを覚える（ahann_fps:<大きさ:長さ>．core/frame.js）
+  if (JSON.stringify(keys.filter(k => !k.startsWith('ahann_fps:'))) !== JSON.stringify(['ahann4:key:S1:test.mp4', 'ahann_vidsize'])) console.log('FAIL localStorage keys');
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

@@ -40,7 +40,7 @@ input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);borde
 header{flex-wrap:nowrap}
 header>*{flex:0 0 auto}
 header .status{flex:0 1 auto}
-@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:132px} header{gap:4px} header button{padding:4px 6px}}
+@media (max-width:1640px){header h1,header .lbl{display:none} #mode{max-width:132px} header{gap:4px;padding:6px 8px} header button{padding:4px 6px}}
 @media (max-width:1180px){header{flex-wrap:wrap}}
 select,textarea{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
 button{font:inherit;padding:5px 12px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);cursor:pointer}

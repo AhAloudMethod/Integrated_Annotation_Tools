@@ -92,7 +92,13 @@ const run = dir => { const r = spawnSync(process.execPath, [TOOL, dir], { encodi
     await q.evaluate(() => document.activeElement && document.activeElement.blur());
     return q;
   }
-  const seek = (q, t) => q.evaluate(tt => { AH.video.pause(); AH.seekTo(tt); }, t).then(() => q.waitForTimeout(250));
+  // シークが終わって画面を描き直すまで待つ（一定の時間だけ待つと、ほかのテストと並んで CPU が混んだときに描き直しの前に見てしまう）
+  const seek = (q, t) => q.evaluate(tt => new Promise(ok => {
+    AH.video.pause();
+    const done = () => requestAnimationFrame(() => requestAnimationFrame(ok));
+    if (Math.abs(AH.video.currentTime - tt) < 1e-3 && !AH.video.seeking) { AH.seekTo(tt); done(); return; }
+    AH.video.addEventListener('seeked', done, { once: true }); AH.seekTo(tt);
+  }), t).then(() => q.waitForTimeout(100));
   const vals = q => q.evaluate(() => [2, 3, 1].map(s => [AH.S.data.cells.v[s] ?? null, AH.S.data.cells.a[s] ?? null]));
   const click = async (q, how) => {
     if (how === 'grid') { const b = await q.locator('canvas.plane').boundingBox(); await q.mouse.click(b.x + b.width * 0.8, b.y + b.height * 0.2); }
