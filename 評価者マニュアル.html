@@ -177,6 +177,10 @@
   /* 整形済みブロック（ASCII 図・コード）．折り返すと図が崩れるため，枠の中だけ横スクロールさせる */
   pre{overflow-x:auto;max-width:100%;}
   pre code{overflow-wrap:normal;}
+  /* 画面の画像．枠を付けて紙色の背景から浮かせる */
+  figure{margin:18px 0;}
+  figure img{display:block;max-width:100%;height:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface);}
+  figcaption{margin-top:6px;color:var(--sub);font-size:.84rem;line-height:1.6;}
   @media(max-width:1120px){
     :root{--tocw:200px;--gutter:36px;}
   }
@@ -209,7 +213,7 @@
       font-size:.82rem;font-weight:700;color:var(--teal-deep);}
     .flow[data-ready] .ahead{opacity:1 !important;}
     tbody tr:hover{background:none;}
-    tr,.note,.caution,.info,.def,details{break-inside:avoid;}
+    tr,.note,.caution,.info,.def,details,figure{break-inside:avoid;}
     h2,h3{break-after:avoid;}
     .partmark{break-before:page;}
     a.inline::after{content:" (" attr(href) ")";font-size:.85em;color:var(--sub);}
@@ -318,6 +322,11 @@
         <li>「開始」の画面が出ている間は，キーを押しても何も起きない．準備ができたらマウスで「開始」を押す．</li>
       </ul>
 
+      <figure>
+        <img src="img/manual/start.png" alt="「1 / 2　練習」と条件名，「準備ができたら『開始』を押してください。」の文と「開始」ボタンが出た画面" width="688" loading="lazy">
+        <figcaption>図 1　開始の画面．上の行に「何本目 / 全部の本数」，「練習」，条件の名前が出る．</figcaption>
+      </figure>
+
       <div class="caution"><span class="lbl">注意</span><p>実験の間は，ブラウザのタブやウィンドウを閉じない．困ったときは操作を止めて実験者を呼ぶ．</p></div>
     </section>
 
@@ -325,21 +334,31 @@
       <span class="secnum">SECTION 3</span>
       <h2>画面の見方</h2>
       <hr class="h2rule">
-      <p class="lead">画面は上から，ボタンの列，動画と表，評価グラフの 3 段でできている．</p>
+      <p class="lead">画面は，上のボタンの列，左の動画，右の操作の欄，その下の表，いちばん下の評価グラフの 5 つでできている．</p>
 
-<pre><code>┌──────────────────────────────────────────────────────────┐
-│ −1秒  再生  ＋1秒  0:12.40 / 0:42.11  視聴  基準音声 … 完了 │ ← ボタンの列
-├───────────────────────────┬──────────────────────────────┤
-│                           │  表（上の行＝快度，下の行＝覚醒度）│
-│          動画             │  なぞって評価する／描く／…    │
-│                           │  感情の図・メモ欄              │
-├───────────────────────────┴──────────────────────────────┤
-│ 評価グラフ：快度の欄／覚醒度の欄／声の高さ（F0）            │
-│ ────────────── 下端の目盛りの帯（ここを押すと移動） ──────── │
-└──────────────────────────────────────────────────────────┘</code></pre>
-      <p class="muted">配置は画面の大きさで多少変わる．</p>
+      <figure>
+        <a href="img/manual/overview.png"><img src="img/manual/overview.png" alt="評価中の画面全体．1 ボタンの列，2 動画，3 右の操作の欄，4 表，5 評価グラフに番号の枠が付いている" width="1600" loading="lazy"></a>
+        <figcaption>図 2　評価中の画面（押すと原寸で開く）．番号は下の表に対応する．画像の動画は説明用の試験映像であり，実験では発声者の動画が出る．配置は画面の大きさで多少変わる．</figcaption>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="c-min">番号</th><th class="c-min">部分</th><th>何に使うか</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">1</td><td class="rowhead">ボタンの列</td><td>再生・停止，見直し，完了．左端に今が何本目かが出る．</td></tr>
+            <tr><td class="rowhead">2</td><td class="rowhead">動画</td><td>評価する動画．</td></tr>
+            <tr><td class="rowhead">3</td><td class="rowhead">右の操作の欄</td><td>上から，声の高さ（F0）の今の値，「区間内で変化」（6 章），「区間の区切り」（4 章），感情と数の対応を示す図（Affect Grid）とメモ欄．</td></tr>
+            <tr><td class="rowhead">4</td><td class="rowhead">表</td><td>区間ごとの快度と覚醒度を入れる（5 章）．</td></tr>
+            <tr><td class="rowhead">5</td><td class="rowhead">評価グラフ</td><td>入れた値の線，区間の区切り，声の高さを時間に沿って見る．</td></tr>
+          </tbody>
+        </table>
+      </div>
 
       <h3>ボタンの列</h3>
+      <figure>
+        <img src="img/manual/toolbar.png" alt="ボタンの列：1 / 2　練習　条件名，−1秒，再生，＋1秒，時刻，視聴，基準音声，右端に別ウィンドウと完了" width="1600" loading="lazy">
+        <figcaption>図 3　ボタンの列．ボタンの右下の小さな文字（Space，V など）は，そのボタンのキーである．</figcaption>
+      </figure>
       <div class="tablewrap">
         <table>
           <thead><tr><th class="c-min">ボタン</th><th>はたらき</th></tr></thead>
@@ -358,8 +377,8 @@
       <h3>表</h3>
       <ul class="clean">
         <li>上の行が<strong>快度</strong>，下の行が<strong>覚醒度</strong>である．</li>
-        <li>列が<strong>区間</strong>（評価する時間のまとまり）である．列の見出しは，評価する範囲の終わりまでの残りの秒である．</li>
-        <li>表の右には，感情と数の対応を示す図と，メモ欄がある．判断に迷ったことなどをメモ欄に書いてよい．</li>
+        <li>列が<strong>区間</strong>（評価する時間のまとまり）である．左から時間の順に並ぶ．列の見出しは，その区間の終わりから評価する範囲の終わりまでの残りの秒である．</li>
+        <li>右の操作の欄の下のほうに，感情と数の対応を示す図と，メモ欄がある．判断に迷ったことなどをメモ欄に書いてよい．</li>
       </ul>
 
       <h3>評価グラフ</h3>
@@ -384,8 +403,17 @@
       <ol>
         <li>動画を再生し，気持ちが変わった所で止める（Space）．</li>
         <li>位置を細かく合わせたいときは，<code>,</code> キーで 1 コマ戻り，<code>.</code> キーで 1 コマ進む．Shift+←→ で 0.1 秒ずつ動く．</li>
-        <li>表の近くにある「今の時間で区切る」を押す（C キーでもよい）．その位置で区間が 2 つに分かれ，表の列が 1 つ増える．</li>
+        <li>右の操作の欄の「今の時間で区切る」を押す（C キーでもよい）．その位置で区間が 2 つに分かれ，表の列が 1 つ増える．</li>
       </ol>
+
+      <figure>
+        <img src="img/manual/cutbox.png" alt="「区間の区切り（C で今の時間で区切る）」の枠に，「今の時間で区切る」と「近くの区切りを消す」のボタンが並ぶ" width="784" loading="lazy">
+        <figcaption>図 4　右の操作の欄の「区間の区切り」．</figcaption>
+      </figure>
+      <figure>
+        <img src="img/manual/cuts.png" alt="3 秒，6 秒，9 秒で区切った後の表と評価グラフ．表は 4 列になり，グラフには 3 本の縦線が入る" width="1584" loading="lazy">
+        <figcaption>図 5　3 秒，6 秒，9 秒で区切った後．表の列が 4 つになり，評価グラフに区切りの縦線が入る．点線の枠は今いる区間である．</figcaption>
+      </figure>
 
       <h3>区切りを直す</h3>
       <ul class="clean">
@@ -412,6 +440,11 @@
       </ol>
       <p>評価グラフの快度・覚醒度の欄をなぞって値を入れることもできる．なぞった区間の値がその高さになる．</p>
 
+      <figure>
+        <img src="img/manual/values.png" alt="値を入れた後の表と評価グラフ．快度は 6，4，7.3，0，覚醒度は 5.5，6，7，0．グラフには区間ごとの水平な線が出て，0 の区間は灰色の帯になる" width="1584" loading="lazy">
+        <figcaption>図 6　値を入れた後．区間ごとの値が評価グラフに水平な線で出る．右端の区間は声が無いので 0 を入れ，灰色の帯になっている．</figcaption>
+      </figure>
+
       <h3>声の無い区間：0</h3>
       <ul class="clean">
         <li>声の無い区間には <strong>0</strong> を入れる．0 は「評価の値」ではなく「発声なし」の印である．</li>
@@ -436,9 +469,14 @@
       <h3>変化の区間にする</h3>
       <ol>
         <li>変化を入れたい区間のセルをクリックする．</li>
-        <li>表の近くの「なぞって評価する」を押す．ボタンが光り，その区間が<strong>変化の区間</strong>になる．対象の区間は，表とグラフに点線の枠で示される．</li>
+        <li>右の操作の欄の「なぞって評価する」を押す．ボタンが光り，その区間が<strong>変化の区間</strong>になる．対象の区間は，表とグラフに点線の枠で示される．</li>
         <li>下のどちらかの入れ方で，評価グラフに変化を入れる．</li>
       </ol>
+
+      <figure>
+        <img src="img/manual/curvebox.png" alt="「区間内で変化」の枠．「なぞって評価する」「テンプレート」「直線」が光っている" width="784" loading="lazy">
+        <figcaption>図 7　「区間内で変化」の枠．この図では「なぞって評価する」，「テンプレート」，「直線」を選んでいる．</figcaption>
+      </figure>
 
       <div class="tabs">
         <div class="tablist" role="tablist" aria-label="変化の入れ方">
@@ -458,6 +496,11 @@
           <p>評価グラフの変化の区間の中で，<strong>始めの高さから終わりの高さへドラッグ</strong>する．選んだ形の曲線が入る．後から形のボタンを押すと，始めと終わりの値はそのままで形だけが変わる．</p>
         </div>
       </div>
+
+      <figure>
+        <img src="img/manual/curve.png" alt="3〜6 秒の区間を変化の区間にした後．表のセルに「3→7 直」「4→8 直」と出て，評価グラフではその区間だけ斜めの線になる" width="1584" loading="lazy">
+        <figcaption>図 8　3〜6 秒の区間に直線の変化を入れた後．表のセルには「3→7 直」のように出て，グラフではその区間だけ線が斜めになる．</figcaption>
+      </figure>
 
       <h3>表での見え方と戻し方</h3>
       <ul class="clean">
@@ -482,6 +525,15 @@
         <li>アンケートがあるときは「アンケートを開く」が出る．押して別のタブで答える．</li>
         <li>「次へ」を押して次の動画へ進む．最後の動画では「すべての試行が終わりました」と出る．</li>
       </ol>
+
+      <figure>
+        <img src="img/manual/review.png" alt="視聴中の画面の上部．「視聴中」のボタンが光り，画面の上端に「視聴中（値は変えられません）」と出る" width="1600" loading="lazy">
+        <figcaption>図 9　視聴の間．ボタンが「視聴中」に変わり，画面の上端に「視聴中（値は変えられません）」と出る．</figcaption>
+      </figure>
+      <figure>
+        <img src="img/manual/done.png" alt="「完了しました。」の文と「次へ」ボタンが出た画面" width="688" loading="lazy">
+        <figcaption>図 10　完了した後の画面（練習の場合）．アンケートがある試行では，「次へ」の前に「アンケートを開く」が出る．</figcaption>
+      </figure>
 
       <div class="caution"><span class="lbl">注意</span><p>完了すると，その動画の評価は<strong>変えられない</strong>．押す前に，空欄と 0 の付け忘れを確かめる．</p></div>
       <div class="info"><span class="lbl">補足</span><p>評価の結果は自動で保存される．評価する人がファイルを保存する操作は要らない．</p></div>
@@ -560,7 +612,7 @@
     </section>
 
     <footer>
-      出典：あアラウド 統合アノテーションツール（v1.0）の README.md と画面（index.html）．実験モード，カスタム方式（Excel の表・小数・自分で区切る・区間内で変化）を前提に作成した．<br>
+      出典：あアラウド 統合アノテーションツール（v1.0）の README.md と画面（index.html）．実験モード，カスタム方式（Excel の表・小数・自分で区切る・区間内で変化）を前提に作成した．画面の画像は，説明用の試験映像を実験モードで開いて撮った．<br>
       作成日：2026-10-15
     </footer>
   </main>
