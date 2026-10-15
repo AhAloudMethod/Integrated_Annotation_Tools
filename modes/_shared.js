@@ -241,6 +241,7 @@
             if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); AH._.frameStep(e.key === 'ArrowLeft' ? -1 : 1); return; }   // Ctrl+←→：1 フレーム移動
             if (e.code === 'KeyC' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.cutNow(); return; }
             if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); AH._.setVoicedShown(!AH._.voicedShown(), 'key'); return; }   // 発声の区間の表示   // 今の時間で区切る（区切れるときだけ）
+            if (curve && AH._.M && AH._.M.curveKey && AH._.M.curveKey(e)) { e.preventDefault(); return; }   // 区間内で変化のボタンのショートカットキー（modes/custom.js）
             if (!move) return;
             e.preventDefault();
             // 次のセル。変化の区間のセル（入力欄が無い）と、発声なしの事前設定の列（固定）は飛ばして、同じ向きに進む

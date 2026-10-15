@@ -59,6 +59,15 @@
   //  - 入れ方の切り替え（両方のときだけ）と形のボタン。形のボタンは、次にテンプレートで入れる形を選び、対象の変化の区間に値があればその形に変える。
   //    描くときは次に入れる形が無いので、形のボタンを光らせない。描くときに形のボタンを押すと、テンプレートに切り替える
   let curveSync = () => {};
+  // ショートカットキー：描く＝D、テンプレート＝T、形はボタンの並び順に Q・W・E。押すとそのボタンを押したのと同じ（セルに入れている間も効く）
+  const CURVE_KEYS = { draw: 'D', template: 'T', line: 'Q', early: 'W', late: 'E' };
+  let curveKeyBtns = {};
+  function curveKey(e) {
+    if (!curve() || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
+    const b = curveKeyBtns[e.code];
+    if (!b || !b.isConnected) return false;
+    b.click(); return true;
+  }
   function curveBox(panel) {
     const box = h('div', { class: 'planeBox curveBox' }, '<div class="refTitle">区間内で変化</div>');
     const tgtL = h('div', { class: 'curveTgt' }); box.appendChild(tgtL);
@@ -79,6 +88,11 @@
     // 「描く」のときに形を押したら「テンプレート」に切り替える（両方使えるとき）
     for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; if (o().curveInput === 'both' && curveToolSel !== 'template') { curveToolSel = 'template'; AH.addLog('option', { detail: 'curveTool=template' }); } AH.curveReshape(tgt(), k, act()); })).dataset.k = k;
     box.appendChild(shapes);
+    curveKeyBtns = {};
+    for (const b of box.querySelectorAll('.tool, .shape')) {
+      const k = CURVE_KEYS[b.dataset.k];
+      b.dataset.key = k; b.title = b.textContent + '（' + k + ' キー）'; curveKeyBtns['Key' + k] = b;
+    }
     const sync = () => {
       const s = tgt();
       const tx = s >= 0 && s < AH.nSec() ? '対象：' + AH.secLabel(s) + (isCv(s) ? '（変化の区間）' : '') : '';
@@ -307,7 +321,7 @@
     options: { ...DEF },
     get model() { return rank() ? 'events' : o().time === 'disc' ? 'table' : 'series'; },
     get curve() { return curve(); },   // 区間内で変化（core/curve.js）
-    curveTool, curveShape: () => curveShapeSel,
+    curveTool, curveShape: () => curveShapeSel, curveKey,
     curveTarget: () => AH.ui.cellSec(), curveSelect: s => AH.ui.setCellSec(s),   // パネルのボタンの対象の区間（グラフで示し、グラフで押して選ぶ。core/timeline.js）
     get unbounded() { return o().time === 'cont' && rel(); },
     get graphCuts() { return xl() && o().cuts === 'self'; },   // Excel で自分で区切るときだけ、評価グラフの右クリック（と C キー）で区切りを編集する
@@ -389,6 +403,7 @@
     },
     onKey(e) {
       if (this._rank) return this._rank.onKey(e);
+      if (curveKey(e)) return true;
       if (curve() && act().some(ax => AH.curveIsCurve(ax, AH.curSec()))) return false;   // 変化の区間はグラフだけで入れる（数字キーでセルの値にしない）
       const m = e.code.match(/^(Digit|Numpad)([1-9])$/);
       if (m && pointType()) { const ax = act().length === 1 ? act()[0] : (m[1] === 'Numpad' || e.shiftKey ? 'a' : 'v'); pointAction({ [ax]: +m[2] }); return true; }

@@ -120,6 +120,32 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 2a. ショートカットキー：描く＝D、テンプレート＝T、形は Q（直線）・W（前半で変化）・E（後半で変化）。セルに入れている間も効き、セルには文字が入らない
+  {
+    const p = await open();
+    const keys = await p.$$eval('.curveBox .tool, .curveBox .shape', bs => bs.map(b => b.textContent + '=' + b.dataset.key).join());
+    await p.click('input[data-ax=v][data-s="2"]'); await p.keyboard.press('t'); await p.waitForTimeout(100);
+    const t1 = { tool: await p.evaluate(() => AH.mode.curveTool()), c: (await cells(p, 'v'))[2] };
+    await p.keyboard.press('d'); await p.waitForTimeout(100);
+    const d1 = await p.evaluate(() => AH.mode.curveTool());
+    check('T でテンプレート（セルの区間を変化の区間にし、セルに文字は入らない）、D で描く。ボタンの右下にキーを出す',
+      keys === '描く=D,テンプレート=T,直線=Q,前半で変化=W,後半で変化=E' && t1.tool === 'template' && t1.c === '~' && d1 === 'draw', JSON.stringify({ keys, t1, d1 }));
+    await p.keyboard.press('t');
+    const g = await graph(p);
+    await drag(p, g('v', 2.2, 3), g('v', 2.8, 7));
+    await p.keyboard.press('w'); await p.waitForTimeout(100);
+    const w = (await cells(p, 'v'))[2];
+    await p.keyboard.press('e'); await p.waitForTimeout(100);
+    const e = (await cells(p, 'v'))[2];
+    await p.keyboard.press('d'); await p.keyboard.press('q'); await p.waitForTimeout(100);
+    const q = { c: (await cells(p, 'v'))[2], tool: await p.evaluate(() => AH.mode.curveTool()), lit: await p.$$eval('.curveBox .on', bs => bs.map(b => b.textContent).join()) };
+    await p.keyboard.press('Control+d'); await p.waitForTimeout(100);
+    const cd = await p.evaluate(() => AH.mode.curveTool());
+    check('W・E・Q で形を変え、描くのときに押すとテンプレートに切り替わる。Ctrl を押しているときは効かない',
+      /^~3→7前$/.test(w) && /^~3→7後$/.test(e) && /^~3→7直$/.test(q.c) && q.tool === 'template' && /直線/.test(q.lit) && cd === 'template', JSON.stringify({ w, e, q, cd }));
+    await p.close();
+  }
+
   // ---- 2b. 入れ方のボタン（描く・テンプレート）を押すと、対象の区間が普通のセルなら変化の区間にする。対象の区間は表とグラフで示し、グラフで押した区間を対象にする
   {
     const p = await open();
