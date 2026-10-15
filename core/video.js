@@ -32,6 +32,7 @@
     if (_.loadF0) _.loadF0(f);   // 動画の音声の F0 を計算しておく（表示しないときも。設定でいつでも出せるように）
     video.addEventListener('loadedmetadata', () => {
       S.meta.duration = video.duration;
+      _.tlViewReset();   // 評価グラフのズームを動画全体に戻す（core/timeline.js）
       S.meta.range = null; S.meta.ref = null;   // 基準音声の時刻は実験モードで setup.json から当てる（core/ref.js）
       S.videoSig = `${f.size}:${video.duration.toFixed(2)}`;
       if (!_.tryRestore()) newSession(`${f.name} dur=${video.duration.toFixed(3)} mode=${S.meta.mode}`);
