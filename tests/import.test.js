@@ -145,7 +145,63 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     check('csv：_panas.csv から回答と発声なしを戻す', same(us.items.slice(0, 3), items.slice(0, 3)) && !/_bins/.test(us.status), JSON.stringify(us.items.slice(0, 3)) + ' ' + us.status);
     await u.close();
   }
-  // 8. 読めないファイル
+  // 8. 不正な値の混ざった CSV：不正なセル・行だけ飛ばして警告し（行番号つき）、ほかは読む。不正なセルは今の値（_session.json の値）のまま
+  {
+    const bad = ['bin,label,t_start,t_end,valence,arousal', '0,0:00.0,1.000,2.500,abc,4', '1,0:01.5,2.500,5.000,12,3.5', '2,0:04.0,5.000,7.000,,1', '3,0:06.0,7.300,9.000,2,2'].join('\n');
+    const p = await page({ mode: 'carma' });
+    await give(p, [[jsonName, files[jsonName]], ['P07_test_excel_bins.csv', bad]]); await p.waitForFunction(() => AH.S.meta.mode === 'excel');
+    const s = await state(p), msg = p.dialogs.find(m => /読み込めない/.test(m)) || '';
+    check('不正な値：正しいセルだけ入れ、不正なセルは元の値のまま', same(s.cells.v.slice(0, 4), [7, null, null, 9]) && same(s.cells.a.slice(0, 3), [4, null, 1]), JSON.stringify(s.cells));
+    check('不正な値：行番号つきで警告する', /4 件/.test(msg) && /2 行目：valence の「abc」/.test(msg) && /3 行目：valence の 12 は範囲/.test(msg) && /3 行目：arousal の 3.5 は整数/.test(msg) && /5 行目：t_start/.test(msg), msg.replace(/\n/g, ' / '));
+    check('不正な値：件数を上の案内と操作ログに残す', /読み込めない値 4 件/.test(s.status) && (await p.evaluate(() => AH.S.log.filter(l => l.type === 'import').at(-1).value)) === 4, s.status);
+    await p.close();
+  }
+  // 9. 方式の違う CSV：区間方式どうしはそのまま、連続 ⇄ 区間は直して読み、直したことを知らせる
+  {
+    const sam = await page({ mode: 'sam', pid: 'P07' });
+    await sam.evaluate(() => { AH._.setRange({ start: 1, bin: 2, count: 4, target: 9, label: 'elapsed' }); AH._.setRange({ edges: [1, 2.5, 5, 7, 9] }); AH.setCell('v', 1, 2); AH.setCell('a', 1, 8); });
+    const sf = await build(sam); await sam.close();
+    const p = await page({ mode: 'carma' });
+    await give(p, [[jsonName, files[jsonName]], [pick(sf, '_bins.csv'), sf[pick(sf, '_bins.csv')]]]); await p.waitForFunction(() => AH.S.meta.mode === 'excel');
+    const s = await state(p);
+    check('方式違い：SAM の _bins.csv を Excel に読む', s.cells.v[1] === 2 && s.cells.a[1] === 8 && s.cells.v[0] === null, JSON.stringify(s.cells));
+    await p.close();
+    // CARMA の変化点 → Excel の区間の値（区間の平均を四捨五入）
+    const car = await page({ mode: 'carma', pid: 'P07' });
+    await car.evaluate(() => { AH.S.data.points = { v: [{ t: 0, val: 5, init: true }, { t: 2.5, val: 8.4 }, { t: 5, val: 2 }], a: [{ t: 0, val: 6, init: true }] }; });
+    const cf = await build(car); await car.close();
+    const q = await page({ mode: 'carma' });
+    await give(q, [[jsonName, files[jsonName]], [pick(cf, '_changepoints.csv'), cf[pick(cf, '_changepoints.csv')]]]); await q.waitForFunction(() => AH.S.meta.mode === 'excel');
+    const t = await state(q), tm = q.dialogs.find(m => /直して/.test(m)) || '';
+    check('方式違い：変化点を区間の平均に直す', same(t.cells.v.slice(0, 4), [5, 8, 2, 2]) && same(t.cells.a.slice(0, 4), [6, 6, 6, 6]) && /区間ごとの平均/.test(tm), JSON.stringify(t.cells) + ' ' + tm.replace(/\n/g, ' / '));
+    await q.close();
+    // Excel の区間の値 → CARMA の変化点（区間の始めから続く階段。発声なしは飛ばして警告）
+    const cs = await page({ mode: 'carma', pid: 'P07' });
+    await cs.evaluate(() => { AH._.setRange({ start: 1, bin: 2, count: 4, target: 9, label: 'elapsed' }); AH._.setRange({ edges: [1, 2.5, 5, 7, 9] }); });
+    const csf = await build(cs); await cs.close();
+    const u = await page({ mode: 'excel' });
+    await give(u, [[pick(csf, '_session.json'), csf[pick(csf, '_session.json')]], [pick(files, '_bins.csv'), files[pick(files, '_bins.csv')]]]); await u.waitForFunction(() => AH.S.meta.mode === 'carma');
+    const v = await state(u), vm = u.dialogs.find(m => /直して/.test(m)) || '';
+    check('方式違い：区間の値を変化点に直す', same(v.points.v.map(x => [x.t, x.val]), [[0, 7], [7, 9]]) && same(v.points.a.map(x => [x.t, x.val]), [[0, 3]]) && /発声なし/.test(vm) && /変化点に直しました/.test(vm), JSON.stringify(v.points) + ' ' + vm.replace(/\n/g, ' / '));
+    await u.close();
+  }
+  // 10. 変化の入力・PANAS の回答の不正な行
+  {
+    const ranks = ['t,label,d_valence,d_arousal,source', '1,↑,0,1,input', '2,?,2,0,input', '99,↓,0,-1,input', '3,↙,-1,-1,gamepad'].join('\n');
+    const p = await page({ mode: 'excel' });
+    await give(p, [['P05_test_affectrank_ranks.csv', ranks]]); await p.waitForFunction(() => AH.S.meta.mode === 'affectrank');
+    const s = await state(p), msg = p.dialogs.find(m => /読み込めない/.test(m)) || '';
+    check('変化の入力：正しい行だけ読み、不正な行を警告する', same(s.events.map(e => e.t), [1, 3]) && /3 行目：d_valence/.test(msg) && /4 行目：t の「99」/.test(msg), msg.replace(/\n/g, ' / '));
+    await p.close();
+    const head = 'bin,label,t_start,t_end,pa1,pa2,pa3,pa4,pa5,pa6,pa7,pa8,na1,na2,na3,na4,na5,na6,na7,na8,n_answered,pa_sum,na_sum,no_voice,no_voice_preset';
+    const pcsv = [head, '0,0:11,0.000,1.000,1,2,3,4,5,6,7,1,2,3,4,5,6,1,2,3,16,,,0,0'].join('\n');
+    const q = await page({ mode: 'excel' });
+    await give(q, [['P04_test_panas_panas.csv', pcsv]]); await q.waitForFunction(() => AH.S.meta.mode === 'panas');
+    const t = await state(q), tm = q.dialogs.find(m => /読み込めない/.test(m)) || '';
+    check('PANAS：範囲外の回答だけ飛ばし、ほかの回答は読む', same(t.items[0], [1, 2, 3, 4, 5, 6, null, 1, 2, 3, 4, 5, 6, 1, 2, 3]) && /pa7 の「7」/.test(tm), JSON.stringify(t.items[0]));
+    await q.close();
+  }
+  // 11. 読めないファイル
   {
     const p = await page({ mode: 'excel' });
     await give(p, [['memo.txt', 'x']]); await p.waitForTimeout(200);
