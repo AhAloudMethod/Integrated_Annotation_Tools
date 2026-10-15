@@ -5,7 +5,7 @@
 
 ## Claude Code に頼めること（skill）
 
-この README を読まなくても，このフォルダで Claude Code に頼めば次の skill が働く．
+Claude Code を `annotator` フォルダで起動して頼むと，内容に合う次の skill が自動で働く．確実に使いたいときは `/annotator-guide` のように `/` に続けて skill の名前を打つ．
 
 | skill | 頼み方の例 | すること |
 |---|---|---|
