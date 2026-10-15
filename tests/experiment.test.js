@@ -83,7 +83,7 @@ const BAD = makeFolder('exp_bad', {
   await ctx.route('https://survey.test/**', r => r.fulfill({ contentType: 'text/html', body: '<p>survey</p>' }));
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
   let dismiss = false;   // true なら次の確認を「キャンセル」する
-  const dialogs = []; p.on('dialog', d => { dialogs.push(d.message()); if (dismiss) { dismiss = false; d.dismiss(); } else d.accept(); });
+  const dialogs = [], unloads = []; p.on('dialog', d => { if (d.type() === 'beforeunload') unloads.push(d); dialogs.push(d.message()); if (dismiss) { dismiss = false; d.dismiss(); } else d.accept(); });
   const downloads = [];
   p.on('download', d => downloads.push(d));
   const dl = name => downloads.find(d => d.suggestedFilename() === name);
@@ -153,6 +153,18 @@ const BAD = makeFolder('exp_bad', {
   check('警告（練習の抜けなど）を出すが、始められる', warns.some(w => w.includes('P01：本番の前に練習が無い方式があります（excel）')) && await vis('#expGo'), JSON.stringify(warns));
   await p.click('#expGo');
   await p.waitForFunction(() => AH._.expState() === 'ready');
+  // ページを離れない：戻っても留まる、マウスの戻る・進むボタンを止める、スワイプで戻らない、閉じるときに確認を出す
+  const url0 = p.url();
+  await p.evaluate(() => history.back()); await p.waitForTimeout(300);
+  const nav = await p.evaluate(() => {
+    const mouse = b => !window.dispatchEvent(new MouseEvent('mouseup', { button: b, bubbles: true, cancelable: true }));
+    return { trap: !!(history.state && history.state.ahExp), exp: document.body.classList.contains('exp'), back: mouse(3), fwd: mouse(4), left: mouse(0),
+      over: getComputedStyle(document.documentElement).overscrollBehaviorX, unload: !window.dispatchEvent(new Event('beforeunload', { cancelable: true })) };
+  });
+  check('実験モードでは、ブラウザの戻るで前のページへ移らない', p.url() === url0 && nav.trap && nav.exp, JSON.stringify(nav));
+  check('マウスの戻る・進むボタンを止め、左ボタンは止めない', nav.back && nav.fwd && !nav.left, JSON.stringify(nav));
+  check('トラックパッドのスワイプで戻らない（overscroll-behavior-x: none）', nav.over === 'none', nav.over);
+  check('ページを閉じるときに確認を出す（beforeunload）', nav.unload);
   const hidden = {};
   for (const s of ['#pid', '#mode', '#openBtn', '#expBtn', '#setBtn', '#rgBtn', '#helpBtn', '#tlBtn', '#exportBtn', '#reviewBtn', '#voiceBtn', '#vwinBtn']) hidden[s] = !(await vis(s));
   check('参加者 ID・方式・設定・評価区間・グラフの開閉・書き出し・視聴・音声入力・別ウィンドウを隠す', Object.values(hidden).every(Boolean), JSON.stringify(hidden));
@@ -238,8 +250,11 @@ const BAD = makeFolder('exp_bad', {
   check('進行をブラウザに残す', JSON.stringify(Object.keys(prog)) === '["0","1"]');
 
   // ---- 抜ける：設定が実験前の値に戻る
+  const nu = unloads.length;
   await exitExp();
   await p.waitForTimeout(300);
+  const free = await p.evaluate(() => window.dispatchEvent(new Event('beforeunload', { cancelable: true })));
+  check('Ctrl+Shift+E で抜けるときと抜けた後は、閉じる確認を出さない', unloads.length === nu && free, String(unloads.length - nu));
   const after = await p.evaluate(() => ({ axes: localStorage.getItem('ahann_axes'), f0: localStorage.getItem('ahann_f0'), exp: document.body.classList.contains('exp'), pid: !!document.getElementById('pid').offsetParent }));
   check('Ctrl+Shift+E で抜けると、ブラウザの設定が実験前に戻る', after.axes === 'pana' && after.f0 === '1' && !after.exp && after.pid, JSON.stringify(after));
   const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('ahann_range:a.mp4') || 'null'));
