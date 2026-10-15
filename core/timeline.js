@@ -4,10 +4,14 @@
   const { FPS, $, video, tl, tctx, S, model, isInt, wall, r2, clamp, addLog, snapshot, pushUndo, css, fmt, RG, nSec, binStart, rangeEnd, binAt, inRange, valueIn, endStroke, writeMode } = _;
   // ---------- タイムライン（シーク＋直接編集） ----------
   const PAD_L = 44, PAD_R = 8, RULER = 28;   // 下端 RULER px はシーク用の目盛り帯（狭いとグラフの編集と押し間違えるので広めにとる）
+  // 表示している時間の範囲（Ctrl+ホイールで拡大・縮小、Shift+ホイールと横スワイプで横にスクロール）。null は動画全体
+  let view = null;
+  const MIN_SPAN = 1;   // 拡大の上限：表示の幅（秒）
+  const viewNow = () => (view && S.meta.duration ? view : { t0: 0, t1: S.meta.duration || 0 });
   function geom() {
-    const w = tl.clientWidth, h = tl.clientHeight, D = S.meta.duration;
-    const xOf = t => PAD_L + (D ? t / D : 0) * (w - PAD_L - PAD_R);
-    const tOf = x => clamp((x - PAD_L) / (w - PAD_L - PAD_R), 0, 1) * D;
+    const w = tl.clientWidth, h = tl.clientHeight, D = S.meta.duration, { t0, t1 } = viewNow(), span = t1 - t0 || 1;
+    const xOf = t => PAD_L + (D ? (t - t0) / span : 0) * (w - PAD_L - PAD_R);
+    const tOf = x => D ? t0 + clamp((x - PAD_L) / (w - PAD_L - PAD_R), 0, 1) * span : 0;
     // F0 を表示するときは、下に F0 の欄（FH px）を足す
     const FH = _.f0Shown && _.f0Shown() && video.src ? 56 : 0, H2 = h - RULER - FH;
     const lanes = [{ ax: 'v', name: _.ax('v').short, col: css('--val'), y0: 8, y1: H2 / 2 - 8 },
@@ -21,17 +25,23 @@
       L.yOf = v => L.y1 - (v - L.lo) / (L.hi - L.lo) * (L.y1 - L.y0);
       L.vOf = y => L.lo + (L.y1 - y) / (L.y1 - L.y0) * (L.hi - L.lo);
     }
-    return { w, h, D, xOf, tOf, lanes, f0Lane };
+    return { w, h, D, t0, t1, xOf, tOf, lanes, f0Lane };
   }
+  // 線や塗りをグラフの領域（左の軸の名前と右の余白を除く）に収める。g.restore() で戻す
+  const clipPlot = (g, G) => { g.save(); g.beginPath(); g.rect(PAD_L - 1, 0, G.w - PAD_L - PAD_R + 2, G.h); g.clip(); };
+  // 目盛りの間隔（秒）：隣の目盛りと 60 px 以上離れる最小の間隔
+  const TICKS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  const tickStep = G => { const pps = (G.w - PAD_L - PAD_R) / (G.t1 - G.t0 || 1); return TICKS.find(s => s * pps >= 60) || TICKS[TICKS.length - 1]; };
 
   function drawTimeline() {
     const g = tctx, G = geom(), { w, h, D, xOf } = G;
     g.clearRect(0, 0, w, h);
     g.font = '11px system-ui, sans-serif';
     if (D) {
+      clipPlot(g, G);
       // 評価区間の外を薄く塗る
       g.fillStyle = css('--grid'); g.globalAlpha = 0.6;
-      if (RG().start > 0) g.fillRect(PAD_L, 0, xOf(Math.min(RG().start, D)) - PAD_L, h - RULER);
+      if (RG().start > 0) g.fillRect(xOf(0), 0, xOf(Math.min(RG().start, D)) - xOf(0), h - RULER);
       if (rangeEnd() < D) g.fillRect(xOf(rangeEnd()), 0, xOf(D) - xOf(rangeEnd()), h - RULER);
       g.globalAlpha = 1;
       // 発声の区間（core/voiced.js）：声のある所を快度・覚醒度の欄に薄い色で塗る
@@ -55,7 +65,15 @@
       }
       g.fillStyle = css('--bg'); g.fillRect(PAD_L, h - RULER, w - PAD_L - PAD_R, RULER);
       g.fillStyle = css('--muted');
-      for (let t = 0; t <= D; t += 5) g.fillText(t + 's', xOf(t) + 2, h - 9);
+      const step = tickStep(G), dec = step < 1 ? 1 : 0;
+      for (let k = Math.ceil(G.t0 / step - 1e-9); k * step <= G.t1 + 1e-9; k++) g.fillText((k * step).toFixed(dec) + 's', xOf(k * step) + 2, h - 9);
+      // 拡大しているときは倍率を目盛りの帯の右端に出す
+      if (G.t1 - G.t0 < D - 1e-6) {
+        const s = '×' + (D / (G.t1 - G.t0)).toFixed(1), tw = g.measureText(s).width;
+        g.fillStyle = css('--bg'); g.fillRect(w - PAD_R - tw - 8, h - RULER + 4, tw + 8, RULER - 6);
+        g.fillStyle = css('--ink'); g.fillText(s, w - PAD_R - tw - 4, h - 9);
+      }
+      g.restore();
     }
     // 快度と覚醒度の欄の区切り線
     const yDiv = Math.round((G.lanes[0].y1 + G.lanes[1].y0) / 2) + 0.5;
@@ -69,6 +87,7 @@
         g.beginPath(); g.moveTo(PAD_L, L.yOf(L.mid)); g.lineTo(w - PAD_R, L.yOf(L.mid)); g.stroke();
       }
       if (!D || !S.data) continue;
+      clipPlot(g, G);
       g.strokeStyle = L.col; g.fillStyle = L.col; g.lineWidth = 2;
       if (model() === 'series') {
         const ps = S.data.points[L.ax];
@@ -101,9 +120,11 @@
           g.beginPath(); g.moveTo(x, y - d * 6); g.lineTo(x - 5, y + d * 2); g.lineTo(x + 5, y + d * 2); g.closePath(); g.fill();
         }
       }
+      g.restore();
     }
     if (D && G.f0Lane) drawF0(g, G);
     if (D) {
+      clipPlot(g, G);
       if (_.stroke) {
         g.fillStyle = css('--pen'); g.globalAlpha = 0.15;
         g.fillRect(xOf(_.stroke.t0), 2, Math.max(1, xOf(_.stroke.lastT) - xOf(_.stroke.t0)), h - RULER - 2); g.globalAlpha = 1;
@@ -111,6 +132,7 @@
       const x = xOf(_.seekTarget());   // シークの途中は向かっている位置（core/video.js）
       g.strokeStyle = _.stroke ? css('--pen') : css('--head'); g.lineWidth = 1.5;
       g.beginPath(); g.moveTo(x, 2); g.lineTo(x, h); g.stroke();
+      g.restore();
     }
   }
 
@@ -141,6 +163,7 @@
     g.font = '10px system-ui, sans-serif';
     g.fillText(Math.round(F.hi) + 'Hz', 2, L.y0 + 22); g.fillText(Math.round(F.lo), 2, L.y1);
     g.font = '11px system-ui, sans-serif';
+    clipPlot(g, G);
     g.strokeStyle = css('--f0'); g.lineWidth = 1.5; g.beginPath();
     let pen = false; const off = 0.02;   // 窓の中心の時刻
     for (let k = 0; k < F.f0.length; k++) {
@@ -152,6 +175,7 @@
     g.stroke();
     const now = _.f0At(video.currentTime || 0);
     if (now > 0) { g.fillStyle = css('--f0'); g.beginPath(); g.arc(xOf(video.currentTime), Math.max(L.y0, Math.min(L.y1, yOf(now))), 3.5, 0, 7); g.fill(); }
+    g.restore();
   }
 
   // グラフ直接編集：連続方式はなぞった範囲の値を描き換え、区間方式は区間の値を設定する
@@ -272,6 +296,34 @@
   };
   tl.addEventListener('pointerup', tlUp); tl.addEventListener('pointercancel', tlUp);
 
+  // 時間軸のズーム：Ctrl（Mac は ⌘ も）+ホイールでカーソル位置の時刻を固定して拡大・縮小する（トラックパッドのピンチも Ctrl+ホイールで届く）。
+  // Shift+ホイールと横スワイプは拡大中だけ横にスクロールする。修飾キーなしの縦のホイールには何もしない
+  function setView(t0, span) {
+    const D = S.meta.duration;
+    span = clamp(span, Math.min(MIN_SPAN, D), D);
+    t0 = clamp(t0, 0, D - span);
+    view = span >= D - 1e-9 ? null : { t0, t1: t0 + span };
+    drawTimeline();
+  }
+  tl.addEventListener('wheel', e => {
+    const D = S.meta.duration; if (!D) return;
+    const px = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? tl.clientWidth : 1;   // 行・ページ単位のホイールを px にそろえる
+    const G = geom(), span = G.t1 - G.t0;
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();   // ブラウザのページの拡大を止める
+      const dy = e.deltaY * px, k = Math.exp(dy * (Math.abs(dy) < 50 ? 0.01 : 0.002));   // 小さい値はピンチなので強めに効かせる
+      const r = tl.getBoundingClientRect(), tc = G.tOf(e.clientX - r.left), ns = clamp(span * k, Math.min(MIN_SPAN, D), D);
+      setView(tc - (tc - G.t0) * ns / span, ns);
+      return;
+    }
+    const d = (e.shiftKey ? e.deltaX || e.deltaY : Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : 0) * px;
+    if (!d || !view) return;
+    e.preventDefault();
+    setView(G.t0 + d * span / (G.w - PAD_L - PAD_R), span);
+  }, { passive: false });
+  const tlView = () => ({ ...viewNow() });
+  const tlViewReset = () => { view = null; };
+
   function refresh() {
     _.applyNoVoice();   // 発声なしの事前設定の区間を 0 にそろえる（core/table.js）
     const t = video.currentTime || 0;
@@ -297,5 +349,5 @@
   // C キー（core/keys.js と Excel のセル）：今表示しているフレームの始まりで区切る。右クリックで区切れるときだけ効く
   const cutNow = () => { if (!cutsEditable()) return false; _.addCut(_.frameStart ? _.frameStart(video.currentTime) : video.currentTime); return true; };
 
-  Object.assign(_, { refresh, cutNow });
+  Object.assign(_, { refresh, cutNow, tlView, tlViewReset });
 })();
