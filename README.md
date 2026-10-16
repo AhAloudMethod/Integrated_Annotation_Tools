@@ -7,8 +7,8 @@
 
 ブラウザで読める．右上のボタンでダーク表示に切り替えられる．
 
-- [評価ツールの使い方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/評価者マニュアル.html)（`評価者マニュアル.html`）：評価する人（発声者・分析者）向け．画面の見方と，区切り方・値の入れ方
-- [実験の進め方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/実験者手引き.html)（`実験者手引き.html`）：実験者向け．実験フォルダの準備から結果の回収まで
+- [評価ツールの使い方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/evaluator-manual.html)（`evaluator-manual.html`）：評価する人（発声者・分析者）向け．画面の見方と，区切り方・値の入れ方
+- [実験の進め方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/experimenter-guide.html)（`experimenter-guide.html`）：実験者向け．実験フォルダの準備から結果の回収まで
 
 ## Claude Code に頼めること（skill）
 
