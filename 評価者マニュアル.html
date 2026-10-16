@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<script>/* 前に選んだ表示（ライト・ダーク）を描画の前に当てて，ちらつきを防ぐ */
+try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- ============================================================
@@ -39,6 +42,7 @@
     --tocw:240px;         /* 目次カラム幅 */
     --gutter:56px;        /* 目次と本文の間 */
     --maxcol:980px;       /* 本文・表の共通カラム幅（表もこの幅まで使う） */
+    --code:#efece4;       /* インラインコードの背景 */
   }
   *{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -48,7 +52,7 @@
     overflow-wrap:break-word;}
   /* ---- masthead ---- */
   .masthead{border-bottom:2px solid var(--teal);background:var(--surface);}
-  .masthead .inner{max-width:var(--shell);margin:0 auto;padding:34px 28px 26px;}
+  .masthead .inner{position:relative;max-width:var(--shell);margin:0 auto;padding:34px 28px 26px;}
   .kicker{font-size:.78rem;letter-spacing:.14em;color:var(--teal);font-weight:600;text-transform:uppercase;margin:0 0 8px;}
   .masthead h1{margin:0;font-size:1.8rem;font-weight:700;letter-spacing:.01em;line-height:1.35;}
   .masthead p{margin:10px 0 0;color:var(--sub);font-size:.92rem;max-width:var(--maxcol);}
@@ -173,7 +177,7 @@
   .doclist a .u{display:block;font-size:.74rem;color:var(--sub);overflow-wrap:anywhere;}
   .muted{color:var(--sub);font-size:.84rem;}
   footer{border-top:1px solid var(--rule);margin-top:40px;padding-top:18px;color:var(--sub);font-size:.8rem;line-height:1.7;}
-  code{font-family:"SFMono-Regular",Consolas,monospace;font-size:.86em;background:#efece4;padding:1px 5px;border-radius:3px;}
+  code{font-family:"SFMono-Regular",Consolas,monospace;font-size:.86em;background:var(--code);padding:1px 5px;border-radius:3px;}
   /* 整形済みブロック（ASCII 図・コード）．折り返すと図が崩れるため，枠の中だけ横スクロールさせる */
   pre{overflow-x:auto;max-width:100%;}
   pre code{overflow-wrap:normal;}
@@ -218,12 +222,40 @@
     .partmark{break-before:page;}
     a.inline::after{content:" (" attr(href) ")";font-size:.85em;color:var(--sub);}
   }
+  /* ---- ダーク表示．OS の設定に従い，右上のボタンで切り替えた表示（data-theme）を優先する ---- */
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){color-scheme:dark;
+    --paper:#16191b;--surface:#1e2225;--ink:#e3e6e4;--sub:#a3abb0;
+    --teal:#6fb3ba;--teal-deep:#8cc6cc;--teal-tint:#1c3135;
+    --ochre:#e0a066;--ochre-tint:#33281d;--info:#9aa0a5;--info-tint:#26292c;
+    --line:#30363a;--rule:#3f464c;--row-hover:#23282b;--code:#2b3034;}
+  }
+  :root[data-theme="dark"]{color-scheme:dark;
+    --paper:#16191b;--surface:#1e2225;--ink:#e3e6e4;--sub:#a3abb0;
+    --teal:#6fb3ba;--teal-deep:#8cc6cc;--teal-tint:#1c3135;
+    --ochre:#e0a066;--ochre-tint:#33281d;--info:#9aa0a5;--info-tint:#26292c;
+    --line:#30363a;--rule:#3f464c;--row-hover:#23282b;--code:#2b3034;}
+  .theme-btn{position:absolute;top:14px;right:28px;appearance:none;background:var(--surface);
+    border:1px solid var(--rule);border-radius:3px;padding:3px 10px;font:inherit;font-size:.76rem;
+    font-weight:600;color:var(--teal);cursor:pointer;}
+  .theme-btn:hover{color:var(--teal-deep);border-color:var(--teal);}
+  @media(max-width:820px){ .theme-btn{right:20px;top:8px;} }
+  /* 印刷は表示の設定によらずライトの配色にする */
+  @media print{
+    :root,:root[data-theme],:root:not([data-theme="light"]){color-scheme:light;
+    --paper:#f6f4ee;--surface:#ffffff;--ink:#232a2d;--sub:#59636a;
+    --teal:#1c5a62;--teal-deep:#164249;--teal-tint:#e6efee;
+    --ochre:#9a5417;--ochre-tint:#f4ebdf;--info:#6c7176;--info-tint:#ecebe4;
+    --line:#e2dccf;--rule:#d6cfc1;--row-hover:#efece3;--code:#efece4;}
+    .theme-btn{display:none;}
+  }
 </style>
 </head>
 <body>
 
 <div class="masthead">
   <div class="inner">
+    <button type="button" class="theme-btn">ダーク表示にする</button>
     <p class="kicker">あアラウド 評価ツール　評価する人のための手引き</p>
     <h1>動画を見ながら快度と覚醒度を入れる：評価ツールの使い方</h1>
     <p>この手引きは、実験で評価ツールを使う人（発声者・分析者）のためのものである。画面の見方、区間の区切り方、値の入れ方、終え方を順に説明する。細かい操作は練習のときに画面で確かめられるので、最初は第 2 部の流れだけをつかめばよい。</p>
@@ -569,7 +601,7 @@
       <h3>マウス</h3>
       <div class="tablewrap">
         <table>
-          <thead><tr><th class="c-min">操作</th><th>はたらき</th></tr></thead>
+          <thead><tr><th style="width:16em">操作</th><th>はたらき</th></tr></thead>
           <tbody>
             <tr><td class="rowhead">表のセルを左クリック</td><td>そのセルを選び、数を打てるようにする（5 章）</td></tr>
             <tr><td class="rowhead">評価グラフの快度・覚醒度の欄を左クリック</td><td>クリックした位置の区間に、その高さの値を入れる（5 章）</td></tr>
@@ -840,6 +872,23 @@ addEventListener('afterprint', function () {
     delete d.dataset.printClosed;
   });
 });
+/* ライト・ダークの切り替え．選んだ表示はこの PC のブラウザに覚えさせる */
+(function () {
+  var btn = document.querySelector('.theme-btn');
+  if (!btn) return;
+  var root = document.documentElement;
+  var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current() { return root.dataset.theme || (media && media.matches ? 'dark' : 'light'); }
+  function label() { btn.textContent = current() === 'dark' ? 'ライト表示にする' : 'ダーク表示にする'; }
+  btn.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('manual-theme', next); } catch (e) {}
+    label();
+  });
+  if (media && media.addEventListener) media.addEventListener('change', label);
+  label();
+})();
 </script>
 </body>
 </html>

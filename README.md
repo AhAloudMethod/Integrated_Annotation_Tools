@@ -3,6 +3,13 @@
 感情アノテーションの既存の方式を，1 つのツールの中で再現したものである．`index.html` をブラウザで開けば使える．ビルドは要らない．
 ページ右側のDeploymentsにあるgithub-pagesから使うことも可能
 
+## マニュアル
+
+ブラウザで読める．右上のボタンでダーク表示に切り替えられる．
+
+- [評価ツールの使い方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/評価者マニュアル.html)（`評価者マニュアル.html`）：評価する人（発声者・分析者）向け．画面の見方と，区切り方・値の入れ方
+- [実験の進め方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/実験者手引き.html)（`実験者手引き.html`）：実験者向け．実験フォルダの準備から結果の回収まで
+
 ## Claude Code に頼めること（skill）
 
 Claude Code を `annotator` フォルダで起動して頼むと，内容に合う次の skill が自動で働く．確実に使いたいときは `/annotator-guide` のように `/` に続けて skill の名前を打つ．
