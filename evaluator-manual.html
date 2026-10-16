@@ -222,6 +222,18 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
     .partmark{break-before:page;}
     a.inline::after{content:" (" attr(href) ")";font-size:.85em;color:var(--sub);}
   }
+  /* 画面の画像はダーク表示のときツールのダークテーマで撮った版に替える（印刷はライト版） */
+  .img-dark{display:none !important;}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .img-light{display:none !important;}
+    :root:not([data-theme="light"]) .img-dark{display:block !important;}
+  }
+  :root[data-theme="dark"] .img-light{display:none !important;}
+  :root[data-theme="dark"] .img-dark{display:block !important;}
+  @media print{
+    :root .img-light,:root[data-theme] .img-light,:root:not([data-theme="light"]) .img-light{display:block !important;}
+    :root .img-dark,:root[data-theme] .img-dark,:root:not([data-theme="light"]) .img-dark{display:none !important;}
+  }
   /* ---- ダーク表示．OS の設定に従い，右上のボタンで切り替えた表示（data-theme）を優先する ---- */
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){color-scheme:dark;
@@ -355,7 +367,8 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       </ul>
 
       <figure>
-        <img src="img/manual/start.png" alt="「1 / 2　練習」と条件名、「準備ができたら『開始』を押してください。」の文と「開始」ボタンが出た画面" width="688" loading="lazy">
+        <img class="img-light" src="img/manual/start.png" alt="「1 / 2　練習」と条件名、「準備ができたら『開始』を押してください。」の文と「開始」ボタンが出た画面" width="688" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/start.png" alt="「1 / 2　練習」と条件名、「準備ができたら『開始』を押してください。」の文と「開始」ボタンが出た画面" width="688" loading="lazy">
         <figcaption>図 1　開始の画面。上の行に「何本目 / 全部の本数」、「練習」、条件の名前が出る。</figcaption>
       </figure>
 
@@ -369,7 +382,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       <p class="lead">画面は、上のボタンの列、左の動画、右の操作の欄、その下の表、いちばん下の評価グラフの 5 つでできている。</p>
 
       <figure>
-        <a href="img/manual/overview.png"><img src="img/manual/overview.png" alt="評価中の画面全体。1 ボタンの列、2 動画、3 右の操作の欄、4 表、5 評価グラフに番号の枠が付いている" width="1600" loading="lazy"></a>
+        <a class="img-light" href="img/manual/overview.png"><img src="img/manual/overview.png" alt="評価中の画面全体。1 ボタンの列、2 動画、3 右の操作の欄、4 表、5 評価グラフに番号の枠が付いている" width="1600" loading="lazy"></a><a class="img-dark" href="img/manual/dark/overview.png"><img src="img/manual/dark/overview.png" alt="評価中の画面全体。1 ボタンの列、2 動画、3 右の操作の欄、4 表、5 評価グラフに番号の枠が付いている" width="1600" loading="lazy"></a>
         <figcaption>図 2　評価中の画面（押すと原寸で開く）。番号は下の表に対応する。画像の動画は説明用の試験映像であり、実験では発声者の動画が出る。配置は画面の大きさで多少変わる。</figcaption>
       </figure>
 
@@ -388,7 +401,8 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
 
       <h3>ボタンの列</h3>
       <figure>
-        <img src="img/manual/toolbar.png" alt="ボタンの列：1 / 2　練習　条件名、−1秒、再生、＋1秒、時刻、視聴、基準音声、右端に別ウィンドウと完了" width="1600" loading="lazy">
+        <img class="img-light" src="img/manual/toolbar.png" alt="ボタンの列：1 / 2　練習　条件名、−1秒、再生、＋1秒、時刻、視聴、基準音声、右端に別ウィンドウと完了" width="1600" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/toolbar.png" alt="ボタンの列：1 / 2　練習　条件名、−1秒、再生、＋1秒、時刻、視聴、基準音声、右端に別ウィンドウと完了" width="1600" loading="lazy">
         <figcaption>図 3　ボタンの列。ボタンの右下の小さな文字（Space、V など）は、そのボタンのキーである。</figcaption>
       </figure>
       <div class="tablewrap">
@@ -439,11 +453,13 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       </ol>
 
       <figure>
-        <img src="img/manual/cutbox.png" alt="「区間の区切り（C で今の時間で区切る）」の枠に、「今の時間で区切る」と「近くの区切りを消す」のボタンが並ぶ" width="784" loading="lazy">
+        <img class="img-light" src="img/manual/cutbox.png" alt="「区間の区切り（C で今の時間で区切る）」の枠に、「今の時間で区切る」と「近くの区切りを消す」のボタンが並ぶ" width="784" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/cutbox.png" alt="「区間の区切り（C で今の時間で区切る）」の枠に、「今の時間で区切る」と「近くの区切りを消す」のボタンが並ぶ" width="784" loading="lazy">
         <figcaption>図 4　右の操作の欄の「区間の区切り」。</figcaption>
       </figure>
       <figure>
-        <img src="img/manual/cuts.png" alt="3 秒、6 秒、9 秒で区切った後の表と評価グラフ。表は 4 列になり、グラフには 3 本の縦線が入る" width="1584" loading="lazy">
+        <img class="img-light" src="img/manual/cuts.png" alt="3 秒、6 秒、9 秒で区切った後の表と評価グラフ。表は 4 列になり、グラフには 3 本の縦線が入る" width="1584" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/cuts.png" alt="3 秒、6 秒、9 秒で区切った後の表と評価グラフ。表は 4 列になり、グラフには 3 本の縦線が入る" width="1584" loading="lazy">
         <figcaption>図 5　3 秒、6 秒、9 秒で区切った後。表の列が 4 つになり、評価グラフに区切りの縦線が入る。点線の枠は今いる区間である。</figcaption>
       </figure>
 
@@ -473,7 +489,8 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       <p>評価グラフの快度・覚醒度の欄でも値を入れられる。欄を左クリックすると、クリックした位置の区間に、その高さの値が入る。左ボタンを押したまま横になぞると、なぞった区間のそれぞれに、マウスが通ったときの高さの値が入る。入れた値を変えるときも、同じ操作で上書きする。</p>
 
       <figure>
-        <img src="img/manual/values.png" alt="値を入れた後の表と評価グラフ。快度は 6、4、7.3、0、覚醒度は 5.5、6、7、0。グラフには区間ごとの水平な線が出て、0 の区間は灰色の帯になる" width="1584" loading="lazy">
+        <img class="img-light" src="img/manual/values.png" alt="値を入れた後の表と評価グラフ。快度は 6、4、7.3、0、覚醒度は 5.5、6、7、0。グラフには区間ごとの水平な線が出て、0 の区間は灰色の帯になる" width="1584" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/values.png" alt="値を入れた後の表と評価グラフ。快度は 6、4、7.3、0、覚醒度は 5.5、6、7、0。グラフには区間ごとの水平な線が出て、0 の区間は灰色の帯になる" width="1584" loading="lazy">
         <figcaption>図 6　値を入れた後。区間ごとの値が評価グラフに水平な線で出る。右端の区間は声が無いので 0 を入れ、灰色の帯になっている。</figcaption>
       </figure>
 
@@ -506,7 +523,8 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       </ol>
 
       <figure>
-        <img src="img/manual/curvebox.png" alt="「区間内で変化」の枠。「なぞって評価する」「テンプレート」「直線」が光っている" width="784" loading="lazy">
+        <img class="img-light" src="img/manual/curvebox.png" alt="「区間内で変化」の枠。「なぞって評価する」「テンプレート」「直線」が光っている" width="784" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/curvebox.png" alt="「区間内で変化」の枠。「なぞって評価する」「テンプレート」「直線」が光っている" width="784" loading="lazy">
         <figcaption>図 7　「区間内で変化」の枠。この図では「なぞって評価する」、「テンプレート」、「直線」を選んでいる。</figcaption>
       </figure>
 
@@ -530,7 +548,8 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       </div>
 
       <figure>
-        <img src="img/manual/curve.png" alt="3〜6 秒の区間を変化の区間にした後。表のセルに「3→7 直」「4→8 直」と出て、評価グラフではその区間だけ斜めの線になる" width="1584" loading="lazy">
+        <img class="img-light" src="img/manual/curve.png" alt="3〜6 秒の区間を変化の区間にした後。表のセルに「3→7 直」「4→8 直」と出て、評価グラフではその区間だけ斜めの線になる" width="1584" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/curve.png" alt="3〜6 秒の区間を変化の区間にした後。表のセルに「3→7 直」「4→8 直」と出て、評価グラフではその区間だけ斜めの線になる" width="1584" loading="lazy">
         <figcaption>図 8　3〜6 秒の区間に直線の変化を入れた後。表のセルには「3→7 直」のように出て、グラフではその区間だけ線が斜めになる。</figcaption>
       </figure>
 
@@ -559,11 +578,13 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       </ol>
 
       <figure>
-        <img src="img/manual/review.png" alt="視聴中の画面の上部。「視聴中」のボタンが光り、画面の上端に「視聴中（値は変えられません）」と出る" width="1600" loading="lazy">
+        <img class="img-light" src="img/manual/review.png" alt="視聴中の画面の上部。「視聴中」のボタンが光り、画面の上端に「視聴中（値は変えられません）」と出る" width="1600" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/review.png" alt="視聴中の画面の上部。「視聴中」のボタンが光り、画面の上端に「視聴中（値は変えられません）」と出る" width="1600" loading="lazy">
         <figcaption>図 9　視聴の間。ボタンが「視聴中」に変わり、画面の上端に「視聴中（値は変えられません）」と出る。</figcaption>
       </figure>
       <figure>
-        <img src="img/manual/done.png" alt="「完了しました。」の文と「次へ」ボタンが出た画面" width="688" loading="lazy">
+        <img class="img-light" src="img/manual/done.png" alt="「完了しました。」の文と「次へ」ボタンが出た画面" width="688" loading="lazy">
+        <img class="img-dark" src="img/manual/dark/done.png" alt="「完了しました。」の文と「次へ」ボタンが出た画面" width="688" loading="lazy">
         <figcaption>図 10　完了した後の画面（練習の場合）。アンケートがある試行では、「次へ」の前に「アンケートを開く」が出る。</figcaption>
       </figure>
 
