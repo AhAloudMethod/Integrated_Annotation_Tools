@@ -254,7 +254,7 @@
       <details class="toc-part" open>
         <summary>第3部　困ったとき<span class="part-progress">0/2</span></summary>
         <ol>
-          <li><a href="#s8">8. キー操作の一覧</a></li>
+          <li><a href="#s8">8. キーとマウスの操作</a></li>
           <li><a href="#s9">9. よくある疑問</a></li>
         </ol>
       </details>
@@ -387,7 +387,7 @@
         <li>声のある所は薄い紫で塗られる。声の無い区間を見分けるのに使う。グラフの右上の「発声」（H キー）で表示を切り替えられる。</li>
         <li>グラフの<strong>下端の目盛りの帯</strong>を押すと、その時刻へ移る。</li>
         <li>評価する範囲の外は薄く表示される。区間の区切りは縦線で示される。</li>
-        <li>Ctrl を押しながらマウスのホイールを回すと、グラフの時間軸を拡大・縮小できる。</li>
+        <li>Ctrl を押しながらマウスのホイールを回すと、マウスのある時刻を中心に、グラフの時間軸を拡大・縮小できる。拡大している間は、Shift を押しながらホイールを回すと左右に送れる。</li>
       </ul>
     </section>
 
@@ -438,7 +438,7 @@
         <li>数を打つ。小数は「5.3」と打つか、数字を 2 つ続けて「5」「3」と打つ（5.3 になる）。小数は第 1 位まで入る。</li>
         <li>Enter・Tab・矢印キーで確定し、隣のセルへ移る。</li>
       </ol>
-      <p>評価グラフの快度・覚醒度の欄をなぞって値を入れることもできる。なぞった区間の値がその高さになる。</p>
+      <p>評価グラフの快度・覚醒度の欄でも値を入れられる。欄を左クリックすると、その位置の区間の値がクリックした高さになる。左ボタンを押したまま横になぞると、なぞった区間の値がまとめてその高さになる。入れた値を変えるときも、同じ操作で上書きする。</p>
 
       <figure>
         <img src="img/manual/values.png" alt="値を入れた後の表と評価グラフ。快度は 6、4、7.3、0、覚醒度は 5.5、6、7、0。グラフには区間ごとの水平な線が出て、0 の区間は灰色の帯になる" width="1584" loading="lazy">
@@ -543,9 +543,10 @@
 
     <section id="s8">
       <span class="secnum">SECTION 8</span>
-      <h2>キー操作の一覧</h2>
+      <h2>キーとマウスの操作</h2>
       <hr class="h2rule">
-      <p class="lead">よく使うのは Space（再生・停止）、C（区切る）、Ctrl+Z（取り消し）の 3 つである。</p>
+      <p class="lead">よく使うのは Space（再生・停止）、C（区切る）、Ctrl+Z（取り消し）の 3 つのキーと、評価グラフの左クリック（値）と右クリック（区切り）である。</p>
+      <h3>キー</h3>
       <div class="tablewrap" data-collapse="8">
         <table>
           <thead><tr><th class="c-min">キー</th><th>はたらき</th></tr></thead>
@@ -562,7 +563,24 @@
             <tr><td class="rowhead">R</td><td>区間の終わりで止まる設定のとき、同じ区間をもう一度聴く</td></tr>
             <tr><td class="rowhead">D ／ T</td><td>変化の区間で「描く」／「テンプレート」に切り替える</td></tr>
             <tr><td class="rowhead">Q ／ W ／ E</td><td>テンプレートの形：直線 ／ 前半で変化 ／ 後半で変化</td></tr>
-            <tr><td class="rowhead">Ctrl+ホイール</td><td>評価グラフの時間軸を拡大・縮小する（Shift+ホイールで横に送る）</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>マウス</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="c-min">操作</th><th>はたらき</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">表のセルを左クリック</td><td>そのセルを選び、数を打てるようにする（5 章）</td></tr>
+            <tr><td class="rowhead">評価グラフの快度・覚醒度の欄を左クリック</td><td>その位置の区間の値を、クリックした高さにする（5 章）</td></tr>
+            <tr><td class="rowhead">同じ欄を左ドラッグ</td><td>なぞった区間の値を、まとめてその高さにする。変化の区間では、なぞった線が値の動きになる（6 章）</td></tr>
+            <tr><td class="rowhead">評価グラフの下端の目盛りの帯か、声の高さ（F0）の欄を左クリック</td><td>その時刻へ移る</td></tr>
+            <tr><td class="rowhead">評価グラフの区切りの無い所を右クリック</td><td>そこに区切りを置く（4 章）</td></tr>
+            <tr><td class="rowhead">区切りの線を右クリック</td><td>その区切りを消す</td></tr>
+            <tr><td class="rowhead">区切りの線を右ドラッグ</td><td>その区切りを動かす</td></tr>
+            <tr><td class="rowhead">Ctrl+ホイール</td><td>マウスのある時刻を中心に、評価グラフの時間軸を拡大・縮小する</td></tr>
+            <tr><td class="rowhead">Shift+ホイール</td><td>拡大している間、評価グラフを左右に送る</td></tr>
+            <tr><td class="rowhead">別ウィンドウの動画をダブルクリック</td><td>全画面にする。もう一度ダブルクリックで戻る</td></tr>
           </tbody>
         </table>
       </div>
