@@ -59,13 +59,14 @@
     const cur = row(s);
     if ((cur[i] ?? null) === (v ?? null)) return;
     AH.pushUndo();
+    const was = sums(cur).n === ITEMS.length;
     const r = S.data.items[s] = Array.from({ length: ITEMS.length }, (_x, k) => cur[k] ?? null);
     r[i] = v;
-    const t = sums(r), done = t.n === ITEMS.length;
+    const done = !was && sums(r).n === ITEMS.length;   // 次の区間へ進むのは，最後の項目を埋めたときだけ（答え終えた区間の回答を直しても進まない）
     syncCells(s);
     AH.addLog('panas_item', { axis: ITEMS[i].id, value: v ?? '', detail: 'bin ' + s + ' (' + AH.secLabel(s) + ')' });
     AH.refresh();
-    if (done && v != null) autoNext(s);
+    if (done) autoNext(s);
   }
   // 発声なし：声のない区間に印を付け、16 項目に答えずに次へ進む（もう一度押すと解除。項目に答えても解除）。印を付けると、その区間の回答は消える（Ctrl+Z で戻せる）
   function setNoVoice(s, on) {

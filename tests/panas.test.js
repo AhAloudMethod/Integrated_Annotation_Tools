@@ -37,6 +37,20 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const q = await open('P01'), ns2 = await names(q); check('同じ参加者 ID は同じ並び', JSON.stringify(ns) === JSON.stringify(ns2));
     const r = await open('P02'); check('別の参加者 ID は別の並び', JSON.stringify(ns) !== JSON.stringify(await names(r))); await q.close(); await r.close();
 
+    // 全項目に答えたら次の区間へ：最後の項目を埋めたときだけ進み，答え終えた区間の回答を直しても進まない
+    {
+      const an = await open('P03');
+      await an.evaluate(() => AH.setOption('autoNext', true));
+      for (let k = 0; k < 16; k++) await an.keyboard.press('Digit3');
+      await an.waitForTimeout(100);
+      const moved = await an.evaluate(() => AH.curSec());
+      await an.evaluate(() => AH.seekTo(AH.binStart(0) + 0.001)); await an.waitForTimeout(100);
+      await an.click('.pnRow:nth-child(1) button[data-v="5"]'); await an.click('.pnRow:nth-child(2) button[data-v="5"]'); await an.waitForTimeout(100);
+      const st = await an.evaluate(() => ({ s: AH.curSec(), n: AH.S.data.items[0].filter(x => x === 5).length }));
+      check('自動で次へ：16 項目目で次の区間へ進み，答え終えた区間を直しても留まる', moved === 1 && st.s === 0 && st.n === 2, JSON.stringify({ moved, ...st }));
+      await an.close();
+    }
+
     // クリック：1 つ答えるとその項目が選ばれ、全部そろうまで区間の値は入らない
     await p.click('.pnRow:nth-child(1) button[data-v="4"]');
     let c = await cells(p);
