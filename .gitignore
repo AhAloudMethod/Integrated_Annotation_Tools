@@ -5,6 +5,7 @@
 !/.claude/skills/
 /models/
 /docs/
+/.superpowers/
 
 # macOS
 .DS_Store
