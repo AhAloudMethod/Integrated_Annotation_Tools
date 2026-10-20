@@ -33,7 +33,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // 2. 設定で PANA に切り替え：ラベル・説明文・色の欄が変わり、保存される
   {
     const p = await open('key');
-    await p.click('#setBtn'); await p.selectOption('#axesSel', 'pana'); await p.waitForTimeout(150);
+    await p.click('#setBtn'); await p.click('#setTabAdv'); await p.selectOption('#axesSel', 'pana'); await p.waitForTimeout(150);
     const r = await labels(p);
     const col = await p.$$eval('#colorGrid .cell span', s => s.map(x => x.textContent));
     const saved = await p.evaluate(() => [localStorage.getItem('ahann_axes'), AH.S.log.filter(l => l.type === 'axes').map(l => l.value).join()]);
@@ -99,7 +99,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.goto(URL); await p.selectOption('#mode', 'key'); await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0);
     await p.evaluate(() => document.activeElement.blur()); await p.keyboard.press('Digit7');
     let asked = false; p.once('dialog', d => { asked = true; d.dismiss(); });
-    await p.click('#setBtn'); await p.selectOption('#axesSel', 'thayer'); await p.waitForTimeout(200);
+    await p.click('#setBtn'); await p.click('#setTabAdv'); await p.selectOption('#axesSel', 'thayer'); await p.waitForTimeout(200);
     const r = await p.evaluate(() => [AH._.axesId(), document.getElementById('axesSel').value]);
     check('評価の途中で変えるときは確認し、キャンセルなら戻す', asked && r.join() === 'va,va', JSON.stringify({ asked, r }));
     await p.close();

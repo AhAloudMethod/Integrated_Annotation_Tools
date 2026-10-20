@@ -19,6 +19,14 @@
     for (const [b, p] of POPS) if (!$(p).hidden && !$(p).contains(e.target) && !$(b).contains(e.target)) $(p).hidden = true;
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closePops(); });
+  // 設定パネルのタブ：普段使う項目は「基本」、一度決めたら触らない項目は「高度な設定」。開くたびに「基本」から
+  function setTab(adv) {
+    $('setBasic').hidden = adv; $('setAdv').hidden = !adv; $('setPanel').classList.toggle('adv', adv);
+    for (const [id, on] of [['setTabBasic', !adv], ['setTabAdv', adv]]) { $(id).classList.toggle('on', on); $(id).setAttribute('aria-selected', on); }
+  }
+  $('setTabBasic').addEventListener('click', () => setTab(false));
+  $('setTabAdv').addEventListener('click', () => setTab(true));
+  $('setBtn').addEventListener('click', () => { if (!$('setPanel').hidden) setTab(false); });
 
   // ---------- 評価グラフの開閉（状態はブラウザに保存。既定は閉じる） ----------
   function setTimeline(on) {

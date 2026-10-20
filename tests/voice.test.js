@@ -243,7 +243,7 @@ const FAKE = () => {
   // 設定で認識エンジンを切り替えられ、保存される
   {
     const p = await open('key');
-    await p.click('#setBtn'); await p.selectOption('#voiceEngine', 'vosk');
+    await p.click('#setBtn'); await p.click('#setTabAdv'); await p.selectOption('#voiceEngine', 'vosk');
     const shown = await p.evaluate(() => !document.getElementById('voskBox').hidden);
     const saved = await p.evaluate(() => localStorage.getItem('ahann_voice_engine'));
     await p.selectOption('#voiceEngine', 'webspeech');

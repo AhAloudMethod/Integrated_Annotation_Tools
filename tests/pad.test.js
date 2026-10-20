@@ -187,8 +187,8 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)', SLD = 'Test Sliders (V
     const upd = await p.evaluate(() => ({ ax: document.querySelector('#padList .padDev[data-index="0"] .padAx[data-axis="2"] .padAxV').textContent, on: document.querySelectorAll('#padList .padDev[data-index="0"] .padBtn.on').length }));
     check('設定パネルを開いている間は軸・ボタンの表示が更新される', upd.ax === '-0.25' && upd.on === 1, JSON.stringify(upd));
     await p.screenshot({ path: out('shot_pad_panel.png') });
-    // 機器の選択を上書き：スライダーを JOY の機器にする
-    await p.selectOption('#padSliderDev', JOY); await p.waitForTimeout(100);
+    // 機器の選択を上書き：スライダーを JOY の機器にする（高度な設定のタブ）
+    await p.click('#setTabAdv'); await p.selectOption('#padSliderDev', JOY); await p.waitForTimeout(100);
     const r3 = await p.evaluate(() => ({ sl: AH.padSliders().id, ls: localStorage.getItem('ahann_pad_sliderdev') }));
     check('スライダーに使う機器を選べる（保存される）', r3.sl === JOY && r3.ls === JOY, JSON.stringify(r3));
     await p.selectOption('#padSliderDev', ''); await p.waitForTimeout(100);
@@ -274,8 +274,11 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)', SLD = 'Test Sliders (V
     const p = await c.newPage(); p.on('pageerror', e => errs.push(e.message)); await p.goto(URL);
     await p.evaluate(([a, b]) => { window.__connect(a, 0, 4, 12); window.__connect(b, 1, 4, 12); }, [JOY, SLD]);
     await p.click('#setBtn'); await p.waitForTimeout(300);
-    const r = await p.$eval('#setPanel', e => { const b = e.getBoundingClientRect(); return { b: b.bottom, sh: e.scrollHeight, ch: e.clientHeight }; });
-    check(`${W}x${H}：機器2台でも設定パネルがスクロールなしで収まる`, r.b <= H + 0.5 && r.sh <= r.ch + 2, JSON.stringify(r));
+    for (const tab of ['基本', '高度な設定']) {
+      if (tab === '高度な設定') { await p.click('#setTabAdv'); await p.waitForTimeout(100); }
+      const r = await p.$eval('#setPanel', e => { const b = e.getBoundingClientRect(); return { b: b.bottom, sh: e.scrollHeight, ch: e.clientHeight }; });
+      check(`${W}x${H}：機器2台でも設定パネル（${tab}）がスクロールなしで収まる`, r.b <= H + 0.5 && r.sh <= r.ch + 2, JSON.stringify(r));
+    }
     if (W === 1280) await p.screenshot({ path: out('shot_pad_setpanel_1280.png') });
     await c.close();
   }

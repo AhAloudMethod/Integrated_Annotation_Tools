@@ -166,7 +166,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // ---- 7. 書き込みを終えた後：既定は値を保つ（EMuJoy で離すと元の点に引き戻される問題）。設定で元の値に戻すも選べる ----
   for (const mode of ['hold', 'restore']) {
     const p = await open('emujoy'); await blur(p);
-    if (mode === 'restore') { await p.click('#setBtn'); await p.selectOption('#afterWrite', 'restore'); await p.click('#setBtn'); }
+    if (mode === 'restore') { await p.click('#setBtn'); await p.click('#setTabAdv'); await p.selectOption('#afterWrite', 'restore'); await p.click('#setBtn'); }
     const b = await p.locator('canvas.plane').boundingBox();
     await p.keyboard.press('Space');
     await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await p.mouse.down();
@@ -182,7 +182,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   {
     const p = await open('halolight');
     const def = await p.evaluate(() => ({ q: AH.quadColor(9, 9), g: AH.gradColor(9, 5) }));   // 既定：高覚醒・快＝黄、快の軸＝黄と緑の中間
-    await p.click('#setBtn');
+    await p.click('#setBtn'); await p.click('#setTabAdv');
     const setColor = (k, v) => p.$eval(`#colorGrid input[data-key="${k}"]`, (e, v) => { e.value = v; e.dispatchEvent(new Event('input')); }, v);
     await setColor('hh', '#ff00ff');                                   // 象限の色
     const q = await p.evaluate(() => ({ q: AH.quadColor(8, 8), axisAuto: AH.gradColor(9, 5) }));

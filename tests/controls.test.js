@@ -74,7 +74,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // 選択欄にフォーカスが残っていても、キーで再生速度・方式が変わらない（キーはツールの操作になる）
   {
     const p = await open('ranktrace');
-    await p.click('#setBtn'); await p.focus('#rate');
+    await p.click('#setBtn'); await p.click('#setTabAdv'); await p.focus('#rate');
     const v0 = (await peek(p)).v;
     await p.keyboard.down('ArrowUp'); await p.waitForTimeout(300); await p.keyboard.up('ArrowUp');
     const r = await p.evaluate(() => ({ rate: AH.video.playbackRate, sel: document.getElementById('rate').value, focus: document.activeElement.id, v: AH.mode.peek().v }));

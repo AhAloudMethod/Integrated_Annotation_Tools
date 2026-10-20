@@ -20,7 +20,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.waitForFunction(() => AH.S.meta.duration > 0); await p.evaluate(() => document.activeElement && document.activeElement.blur());
     return p;
   };
-  const setChk = async (p, id, on) => { await p.click('#setBtn'); await (on ? p.check('#' + id) : p.uncheck('#' + id)); await p.click('#setBtn'); await p.waitForTimeout(100); };
+  const setChk = async (p, id, on) => { await p.click('#setBtn'); if (await p.$eval('#' + id, e => !!e.closest('#setAdv'))) await p.click('#setTabAdv'); await (on ? p.check('#' + id) : p.uncheck('#' + id)); await p.click('#setBtn'); await p.waitForTimeout(100); };
 
   // ---- やり直し：Ctrl+Z で戻したものを Ctrl+Y・Ctrl+Shift+Z でやり直す。新しく書くとやり直しは消える
   {

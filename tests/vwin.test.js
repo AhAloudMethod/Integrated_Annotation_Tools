@@ -34,9 +34,20 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
       const r = await p.$eval(panel, e => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, sh: e.scrollHeight, ch: e.clientHeight }; });
       if (r.l < 0 || r.r > W + 0.5 || r.b > H + 0.5) bad.push(`${panel} ${JSON.stringify(r)}`);
       if (panel === '#setPanel' && r.sh > r.ch + 2) bad.push(`${panel} がスクロールしないと見えない ${JSON.stringify(r)}`);
+      if (panel === '#setPanel') {   // 高度な設定のタブ（3列）も収まる
+        await p.click('#setTabAdv'); await p.waitForTimeout(100);
+        const a = await p.$eval(panel, e => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, b: b.bottom, sh: e.scrollHeight, ch: e.clientHeight }; });
+        if (a.l < 0 || a.r > W + 0.5 || a.b > H + 0.5 || a.sh > a.ch + 2) bad.push(`${panel}（高度な設定） ${JSON.stringify(a)}`);
+      }
       await p.click(btn);
     }
     check(`${W}x${H} でヘッダーのパネルが画面に収まる`, !bad.length, bad.join(' / '));
+    if (W === 1280) {   // 設定パネルは開くたびに「基本」のタブから
+      await p.click('#setBtn'); await p.click('#setTabAdv'); await p.click('#setBtn'); await p.click('#setBtn'); await p.waitForTimeout(100);
+      const t = await p.evaluate(() => ({ basic: !document.getElementById('setBasic').hidden, adv: !document.getElementById('setAdv').hidden, rate: !!document.getElementById('rate').offsetParent, grid: !!document.getElementById('gridShow').offsetParent }));
+      check('設定パネルは開くたびに基本のタブ（再生速度は高度な設定、グリッド線は基本）', t.basic && !t.adv && !t.rate && t.grid, JSON.stringify(t));
+      await p.click('#setBtn');
+    }
     await c.close();
   }
   // 動画の別窓

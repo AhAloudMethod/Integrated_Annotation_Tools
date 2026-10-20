@@ -59,15 +59,9 @@
   <span class="rgWrap">
     <button id="setBtn" title="表示と再生の設定">設定</button>
     <div id="setPanel" class="rgPanel right setPanel" hidden>
-      <section class="setCol">
-        <div class="refTitle">評価軸のラベル</div>
-        <select id="axesSel" aria-label="評価の軸"></select>
-        <p class="muted">軸の名前・ラベル・書き出しの列名が変わります。SAM・Affect Grid・FEELTRACE・AffectRank は VA のまま。</p>
-        <div class="refTitle">表示・再生</div>
-        <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
-        <label>再生速度 <select id="rate" autocomplete="off"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
-        <label>上書きした後ろ <select id="afterWrite"><option value="hold">最後の値のまま続ける</option><option value="restore">上書き前の値に戻す</option></select></label>
-        <p class="muted">すでに記録がある所に上書きしたとき、上書きを終えた後ろの値をどうするかを選びます。「最後の値のまま続ける」：次に値が変わる所まで上書きを終えた時点の値に変更されます（最初から通しで付け直すとき向け）。「上書き前の値に戻す」：上書きした所だけが変わり、その後ろは変更しません（一部だけを直すとき向け）。</p>
+      <div class="setTabs" role="tablist"><button id="setTabBasic" type="button" role="tab" class="on" aria-selected="true">基本</button><button id="setTabAdv" type="button" role="tab" aria-selected="false">高度な設定</button></div>
+      <div id="setBasic" class="setBasic">
+        <div class="refTitle">表示</div>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
         <label class="chk" title="平面・円・スライダー・レバーにグリッド線を引く"><input id="gridShow" type="checkbox"> グリッド線を表示する</label>
         <label class="chk"><input id="f0Show" type="checkbox" checked> 音声の F0（声の高さ）を表示する</label>
@@ -78,38 +72,9 @@
         <div class="sub">
           <button id="resetBtn" type="button" title="この動画・方式の評価の値をすべて消して初期値に戻す（Ctrl+Z で戻せる）">入力をリセットする</button>
         </div>
-      </section>
-      <section class="setCol">
-        <div class="refTitle">音声入力</div>
+        <div class="refTitle">コントローラー</div>
         <div class="sub">
-          <label>音声認識モデル <select id="voiceEngine"><option value="webspeech">Chrome の認識</option><option value="vosk">Vosk（PC 内）</option></select></label>
-          <div id="voskBox" class="voskBox" hidden>
-            <label class="chk"><input id="voiceRestrict" type="checkbox" checked> 聞き取る語を限定する（快度・覚醒度・数字・秒・再生・停止）</label>
-            <div class="rgBtns"><button id="voskModelBtn" type="button">モデルを選ぶ</button><button id="voskModelDel" type="button">モデルのリセット</button></div>
-            <input id="voskModelFile" type="file" accept=".tar.gz,.tgz,application/gzip" hidden>
-            <p class="muted" id="voskModelStatus"></p>
-            <p class="muted">Chrome・Firefox で使えます。モデル（.tar.gz）は一度選ぶとブラウザに保存されます。作り方は README の「音声入力」。</p>
-          </div>
-        </div>
-        <div class="sub">
-          <div class="refTitle">音声の聞き取り履歴（最新10件）</div>
-          <ul id="voiceHist" class="voiceHist"></ul>
-        </div>
-        <div class="sub padBox">
-          <div class="refTitle">コントローラー</div>
-          <label class="chk"><input id="padJoyUse" type="checkbox" checked> ジョイスティックを使う <select id="padJoyDev" aria-label="ジョイスティックに使う機器"><option value="">自動</option></select></label>
-          <label class="chk" title="四角の平面で、角に届くよう可動域を広げる"><input id="padSquare" type="checkbox" checked> 四角平面でスティックを角まで届かせる</label>
-          <label class="chk"><input id="padSliderUse" type="checkbox" checked> スライダーを使う <select id="padSliderDev" aria-label="スライダーに使う機器"><option value="">自動</option></select></label>
           <div id="padList" class="padList"><p class="muted">接続されていません（機器のボタンを押すと認識されます）</p></div>
-          <p class="muted"></p>
-        </div>
-      </section>
-      <section class="setCol">
-        <div class="refTitle">色</div>
-        <div class="sub">
-          <p class="muted">RCEA・HaloLight・FEELTRACEの色表示で使います。</p>
-          <div id="colorGrid" class="colorGrid"></div>
-          <p class="muted">四隅が象限、上下左右が軸方向の色です。軸は自動選択できます。</p>
         </div>
         <div class="refTitle">実験</div>
         <div class="sub">
@@ -119,7 +84,50 @@
           <p class="muted">フォルダを選ぶ画面では中のファイルは表示されませんが、そのフォルダを選べば読み込めます。エクスプローラーからフォルダをボタンに落としても開けます。</p>
           <p class="muted">参加者ごとに決めた順で方式と動画を進めます。使い方は README の「実験モード」。</p>
         </div>
-      </section>
+      </div>
+      <div id="setAdv" class="setAdv" hidden>
+        <section class="setCol">
+          <div class="refTitle">評価軸のラベル</div>
+          <select id="axesSel" aria-label="評価の軸"></select>
+          <p class="muted">軸の名前・ラベル・書き出しの列名が変わります。SAM・Affect Grid・FEELTRACE・AffectRank は VA のまま。</p>
+          <div class="refTitle">表示・再生</div>
+          <label>動画の大きさ <span><input id="vidSize" type="range" min="25" max="80" step="1" value="55" aria-label="動画の列の幅"> <span id="vidSizeLab" class="time">55%</span></span></label>
+          <label>再生速度 <select id="rate" autocomplete="off"><option>0.5</option><option>0.75</option><option selected>1</option></select></label>
+          <label>上書きした後ろ <select id="afterWrite"><option value="hold">最後の値のまま続ける</option><option value="restore">上書き前の値に戻す</option></select></label>
+          <p class="muted">すでに記録がある所に上書きしたとき、上書きを終えた後ろの値をどうするかを選びます。「最後の値のまま続ける」：次に値が変わる所まで上書きを終えた時点の値に変更されます（最初から通しで付け直すとき向け）。「上書き前の値に戻す」：上書きした所だけが変わり、その後ろは変更しません（一部だけを直すとき向け）。</p>
+        </section>
+        <section class="setCol">
+          <div class="refTitle">音声入力</div>
+          <div class="sub">
+            <label>音声認識モデル <select id="voiceEngine"><option value="webspeech">Chrome の認識</option><option value="vosk">Vosk（PC 内）</option></select></label>
+            <div id="voskBox" class="voskBox" hidden>
+              <label class="chk"><input id="voiceRestrict" type="checkbox" checked> 聞き取る語を限定する（快度・覚醒度・数字・秒・再生・停止）</label>
+              <div class="rgBtns"><button id="voskModelBtn" type="button">モデルを選ぶ</button><button id="voskModelDel" type="button">モデルのリセット</button></div>
+              <input id="voskModelFile" type="file" accept=".tar.gz,.tgz,application/gzip" hidden>
+              <p class="muted" id="voskModelStatus"></p>
+              <p class="muted">Chrome・Firefox で使えます。モデル（.tar.gz）は一度選ぶとブラウザに保存されます。作り方は README の「音声入力」。</p>
+            </div>
+          </div>
+          <div class="sub">
+            <div class="refTitle">音声の聞き取り履歴（最新10件）</div>
+            <ul id="voiceHist" class="voiceHist"></ul>
+          </div>
+        </section>
+        <section class="setCol">
+          <div class="refTitle">コントローラー</div>
+          <div class="sub padBox">
+            <label class="chk"><input id="padJoyUse" type="checkbox" checked> ジョイスティックを使う <select id="padJoyDev" aria-label="ジョイスティックに使う機器"><option value="">自動</option></select></label>
+            <label class="chk" title="四角の平面で、角に届くよう可動域を広げる"><input id="padSquare" type="checkbox" checked> 四角平面でスティックを角まで届かせる</label>
+            <label class="chk"><input id="padSliderUse" type="checkbox" checked> スライダーを使う <select id="padSliderDev" aria-label="スライダーに使う機器"><option value="">自動</option></select></label>
+          </div>
+          <div class="refTitle">色</div>
+          <div class="sub">
+            <p class="muted">RCEA・HaloLight・FEELTRACEの色表示で使います。</p>
+            <div id="colorGrid" class="colorGrid"></div>
+            <p class="muted">四隅が象限、上下左右が軸方向の色です。軸は自動選択できます。</p>
+          </div>
+        </section>
+      </div>
     </div>
   </span>
   <span class="rgWrap">
