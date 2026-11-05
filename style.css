@@ -207,8 +207,9 @@ html:has(body.exp),body.exp{overscroll-behavior-x:none}
 .expForm label:not(.chk){white-space:nowrap}
 .expForm select{min-width:0;flex:0 1 auto}
 .expForm input[type=number]{width:5em}
-.expAdv{width:100%}
-.expAdv summary{cursor:pointer}
+.expTabs{width:100%}
+.expTab{width:100%;display:grid;gap:6px;align-content:start}
+.expTab[hidden]{display:none}
 .expVids{border-collapse:collapse;font-size:13px;width:100%}
 .expVids th,.expVids td{border-bottom:1px solid var(--line);padding:3px 8px;text-align:left}
 .expMiss{color:var(--pen)}

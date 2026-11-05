@@ -4,12 +4,12 @@
 // experiment.json には書けない（置き場を 1 つにするため）。試行ごとに変えるときだけ、試行の settings・range に書く
 (() => {
   // 設定の項目：書き出しの画面の欄と検査はこの表から作る。exp は実験モードだけの項目（ボタンを出すか）。
-  // adv は書き出しの画面で「高度な設定」に畳む項目（実験ごとに変えることが少ないもの）。
+  // adv は書き出しの画面で「高度な設定」のタブに入れる項目（実験ごとに変えることが少ないもの）。
   // axes の選択肢は評価軸の組（env.axes）。評価区間の変更は実験モードでは常にできない
   const SETTINGS = [
     { key: 'axes', label: '評価軸のラベル', type: 'select', choices: null, def: 'va', adv: true },
     { key: 'rate', label: '再生速度', type: 'select', choices: [[0.5, '0.5'], [0.75, '0.75'], [1, '1']], def: 1, adv: true },
-    { key: 'afterWrite', label: '記録を上書きしたあとの値', type: 'select', choices: [['hold', '離した値のまま続ける（頭から付け直すとき）'], ['restore', '元の記録に戻す（一部だけ直すとき）']], def: 'hold' },
+    { key: 'afterWrite', label: '記録を上書きしたあとの値', type: 'select', choices: [['hold', '離した値のまま続ける（頭から付け直すとき）'], ['restore', '元の記録に戻す（一部だけ直すとき）']], def: 'hold', adv: true },
     { key: 'timeline', label: '評価グラフを表示する', type: 'check', def: true },
     { key: 'graphEdit', label: 'グラフをなぞって値を編集する', type: 'check', def: true },
     { key: 'grid', label: 'グリッド線を表示する', type: 'check', def: true },

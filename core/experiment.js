@@ -647,22 +647,30 @@
     const span = e => (e.edges ? `${e.edges[0]}〜${e.edges[e.edges.length - 1]} 秒（自分で区切った ${e.edges.length - 1} 区間）` : `${e.start}〜${e.end} 秒，${e.bin} 秒ごと`);
     const cell = r => (r.entry ? esc(span(r.entry)) + (r.from ? `（発声者 ${esc(r.from)} から）` : r.kept ? '（setup.json のまま）' : '') : r.refOnly ? '基準音声の動画（評価区間は要りません）' : '<b class="expMiss">未設定</b>');
     let notes = [];   // 発声者の結果を取り込んだときの案内
-    // 高度な設定は畳んでおく。既定と違う値があれば、変えた値が隠れないように開いて出す
-    let advOpen = E.SETTINGS.some(d => d.adv && String(cur[d.key]) !== String(d.def));
+    // 設定は「基本」と「高度な設定」のタブに分け、初めは基本を出す。高度な設定に既定と違う値があれば、
+    // 変えた値が見えないところに隠れないよう、タブの名前に「変更あり」と出す
+    let advTab = false;
+    const advChanged = () => E.SETTINGS.some(d => d.adv && String(cur[d.key]) !== String(d.def));
+    const readForm = () => { for (const d of E.SETTINGS) { const el = $('es_' + d.key); if (el) cur[d.key] = d.type === 'check' ? el.checked : el.value; } };
+    const advLabel = () => '高度な設定' + (advChanged() ? '（変更あり）' : '');
+    const showTab = adv => {
+      advTab = adv;
+      for (const [id, on] of [['esTabBasic', !adv], ['esTabAdv', adv]]) { $(id).classList.toggle('on', on); $(id).setAttribute('aria-selected', on); }
+      $('esBasic').hidden = adv; $('esAdv').hidden = !adv;
+    };
     const render = () => {
       const missing = rows.filter(r => !r.entry && !r.refOnly).length;
-      for (const d of E.SETTINGS) { const el = $('es_' + d.key); if (el) cur[d.key] = d.type === 'check' ? el.checked : el.value; }   // 描き直しても欄の値を残す
-      if ($('esAdv')) advOpen = $('esAdv').open;
+      readForm();   // 描き直しても欄の値を残す
       cover(`<h2>実験用設定を保存する</h2>
       <p class="muted">参加者が実験中に使う画面の設定と、動画ごとの評価区間を決めます。保存したファイル（setup.json）と、Skills で作成した experiment.json を同じ実験用フォルダに入れてください。</p>
       ${old ? '<p class="muted">フォルダにある実験用設定の値を初めの値にしています（そこに無い項目は今の画面の値）。</p>' : ''}
       ${oldErr ? `<p class="expMiss">フォルダの setup.json を読めないので、今の画面の値を初めの値にしています（${esc(oldErr)}）。</p>` : ''}
-      <div class="refTitle">設定</div>
+      <div class="setTabs expTabs" role="tablist"><button id="esTabBasic" type="button" role="tab">基本</button><button id="esTabAdv" type="button" role="tab">${advLabel()}</button></div>
+      <div id="esBasic" class="expTab"><div class="refTitle">設定</div>
       <div class="expForm">${E.SETTINGS.filter(d => !d.exp && !d.adv).map(ctl).join('')}</div>
       <div class="refTitle">実験中に出すボタン</div>
-      <div class="expForm">${E.SETTINGS.filter(d => d.exp && !d.adv).map(ctl).join('')}</div>
-      <details id="esAdv" class="expAdv"${advOpen ? ' open' : ''}><summary class="refTitle">高度な設定</summary>
-      <div class="expForm">${E.SETTINGS.filter(d => d.adv).map(ctl).join('')}</div></details>
+      <div class="expForm">${E.SETTINGS.filter(d => d.exp && !d.adv).map(ctl).join('')}</div></div>
+      <div id="esAdv" class="expTab"><div class="expForm">${E.SETTINGS.filter(d => d.adv).map(ctl).join('')}</div></div>
       <div class="refTitle">動画ごとの評価区間（通常の画面で動画を開いて合わせたもの）</div>
       ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${cell(r)}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
       ${missing ? `<p class="expMiss">未設定の動画が ${missing} 本あります。実験で使う動画なら、通常の画面で開いて評価区間を合わせてから書き出し直してください（このまま書き出すと、その動画の試行は始められません）。</p>` : ''}
@@ -671,6 +679,10 @@
       <div class="expBtns"><button id="esSpk" type="button" title="発声者の結果（試行の zip か _session.json。複数可）を選ぶか、ここに落とす">発声者が設定した区間区切りを録画に反映する</button><button id="esSave" type="button">実験用設定を保存する</button><button id="esClose" type="button">閉じる</button></div>
       <input id="esSpkFile" type="file" accept=".zip,.json,application/zip,application/json" multiple hidden>`);
       $('esClose').addEventListener('click', () => cover(''));
+      $('esTabBasic').addEventListener('click', () => showTab(false));
+      $('esTabAdv').addEventListener('click', () => showTab(true));
+      $('esAdv').addEventListener('change', () => { readForm(); $('esTabAdv').textContent = advLabel(); });
+      showTab(advTab);
       $('esSpk').addEventListener('click', () => $('esSpkFile').click());
       $('esSpkFile').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) takeSpeaker(list); });
       dropTarget($('esSpk'), list => takeSpeaker(list.map(it => it.file || it)));
