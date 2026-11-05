@@ -370,7 +370,7 @@ window.TODO = {get state(){ return state; }, toMarkdown, fromMarkdown, store};
   await store.init();
   const saved = await store.load();
   state = saved && Array.isArray(saved.tasks) ? saved : {title:LIST_TITLE, tasks:fromInitial(INITIAL)};
-  $("where").textContent = store.kind === "none" ? "保存：なし" : "保存：このブラウザ";
+  $("where").textContent = {none:"保存：なし", local:"保存：このブラウザ", claude:"保存：このアーティファクト"}[store.kind];
   if (store.kind === "none") showNotice("この画面では進み具合を保存できません．閉じる前に，下の「書き出す」で Markdown を手元に残してください．");
   if (!saved) persist();
   render();
