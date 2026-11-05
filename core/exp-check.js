@@ -1,29 +1,30 @@
 // 実験の設定（experiment.json と setup.json）の検査。ブラウザ（core/experiment.js）と Node（tools/exp-check.js）の両方で使う。
 // errors は実験を始められない誤り、warnings は始められるが確かめたほうがよいこと（カウンターバランスの偏りなど）。
-// setup.json は通常の画面の「実験用の設定を書き出す」で作る（settings と videos）。全試行に共通の設定と動画ごとの評価区間は setup.json にだけ書き、
+// setup.json は通常の画面の「実験用設定を書き出す」で作る（settings と videos）。全試行に共通の設定と動画ごとの評価区間は setup.json にだけ書き、
 // experiment.json には書けない（置き場を 1 つにするため）。試行ごとに変えるときだけ、試行の settings・range に書く
 (() => {
   // 設定の項目：書き出しの画面の欄と検査はこの表から作る。exp は実験モードだけの項目（ボタンを出すか）。
+  // adv は書き出しの画面で「高度な設定」に畳む項目（実験ごとに変えることが少ないもの）。
   // axes の選択肢は評価軸の組（env.axes）。評価区間の変更は実験モードでは常にできない
   const SETTINGS = [
-    { key: 'axes', label: '評価軸のラベル', type: 'select', choices: null, def: 'va' },
-    { key: 'rate', label: '再生速度', type: 'select', choices: [[0.5, '0.5'], [0.75, '0.75'], [1, '1']], def: 1 },
-    { key: 'afterWrite', label: '上書きした後ろ', type: 'select', choices: [['hold', '最後の値のまま続ける'], ['restore', '上書き前の値に戻す']], def: 'hold' },
+    { key: 'axes', label: '評価軸のラベル', type: 'select', choices: null, def: 'va', adv: true },
+    { key: 'rate', label: '再生速度', type: 'select', choices: [[0.5, '0.5'], [0.75, '0.75'], [1, '1']], def: 1, adv: true },
+    { key: 'afterWrite', label: '記録を上書きしたあとの値', type: 'select', choices: [['hold', '離した値のまま続ける（頭から付け直すとき）'], ['restore', '元の記録に戻す（一部だけ直すとき）']], def: 'hold' },
     { key: 'timeline', label: '評価グラフを表示する', type: 'check', def: true },
     { key: 'graphEdit', label: 'グラフをなぞって値を編集する', type: 'check', def: true },
     { key: 'grid', label: 'グリッド線を表示する', type: 'check', def: true },
     { key: 'f0', label: '音声の F0（声の高さ）を表示する', type: 'check', def: false },
     { key: 'voiced', label: '発声の区間を評価グラフに表示する', type: 'check', def: true },
-    { key: 'listen', label: '1区間ずつ聴いてから入力する', type: 'check', def: true },
-    { key: 'videoSize', label: '動画の大きさ（％）', type: 'number', min: 25, max: 80, def: 55 },
-    { key: 'padJoy', label: 'ジョイスティックを使う', type: 'check', def: true },
-    { key: 'padSlider', label: 'スライダーを使う', type: 'check', def: true },
-    { key: 'padSquare', label: '四角平面でスティックを角まで届かせる', type: 'check', def: true },
-    { key: 'review', label: '「視聴」ボタンを出す', type: 'check', def: true, exp: true },
+    { key: 'listen', label: '1区間ごとに聴いてから評価する', type: 'check', def: true },
+    { key: 'videoSize', label: '動画の大きさ（％）', type: 'number', min: 25, max: 80, def: 55, adv: true },
+    { key: 'padJoy', label: 'ジョイスティックを使う', type: 'check', def: true, adv: true },
+    { key: 'padSlider', label: 'スライダーを使う', type: 'check', def: true, adv: true },
+    { key: 'padSquare', label: '四角平面でスティックを角まで届かせる', type: 'check', def: true, adv: true },
+    { key: 'review', label: '記録を見返す「視聴」ボタン（V キー）を出す', type: 'check', def: true, exp: true },
     { key: 'refAudio', label: '「基準音声」ボタンを出す', type: 'check', def: true, exp: true },
-    { key: 'voicedBtn', label: '「発声」ボタン（H キー）を出す', type: 'check', def: true, exp: true },
+    { key: 'voicedBtn', label: '声のある区間をマークする「発声」ボタン（H キー）を出す', type: 'check', def: true, exp: true },
     { key: 'videoWindow', label: '「別ウィンドウ」ボタンを出す', type: 'check', def: true, exp: true },
-    { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true },
+    { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true, adv: true },
   ];
   const DEF = Object.fromEntries(SETTINGS.map(s => [s.key, s.def]));
   const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref', 'refVideo', 'novoice'];   // ref：基準音声の時刻（秒。無ければ最初の声）。refVideo：基準音声の動画（フォルダからの相対パス。ref はこの動画の秒）。novoice：発声なしの区間 [[始め, 終わり（秒）], …]（PANAS。事前に印が付き、参加者は変えられない）

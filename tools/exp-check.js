@@ -37,7 +37,7 @@ function main(arg) {
   const cfg = merge(exp, setup);
 
   console.log(`実験：${(cfg && cfg.name) || '（名前なし）'}（${file}）`);
-  console.log(setup ? 'setup.json：あり' : 'setup.json：なし（通常の画面の「実験用の設定を書き出す」で作る）');
+  console.log(setup ? 'setup.json：あり' : 'setup.json：なし（通常の画面の「実験用設定を書き出す」で作る）');
   if (cfg && cfg.participants && typeof cfg.participants === 'object') {
     console.log('\n参加者ごとの順（[練] は練習）');
     for (const [pid, ts] of Object.entries(cfg.participants)) {

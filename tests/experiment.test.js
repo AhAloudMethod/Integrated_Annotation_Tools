@@ -114,6 +114,9 @@ const BAD = makeFolder('exp_bad', {
   const form = await p.evaluate(() => ({ axes: document.getElementById('es_axes').value, listen: document.getElementById('es_listen').checked, review: document.getElementById('es_review').checked, voice: document.getElementById('es_voice').checked }));
   check('設定の欄はフォルダの setup.json の値（視聴を出さない・聴いてから入力しない）で、setup.json に無い項目は今の画面の値（評価軸は PANA）と既定（音声入力は出さない）',
     form.axes === 'pana' && !form.listen && !form.review && !form.voice, JSON.stringify(form));
+  const adv = await p.evaluate(() => { const d = document.getElementById('esAdv'); return { open: d.open, ids: [...d.querySelectorAll('[id^=es_]')].map(e => e.id.slice(3)).sort().join() }; });
+  check('高度な設定に、評価軸・再生速度・動画の大きさ・コントローラー・音声入力を畳み、既定と違う値（評価軸 PANA）があれば開いて出す',
+    adv.open && adv.ids === 'axes,padJoy,padSlider,padSquare,rate,videoSize,voice', JSON.stringify(adv));
   await p.check('#es_voice'); await p.selectOption('#es_axes', 'va');
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(await text('setup.json'));

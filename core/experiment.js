@@ -6,7 +6,7 @@
 // 書き出しは 1 試行 1 つの zip（その時点までの要約も入れる）。zip はブラウザ（IndexedDB）にも残し、参加者を選ぶ画面から書き出し直せる。
 // 終えた試行は、実験者が選び直してやり直せる（前の評価を zip から戻して直すか、空から評価し直す）。やり直した回の zip には _redo1 などを付ける。
 // 当てた設定はブラウザに保存されるので、実験モードを抜けるとき（とページを閉じるとき）に元の値へ戻す。Ctrl+Shift+E で抜ける（試行の途中なら _partial の zip を書き出す）。
-// setup.json は通常の画面の「実験用の設定を書き出す」で作る（設定の欄と、フォルダの動画ごとに覚えてある評価区間）
+// setup.json は通常の画面の「実験用設定を書き出す」で作る（設定の欄と、フォルダの動画ごとに覚えてある評価区間）
 (() => {
   const _ = AH._;
   const { $, video, S, modes, addLog, endStroke, setArmed, pen } = _;
@@ -622,7 +622,7 @@
   }
   async function setupExport(list) {
     const { videos, setupFile } = readFolder(list);
-    cover('<h2>実験用の設定を書き出す</h2><p>フォルダの動画を調べています…</p>');
+    cover('<h2>実験用設定を保存する</h2><p>フォルダの動画を調べています…</p>');
     let old = null, oldErr = '';
     try { old = setupFile ? await readJSON(setupFile) : null; } catch (err) { oldErr = err.message; }
     const oldSet = old && isObj(old.settings) ? old.settings : {}, oldVids = old && isObj(old.videos) ? old.videos : {};
@@ -647,23 +647,28 @@
     const span = e => (e.edges ? `${e.edges[0]}〜${e.edges[e.edges.length - 1]} 秒（自分で区切った ${e.edges.length - 1} 区間）` : `${e.start}〜${e.end} 秒，${e.bin} 秒ごと`);
     const cell = r => (r.entry ? esc(span(r.entry)) + (r.from ? `（発声者 ${esc(r.from)} から）` : r.kept ? '（setup.json のまま）' : '') : r.refOnly ? '基準音声の動画（評価区間は要りません）' : '<b class="expMiss">未設定</b>');
     let notes = [];   // 発声者の結果を取り込んだときの案内
+    // 高度な設定は畳んでおく。既定と違う値があれば、変えた値が隠れないように開いて出す
+    let advOpen = E.SETTINGS.some(d => d.adv && String(cur[d.key]) !== String(d.def));
     const render = () => {
       const missing = rows.filter(r => !r.entry && !r.refOnly).length;
       for (const d of E.SETTINGS) { const el = $('es_' + d.key); if (el) cur[d.key] = d.type === 'check' ? el.checked : el.value; }   // 描き直しても欄の値を残す
-      cover(`<h2>実験用の設定を書き出す</h2>
-      <p class="muted">実験中の画面の設定と、動画ごとの評価区間を setup.json に書き出します。ダウンロードした setup.json を実験フォルダ（experiment.json と同じ場所）に入れてください。</p>
-      ${old ? '<p class="muted">フォルダの setup.json の設定を初めの値にしています（setup.json に無い項目は今の画面の値）。</p>' : ''}
+      if ($('esAdv')) advOpen = $('esAdv').open;
+      cover(`<h2>実験用設定を保存する</h2>
+      <p class="muted">参加者が実験中に使う画面の設定と、動画ごとの評価区間を決めます。保存したファイル（setup.json）と、Skills で作成した experiment.json を同じ実験用フォルダに入れてください。</p>
+      ${old ? '<p class="muted">フォルダにある実験用設定の値を初めの値にしています（そこに無い項目は今の画面の値）。</p>' : ''}
       ${oldErr ? `<p class="expMiss">フォルダの setup.json を読めないので、今の画面の値を初めの値にしています（${esc(oldErr)}）。</p>` : ''}
       <div class="refTitle">設定</div>
-      <div class="expForm">${E.SETTINGS.filter(d => !d.exp).map(ctl).join('')}</div>
+      <div class="expForm">${E.SETTINGS.filter(d => !d.exp && !d.adv).map(ctl).join('')}</div>
       <div class="refTitle">実験中に出すボタン</div>
-      <div class="expForm">${E.SETTINGS.filter(d => d.exp).map(ctl).join('')}</div>
+      <div class="expForm">${E.SETTINGS.filter(d => d.exp && !d.adv).map(ctl).join('')}</div>
+      <details id="esAdv" class="expAdv"${advOpen ? ' open' : ''}><summary class="refTitle">高度な設定</summary>
+      <div class="expForm">${E.SETTINGS.filter(d => d.adv).map(ctl).join('')}</div></details>
       <div class="refTitle">動画ごとの評価区間（通常の画面で動画を開いて合わせたもの）</div>
       ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${cell(r)}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
       ${missing ? `<p class="expMiss">未設定の動画が ${missing} 本あります。実験で使う動画なら、通常の画面で開いて評価区間を合わせてから書き出し直してください（このまま書き出すと、その動画の試行は始められません）。</p>` : ''}
-      <p class="muted">録画の試行の録画をこのフォルダに入れたときは、発声者の結果（試行の zip か _session.json。複数可）を取り込むと、発声者が評価した区間と区切りをその録画の評価区間にします。</p>
+      <p class="muted">発声者が自分の録画を評価したときの区間区切りを、このフォルダにある同じ名前の録画に反映します。発声者の結果（試行の zip か _session.json）を選んでください。録画は先にこのフォルダに入れておいてください。</p>
       ${notes.map(m => `<p class="expMiss">${esc(m)}</p>`).join('')}
-      <div class="expBtns"><button id="esSpk" type="button" title="発声者の結果（試行の zip か _session.json）を選ぶか、ここに落とす">発声者の結果を取り込む</button><button id="esSave" type="button">setup.json を書き出す</button><button id="esClose" type="button">閉じる</button></div>
+      <div class="expBtns"><button id="esSpk" type="button" title="発声者の結果（試行の zip か _session.json。複数可）を選ぶか、ここに落とす">発声者が設定した区間区切りを録画に反映する</button><button id="esSave" type="button">実験用設定を保存する</button><button id="esClose" type="button">閉じる</button></div>
       <input id="esSpkFile" type="file" accept=".zip,.json,application/zip,application/json" multiple hidden>`);
       $('esClose').addEventListener('click', () => cover(''));
       $('esSpk').addEventListener('click', () => $('esSpkFile').click());
@@ -677,7 +682,7 @@
         }
         const vids = Object.fromEntries(rows.filter(r => r.entry).map(r => [r.path, r.entry]));
         _.download('setup.json', JSON.stringify({ settings, videos: vids }, null, 2), 'application/json');
-        $('status').textContent = 'setup.json を書き出しました';
+        $('status').textContent = '実験用設定（setup.json）を保存しました';
       });
     };
     // 発声者の結果を取り込む：録画のファイル名（同じ名前が 2 つ以上なら大きさも）でフォルダの動画を引き、評価区間を置き換える。

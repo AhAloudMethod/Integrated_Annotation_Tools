@@ -50,7 +50,9 @@ fs.writeFileSync(JS, bom(session('take.mp4', [2, 4, 8], null)));
   // ---- setup.json の書き出しの画面：発声者の結果を取り込む
   await p.setInputFiles('#expSetupDir', DIR);
   await p.waitForSelector('#esSpk');
-  await p.selectOption('#es_rate', '0.75');   // 取り込んで描き直しても、欄の値を残す
+  check('既定のままなら高度な設定は畳んで出す', await p.$eval('#esAdv', d => !d.open));
+  await p.click('#esAdv summary');
+  await p.selectOption('#es_rate', '0.75');   // 取り込んで描き直しても、欄の値と高度な設定を開いたことを残す
   await p.setInputFiles('#esSpkFile', [ZIP1, ZIP2, ZIP3]);
   await p.waitForFunction(() => [...document.querySelectorAll('.expVids tr')].some(t => t.textContent.includes('発声者')));
   const rows = await p.$$eval('.expVids tr', trs => trs.map(t => t.textContent));
@@ -59,7 +61,7 @@ fs.writeFileSync(JS, bom(session('take.mp4', [2, 4, 8], null)));
   check('圧縮し直した zip（deflate）も読む', rows.some(r => r.startsWith('take2.mp4') && r.includes('0.5〜9 秒（自分で区切った 2 区間）')), JSON.stringify(rows));
   check('基準音声の録画は評価区間が要らない動画として出す', rows.some(r => r.startsWith('ref.mp4') && r.includes('基準音声の動画')), JSON.stringify(rows));
   check('フォルダに無い録画は案内を出す', notes.some(m => m.includes('lost.mp4') && m.includes('ありません')), JSON.stringify(notes));
-  check('描き直しても欄の値を残す', await p.$eval('#es_rate', el => el.value) === '0.75');
+  check('描き直しても欄の値と、高度な設定を開いたことを残す', await p.$eval('#es_rate', el => el.value) === '0.75' && await p.$eval('#esAdv', d => d.open));
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(fs.readFileSync(await downloads.find(d => d.suggestedFilename() === 'setup.json').path(), 'utf8').replace(/^﻿/, ''));
   const t = su.videos['take.mp4'];
