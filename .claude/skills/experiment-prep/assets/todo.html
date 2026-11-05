@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>実験前準備 Todo</title>
+<style>
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --ink:#17212B; --muted:#5D6A77; --faint:#8C98A4;
+  --line:#D4DBE2; --accent:#2A5A88; --accent-soft:#DCE6F0; --done:#5E8462; --danger:#A23B32; --warn-bg:#F6EBD9; --warn:#7A5418;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161C; --surface:#19212A; --ink:#E2E7EC; --muted:#99A6B3; --faint:#6D7986;
+    --line:#2B3641; --accent:#86AEDA; --accent-soft:#22313F; --done:#86B08A; --danger:#E0857B; --warn-bg:#3A2F1E; --warn:#E3C08A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161C; --surface:#19212A; --ink:#E2E7EC; --muted:#99A6B3; --faint:#6D7986;
+  --line:#2B3641; --accent:#86AEDA; --accent-soft:#22313F; --done:#86B08A; --danger:#E0857B; --warn-bg:#3A2F1E; --warn:#E3C08A;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;font-size:15px;line-height:1.7;}
+main{max-width:760px;margin:0 auto;padding:32px 16px 80px;}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;}
+h1{font-size:26px;font-weight:800;margin:0;line-height:1.3;}
+.count{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;}
+.count b{font-size:26px;font-weight:800;color:var(--ink);}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin:12px 0 8px;}
+.bar span{display:block;height:100%;background:var(--done);transition:width .3s;}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:28px;font-size:13px;color:var(--muted);}
+.toolbar label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+.notice{margin:0 0 20px;padding:8px 12px;border-radius:6px;background:var(--warn-bg);color:var(--warn);font-size:13px;}
+section.tier{margin-bottom:36px;border-left:4px solid var(--accent);padding-left:14px;}
+.tierhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+.tierhead h2{font-size:19px;font-weight:800;margin:0;}
+.tierhead small{color:var(--muted);font-variant-numeric:tabular-nums;}
+.tiersub{margin:0 0 10px;color:var(--muted);font-size:13px;}
+ul.tasks{list-style:none;margin:0;padding:0;border-top:1px solid var(--line);}
+ul.children{list-style:none;margin:6px 0 0 38px;padding:0;}
+ul.children li.task{border-bottom:none;padding:4px 0;}
+li.task{border-bottom:1px solid var(--line);padding:10px 0;}
+.row{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;}
+.check{appearance:none;-webkit-appearance:none;margin:3px 0 0;width:22px;height:22px;border:2px solid var(--faint);border-radius:6px;
+  background:var(--surface);cursor:pointer;display:grid;place-content:center;}
+.check::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px) scale(0);transition:transform .15s;}
+.check:checked{background:var(--done);border-color:var(--done);}
+.check:checked::after{transform:rotate(45deg) translate(-1px,-1px) scale(1);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.title{font-weight:500;margin:0;}
+li.done > .row .title{color:var(--faint);text-decoration:line-through;}
+.detail{margin:2px 0 0;color:var(--muted);font-size:13px;}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.chip{font-size:11.5px;padding:1px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent);}
+.memo{margin:6px 0 0;padding:4px 10px;border-left:3px solid var(--line);font-size:13px;white-space:pre-wrap;}
+.more{border:none;background:none;color:var(--faint);cursor:pointer;font:inherit;font-size:13px;padding:2px 6px;border-radius:4px;}
+.more:hover{color:var(--ink);background:var(--accent-soft);}
+.editor{margin:10px 0 4px 38px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;display:grid;gap:10px;}
+.editor label{display:grid;gap:3px;font-size:12px;color:var(--muted);}
+input[type=text],textarea,select{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%;}
+textarea{min-height:60px;resize:vertical;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:5px 12px;cursor:pointer;}
+.btn:hover{border-color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);}
+.btn.danger{color:var(--danger);margin-left:auto;}
+.btn:disabled{opacity:.4;cursor:default;}
+.add{display:grid;grid-template-columns:1fr 170px auto;gap:8px;margin-top:10px;}
+.empty{color:var(--muted);font-size:13px;padding:10px 0;}
+.io{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);}
+.io h2{font-size:16px;margin:0 0 4px;}
+.io p{margin:0 0 10px;color:var(--muted);font-size:13px;}
+.io textarea{min-height:160px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;}
+.io .status{font-size:13px;color:var(--muted);}
+@media (max-width:560px){
+  .add,.two{grid-template-columns:1fr;}
+  .editor{margin-left:0;}
+  ul.children{margin-left:20px;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title"></h1>
+    <div class="count" id="count"></div>
+  </header>
+  <div class="bar"><span id="bar" style="width:0"></span></div>
+  <div class="toolbar">
+    <span id="where"></span>
+    <label><input type="checkbox" id="hideDone"> 完了を隠す</label>
+  </div>
+  <p class="notice" id="notice" hidden></p>
+  <div id="app"></div>
+  <section class="io">
+    <h2>書き出す・読み込む</h2>
+    <p>リストを Markdown にして手元に残せます．書き出した文章を Claude に貼れば，準備の抜けを確かめてもらえます．別の場所で書き出した Markdown を貼って「読み込む」を押すと，今のリストと置き換わります．</p>
+    <textarea id="io" aria-label="Markdown" placeholder="ここに書き出されます．読み込むときは Markdown をここに貼ります．"></textarea>
+    <div class="actions" style="margin-top:8px">
+      <button class="btn" id="exportBtn">書き出す</button>
+      <button class="btn" id="importBtn">読み込む</button>
+      <span class="status" id="ioStatus" role="status"></span>
+    </div>
+  </section>
+</main>
+<script>
+// ===== Claude が埋める部分（ここから） =====
+const LIST_TITLE = "実験前準備 Todo";
+const INITIAL = [
+  {tier:"説明", title:"教示の言い回しをメンバーに確かめる", due:"実験の2週間前", detail:"言い回しで参加者の解釈が変わるため．", children:[]},
+  {tier:"タスク", title:"プレプレ実験を1回通しで行う", due:"募集開始前", detail:"手順・説明・時間は，やってみないとわからないことが多いため．", children:[]},
+];
+// ===== Claude が埋める部分（ここまで） =====
+
+const TIERS = [
+  {id:"説明", sub:"参加者に何をどう伝えるか"},
+  {id:"タスク", sub:"参加者がやることと，そのための書類"},
+  {id:"募集", sub:"謝礼を決め，参加者を集め，日程を決める"},
+  {id:"環境", sub:"場所・機材・ソフトを整える"},
+];
+// 同じブラウザで別の実験のリストを開いても混ざらないよう，リスト名を鍵に含める
+const STORE_KEY = "experiment-prep-todo:" + LIST_TITLE;
+const DUE_SEP = " ｜いつまで：";
+
+let state = {title: LIST_TITLE, tasks: []};
+let openId = null, armed = null;
+const $ = id => document.getElementById(id);
+const app = $("app");
+$("hideDone").addEventListener("change", render);
+
+function el(tag, attrs = {}, ...kids){
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)){
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, "");
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const k of kids.flat()){ if (k != null) n.append(k.nodeType ? k : document.createTextNode(String(k))); }
+  return n;
+}
+const newId = () => "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const blank = () => ({id:newId(), tier:"", parent:null, title:"", due:"", detail:"", memo:"", done:false, order:0});
+
+function fromInitial(list){
+  const tasks = [];
+  list.forEach((t, i) => {
+    const top = Object.assign(blank(), {tier:t.tier, title:t.title || "", due:t.due || "", detail:t.detail || "", memo:t.memo || "", done:!!t.done, order:i});
+    tasks.push(top);
+    (t.children || []).forEach((c, j) => tasks.push(Object.assign(blank(), {tier:t.tier, parent:top.id, title:c.title || "", due:c.due || "", detail:c.detail || "", memo:c.memo || "", done:!!c.done, order:j})));
+  });
+  return tasks;
+}
+
+// ----- 保存：claude.ai の保存の仕組み → ブラウザ → 保存なし の順に試す -----
+const store = {
+  kind: "none",
+  async init(){
+    try { if (window.storage && typeof window.storage.get === "function" && typeof window.storage.set === "function"){ this.kind = "claude"; return; } } catch(e){}
+    try { localStorage.setItem(STORE_KEY + ":probe", "1"); localStorage.removeItem(STORE_KEY + ":probe"); this.kind = "local"; } catch(e){}
+  },
+  async load(){
+    try {
+      if (this.kind === "claude"){
+        const r = await window.storage.get(STORE_KEY);
+        const v = r == null ? null : (typeof r === "string" ? r : r.value);
+        return v ? JSON.parse(v) : null;
+      }
+      if (this.kind === "local"){ const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; }
+    } catch(e){}
+    return null;
+  },
+  async save(data){
+    const s = JSON.stringify(data);
+    try {
+      if (this.kind === "claude"){ await window.storage.set(STORE_KEY, s); return true; }
+      if (this.kind === "local"){ localStorage.setItem(STORE_KEY, s); return true; }
+    } catch(e){
+      showNotice("保存に失敗しました．下の「書き出す」で Markdown を手元に残してください．");
+    }
+    return false;
+  },
+};
+function showNotice(msg){ const n = $("notice"); n.textContent = msg; n.hidden = !msg; }
+function persist(){ store.save(state); }
+
+// ----- 並び -----
+const tiersInUse = () => {
+  const ids = TIERS.map(t => t.id);
+  for (const t of state.tasks) if (!t.parent && t.tier && !ids.includes(t.tier)) ids.push(t.tier);
+  return ids;
+};
+const tierSub = id => (TIERS.find(t => t.id === id) || {}).sub || "";
+const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0);
+const tops = tier => state.tasks.filter(t => !t.parent && t.tier === tier).sort(byOrder);
+const kids = id => state.tasks.filter(t => t.parent === id).sort(byOrder);
+const siblings = t => t.parent ? kids(t.parent) : tops(t.tier);
+const nextOrder = list => list.length ? Math.max(...list.map(x => x.order ?? 0)) + 1 : 0;
+
+// ----- 描画 -----
+function render(){
+  $("title").textContent = state.title;
+  document.title = state.title;
+  const total = state.tasks.length, done = state.tasks.filter(t => t.done).length;
+  $("count").replaceChildren(el("b", {}, done), ` / ${total} 完了`);
+  $("bar").style.width = total ? (done / total * 100) + "%" : "0";
+  app.replaceChildren();
+  for (const tier of tiersInUse()){
+    const list = tops(tier);
+    const all = state.tasks.filter(t => t.tier === tier);
+    const shown = $("hideDone").checked ? list.filter(t => !t.done) : list;
+    const ul = el("ul", {class:"tasks"});
+    if (!shown.length) ul.append(el("li", {class:"empty"}, list.length ? "すべて完了" : "タスクなし"));
+    shown.forEach(t => ul.append(taskItem(t)));
+    app.append(el("section", {class:"tier", "data-tier":tier},
+      el("div", {class:"tierhead"}, el("h2", {}, tier), el("small", {}, `${all.filter(t => t.done).length} / ${all.length}`)),
+      tierSub(tier) ? el("p", {class:"tiersub"}, tierSub(tier)) : null,
+      ul,
+      addForm(tier)));
+  }
+}
+
+function taskItem(t){
+  const li = el("li", {class:"task" + (t.done ? " done" : ""), "data-id":t.id});
+  const box = el("input", {type:"checkbox", class:"check", checked:t.done, "aria-label":`${t.title} を完了にする`,
+    onchange: e => { t.done = e.target.checked; persist(); render(); }});
+  const body = el("div", {},
+    el("p", {class:"title"}, t.title || "（無題）"),
+    t.detail ? el("p", {class:"detail"}, t.detail) : null,
+    t.due ? el("div", {class:"meta"}, el("span", {class:"chip"}, "いつまで：" + t.due)) : null,
+    t.memo ? el("p", {class:"memo"}, t.memo) : null);
+  const more = el("button", {class:"more", "aria-expanded":openId === t.id ? "true" : "false",
+    onclick: () => { openId = openId === t.id ? null : t.id; armed = null; render(); }}, openId === t.id ? "閉じる" : "編集");
+  li.append(el("div", {class:"row"}, box, body, more));
+  if (openId === t.id) li.append(editor(t));
+  if (!t.parent){
+    const ch = kids(t.id).filter(c => !($("hideDone").checked && c.done));
+    if (ch.length){ const cu = el("ul", {class:"children"}); ch.forEach(c => cu.append(taskItem(c))); li.append(cu); }
+  }
+  return li;
+}
+
+function editor(t){
+  const f = {
+    title: el("input", {type:"text", value:t.title}),
+    due: el("input", {type:"text", value:t.due, placeholder:"例：募集開始前，実験の前日"}),
+    detail: el("textarea", {}, t.detail),
+    memo: el("textarea", {placeholder:"返信待ち など，今の状況"}, t.memo),
+    tier: el("select", {}, ...tiersInUse().map(x => el("option", {value:x, selected:t.tier === x}, x))),
+  };
+  const list = siblings(t), idx = list.findIndex(x => x.id === t.id);
+  const save = el("button", {class:"btn primary", onclick: () => {
+    Object.assign(t, {title:f.title.value.trim() || "（無題）", due:f.due.value.trim(), detail:f.detail.value.trim(), memo:f.memo.value.trim()});
+    if (!t.parent && f.tier.value !== t.tier){
+      t.tier = f.tier.value; t.order = nextOrder(tops(t.tier).filter(x => x.id !== t.id));
+      kids(t.id).forEach(c => c.tier = t.tier);
+    }
+    openId = null; persist(); render();
+  }}, "保存");
+  const swap = j => { const o = list[j]; [t.order, o.order] = [o.order, t.order]; persist(); render(); };
+  const up = el("button", {class:"btn", disabled:idx <= 0, onclick: () => swap(idx - 1)}, "上へ");
+  const down = el("button", {class:"btn", disabled:idx >= list.length - 1, onclick: () => swap(idx + 1)}, "下へ");
+  const del = el("button", {class:"btn danger", onclick: () => {
+    if (armed !== t.id){ armed = t.id; del.textContent = "もう一度押すと削除"; return; }
+    state.tasks = state.tasks.filter(x => x.id !== t.id && x.parent !== t.id);
+    openId = null; armed = null; persist(); render();
+  }}, kids(t.id).length ? "削除（子タスクも）" : "削除");
+  const box = el("div", {class:"editor"},
+    el("label", {}, "タスク", f.title),
+    el("div", {class:"two"}, el("label", {}, "いつまで", f.due), t.parent ? el("span") : el("label", {}, "段", f.tier)),
+    el("label", {}, "詳細（なぜ要るか）", f.detail),
+    el("label", {}, "メモ", f.memo),
+    el("div", {class:"actions"}, save, up, down, del));
+  if (!t.parent){
+    const child = el("input", {type:"text", placeholder:"子タスクを追加", "aria-label":"子タスクを追加"});
+    const go = () => {
+      const v = child.value.trim(); if (!v) return;
+      state.tasks.push(Object.assign(blank(), {tier:t.tier, parent:t.id, title:v, order:nextOrder(kids(t.id))}));
+      persist(); render();
+    };
+    child.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) go(); });
+    box.append(el("div", {class:"add"}, child, el("span"), el("button", {class:"btn", onclick:go}, "子タスクを追加")));
+  }
+  return box;
+}
+
+function addForm(tier){
+  const title = el("input", {type:"text", placeholder:"タスクを追加", "aria-label":`${tier}にタスクを追加`});
+  const due = el("input", {type:"text", placeholder:"いつまで（任意）", "aria-label":"いつまで"});
+  const go = () => {
+    const v = title.value.trim(); if (!v){ title.focus(); return; }
+    state.tasks.push(Object.assign(blank(), {tier, title:v, due:due.value.trim(), order:nextOrder(tops(tier))}));
+    persist(); render();
+    const again = app.querySelector(`section[data-tier="${CSS.escape(tier)}"] .add input`); if (again) again.focus();
+  };
+  for (const i of [title, due]) i.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) go(); });
+  return el("div", {class:"add"}, title, due, el("button", {class:"btn", onclick:go}, "追加"));
+}
+
+// ----- Markdown -----
+function toMarkdown(){
+  const oneLine = s => s.replace(/\s*\n\s*/g, " / ");
+  const item = (t, pad) => {
+    const lines = [`${pad}- [${t.done ? "x" : " "}] ${t.title}${t.due ? DUE_SEP + t.due : ""}`];
+    if (t.detail) lines.push(`${pad}  - 詳細：${oneLine(t.detail)}`);
+    if (t.memo) lines.push(`${pad}  - メモ：${oneLine(t.memo)}`);
+    return lines;
+  };
+  const out = [`# ${state.title}`, ""];
+  for (const tier of tiersInUse()){
+    out.push(`## ${tier}`);
+    for (const t of tops(tier)){ out.push(...item(t, "")); for (const c of kids(t.id)) out.push(...item(c, "  ")); }
+    out.push("");
+  }
+  return out.join("\n");
+}
+
+function fromMarkdown(text){
+  let title = null, tier = TIERS[0].id, lastTop = null, last = null;
+  const tasks = [];
+  for (const raw of text.replace(/\r/g, "").split("\n")){
+    const line = raw.replace(/\t/g, "  ");
+    let m;
+    if ((m = line.match(/^#\s+(.+)$/))){ title = m[1].trim(); continue; }
+    if ((m = line.match(/^#{2,}\s+(.+)$/))){ tier = m[1].trim(); lastTop = null; continue; }
+    if ((m = line.match(/^(\s*)[-*]\s+(詳細|メモ)[：:]\s*(.*)$/)) && last){
+      last[m[2] === "詳細" ? "detail" : "memo"] = m[3].trim(); continue;
+    }
+    if ((m = line.match(/^(\s*)[-*]\s+(?:\[([ xX])\]\s+)?(.+)$/))){
+      const indent = m[1].length, body = m[3].trim();
+      const k = body.indexOf(DUE_SEP.trim());
+      const t = Object.assign(blank(), {tier, done:(m[2] || " ").toLowerCase() === "x",
+        title: (k >= 0 ? body.slice(0, k) : body).trim(), due: k >= 0 ? body.slice(k + DUE_SEP.trim().length).trim() : ""});
+      if (indent > 0 && lastTop){ t.parent = lastTop.id; t.order = tasks.filter(x => x.parent === lastTop.id).length; }
+      else { t.order = tasks.filter(x => !x.parent && x.tier === tier).length; lastTop = t; }
+      tasks.push(t); last = t;
+    }
+  }
+  return {title: title || state.title, tasks};
+}
+
+$("exportBtn").addEventListener("click", async () => {
+  const md = toMarkdown(); const io = $("io"); io.value = md;
+  let msg = "下の欄に書き出しました．";
+  try { await navigator.clipboard.writeText(md); msg = "書き出してコピーしました．"; }
+  catch(e){ io.focus(); io.select(); msg += "コピーできない環境なので，選択された文章をコピーしてください．"; }
+  $("ioStatus").textContent = msg;
+});
+let importArmed = false;
+$("importBtn").addEventListener("click", () => {
+  const text = $("io").value;
+  const parsed = fromMarkdown(text);
+  if (!parsed.tasks.length){ $("ioStatus").textContent = "タスクが見つかりませんでした．「- [ ] タスク名」の形の行が要ります．"; return; }
+  if (!importArmed){ importArmed = true; $("importBtn").textContent = "もう一度押すと置き換え"; $("ioStatus").textContent = `${parsed.tasks.length} 件のタスクで今のリストを置き換えます．`; return; }
+  importArmed = false; $("importBtn").textContent = "読み込む";
+  state = parsed; openId = null; persist(); render();
+  $("ioStatus").textContent = `${parsed.tasks.length} 件を読み込みました．`;
+});
+$("io").addEventListener("input", () => { importArmed = false; $("importBtn").textContent = "読み込む"; });
+
+window.TODO = {get state(){ return state; }, toMarkdown, fromMarkdown, store};
+
+(async () => {
+  await store.init();
+  const saved = await store.load();
+  state = saved && Array.isArray(saved.tasks) ? saved : {title:LIST_TITLE, tasks:fromInitial(INITIAL)};
+  $("where").textContent = store.kind === "none" ? "保存：なし" : "保存：このブラウザ";
+  if (store.kind === "none") showNotice("この画面では進み具合を保存できません．閉じる前に，下の「書き出す」で Markdown を手元に残してください．");
+  if (!saved) persist();
+  render();
+})();
+</script>
+</body>
+</html>
