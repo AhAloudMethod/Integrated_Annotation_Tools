@@ -74,11 +74,14 @@ const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   check('書き出して読み込むと同じリストになる', shape(after) === shape(before));
 
   // 手書きのリストを読み込む（チェックボックス無し・知らない見出し）
-  await page.locator('#io').fill('# 実験4\n## 説明\n- 同意書を印刷する\n## その他\n- [x] 鍵を借りる ｜いつまで：前日\n  - メモ：事務室\n');
+  await page.locator('#io').fill('# 実験4\n## 説明\n- 同意書を印刷する\n  - 詳細：手書き．テンプレート：[実験同意書テンプレート](https://scrapbox.io/ah-aloud/x) と https://example.com/y と javascript:alert(1)\n## その他\n- [x] 鍵を借りる ｜いつまで：前日\n  - メモ：事務室\n');
   await page.locator('#importBtn').click(); await page.locator('#importBtn').click();
   s = await S(page);
   check('手書きのリストを読み込む', s.title === '実験4' && s.tasks.length === 2 && s.tasks[1].tier === 'その他' && s.tasks[1].memo === '事務室' && s.tasks[1].done);
   check('知らない見出しも段として出す', (await page.locator('section.tier h2').allTextContents()).includes('その他'));
+  const links = await page.locator('.detail a').evaluateAll(as => as.map(a => [a.textContent, a.getAttribute('href'), a.target]));
+  check('詳細のリンクを押せるようにする', JSON.stringify(links) === JSON.stringify([['実験同意書テンプレート', 'https://scrapbox.io/ah-aloud/x', '_blank'], ['https://example.com/y', 'https://example.com/y', '_blank']]), JSON.stringify(links));
+  check('リンクにしても書き出しは元のまま', (await page.evaluate(() => TODO.toMarkdown())).includes('[実験同意書テンプレート](https://scrapbox.io/ah-aloud/x) と https://example.com/y'));
 
   // 削除は 2 度押し
   const id = s.tasks[0].id;

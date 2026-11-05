@@ -54,6 +54,7 @@ li.task{border-bottom:1px solid var(--line);padding:10px 0;}
 .title{font-weight:500;margin:0;}
 li.done > .row .title{color:var(--faint);text-decoration:line-through;}
 .detail{margin:2px 0 0;color:var(--muted);font-size:13px;}
+.detail a,.memo a{color:var(--accent);overflow-wrap:anywhere;}
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
 .chip{font-size:11.5px;padding:1px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent);}
 .memo{margin:6px 0 0;padding:4px 10px;border-left:3px solid var(--line);font-size:13px;white-space:pre-wrap;}
@@ -226,15 +227,29 @@ function render(){
   }
 }
 
+// 詳細とメモの [名前](URL) と裸の URL を押せるリンクにする（http と https だけ）
+function linkify(text){
+  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
+  const parts = []; let last = 0, m;
+  while ((m = re.exec(text))){
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const href = m[2] || m[3];
+    parts.push(el("a", {href, target:"_blank", rel:"noopener noreferrer"}, m[1] || href));
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function taskItem(t){
   const li = el("li", {class:"task" + (t.done ? " done" : ""), "data-id":t.id});
   const box = el("input", {type:"checkbox", class:"check", checked:t.done, "aria-label":`${t.title} を完了にする`,
     onchange: e => { t.done = e.target.checked; persist(); render(); }});
   const body = el("div", {},
     el("p", {class:"title"}, t.title || "（無題）"),
-    t.detail ? el("p", {class:"detail"}, t.detail) : null,
+    t.detail ? el("p", {class:"detail"}, linkify(t.detail)) : null,
     t.due ? el("div", {class:"meta"}, el("span", {class:"chip"}, "いつまで：" + t.due)) : null,
-    t.memo ? el("p", {class:"memo"}, t.memo) : null);
+    t.memo ? el("p", {class:"memo"}, linkify(t.memo)) : null);
   const more = el("button", {class:"more", "aria-expanded":openId === t.id ? "true" : "false",
     onclick: () => { openId = openId === t.id ? null : t.id; armed = null; render(); }}, openId === t.id ? "閉じる" : "編集");
   li.append(el("div", {class:"row"}, box, body, more));
