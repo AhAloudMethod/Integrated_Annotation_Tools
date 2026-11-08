@@ -133,15 +133,35 @@
   <span class="rgWrap">
     <button id="helpBtn" title="操作の説明">？</button>
     <div id="helpPanel" class="rgPanel right help" hidden>
-      <div id="modeHelp"></div>
-      <p><kbd>Space</kbd> 再生／停止　<kbd>←</kbd><kbd>→</kbd> 前・次の区間へ　<kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> 0.1秒移動　<kbd>Ctrl</kbd>+<kbd>←</kbd><kbd>→</kbd> または <kbd>,</kbd><kbd>.</kbd> 1フレーム移動　<kbd>C</kbd> 今の時間で区切る（区切れるとき）　<kbd>H</kbd> 発声の区間の表示　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 取り消し　<kbd>Ctrl</kbd>+<kbd>Y</kbd> やり直し</p>
-      <p>視聴（視聴ボタンまたは <kbd>V</kbd>）：止まらずに動画を再生します。値の変更はできません。</p>
-      <p>聴いてから入力：1区間を再生すると区間の終わりで止まります。<kbd>Enter</kbd>またはボタン0で同じ区間を始めから再生し直し、その間の入力を記録します。区間の終わりで記録を終え、そのまま次の区間に移ります。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> は記録せずに次へ。</p>
-      <p>別ウィンドウ：動画だけを別のウィンドウに出します。ダブルクリックで全画面にできます。別ウィンドウを選んでいてもキー操作できます。</p>
-      <p>音声入力：音声で値を入力します。Chromeの方はネット接続が必要です。「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも認識します。「再生」「停止」でも操作できます。値は話し始めた時刻に入力されます。「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入ります。</p>
-      <p>コントローラー：ジョイスティックやスライダーをつなぐことができます。AffectRankは、スティックを大きく倒した方向が1回入ります。RankTrace ではスティックの上下で、倒した量に応じた速さで値が動きます。スライダーはスロットル位置がそのまま値になります。</p>
-      <p>グラフ：評価グラフを表示します。設定の「グラフをなぞって値を編集する」がオンなら、左クリックで値を直接描き換えられます。連続の方式では、右クリックで区間の区切りを置く・動かす（右ドラッグ）・消す（区切りの上で右クリック）ことができます。</p>
-      <p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開できます。</p>
+      <div class="guideHead"><b>使い方</b><span class="muted">番号の吹き出しが各ボタンの説明です</span><button id="guideClose" type="button" title="閉じる（Esc）">×</button></div>
+      <section class="guideSec gMode">
+        <div class="refTitle">この方式の入力（<span id="modeName"></span>）</div>
+        <div id="modeHelp"></div>
+      </section>
+      <section class="guideSec gKeys">
+        <div class="refTitle">キー操作</div>
+        <dl class="keyList">
+          <dt><kbd>Space</kbd></dt><dd>再生／停止</dd>
+          <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>前・次の区間へ</dd>
+          <dt><kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd></dt><dd>0.1 秒移動</dd>
+          <dt><kbd>,</kbd><kbd>.</kbd></dt><dd>1 フレーム移動（<kbd>Ctrl</kbd>+<kbd>←</kbd><kbd>→</kbd> でも）</dd>
+          <dt><kbd>V</kbd></dt><dd>視聴（値を変えずに通して見る）</dd>
+          <dt><kbd>R</kbd></dt><dd>記録のオン／オフ</dd>
+          <dt><kbd>C</kbd></dt><dd>今の時間で区切る（区切れる方式のとき）</dd>
+          <dt><kbd>H</kbd></dt><dd>発声の区間の表示</dd>
+          <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd></dt><dd>取り消し／やり直し</dd>
+          <dt><kbd>Esc</kbd></dt><dd>開いているパネルを閉じる</dd>
+        </dl>
+      </section>
+      <section class="guideSec gMore">
+        <div class="refTitle">もっと詳しく</div>
+        <details><summary>1区間ずつ聴いてから入力する</summary><p>設定の「1区間ずつ聴いてから入力する」をオンにすると、1区間を再生して区間の終わりで止まります。<kbd>Enter</kbd> またはボタン0で同じ区間を始めから再生し直し、その間の入力を記録します。区間の終わりで記録を終え、次の区間に移ります。<kbd>R</kbd> でもう一度聴く、<kbd>Space</kbd> で記録せずに次へ進みます。</p></details>
+        <details><summary>音声入力の言い方</summary><p>「快度7」「覚醒度3」「快度7 覚醒度3」、または数字2つ「7 3」（快度・覚醒度の順）。1軸ずつ評価する方式では数字1つでも認識します。「再生」「停止」でも操作できます。値は話し始めた時刻に入ります。「12秒 快度7」「1分5秒 7 3」のように時刻を言うと、その時刻に入ります。Chrome の認識はネット接続が必要です。</p></details>
+        <details><summary>コントローラー</summary><p>ジョイスティックやスライダーをつなげます。AffectRank は、スティックを大きく倒した方向が1回入ります。RankTrace はスティックの上下で、倒した量に応じた速さで値が動きます。スライダーはスロットル位置がそのまま値になります。</p></details>
+        <details><summary>評価グラフで値を直す</summary><p>設定の「グラフをなぞって値を編集する」がオンなら、左ドラッグで値を直接描き換えられます。連続の方式では、右クリックで区間の区切りを置く・右ドラッグで動かす・区切りの上で右クリックして消すことができます。</p></details>
+        <details><summary>別ウィンドウ</summary><p>動画だけを別のウィンドウに出します。ダブルクリックで全画面になります。別ウィンドウを選んでいてもキー操作は効きます。</p></details>
+        <details><summary>方式の切り替え</summary><p>入力方式は評価の途中でも切り替えられます。切り替える前の評価は自動保存され、同じ方式に戻すと続きから再開します。</p></details>
+      </section>
     </div>
   </span>
   <button id="importBtn" title="書き出した結果（_session.json，実験モードの zip，評価値の CSV）を読み込んで続きを編集する">読み込む</button>
@@ -197,6 +217,7 @@
 <script src="core/storage.js"></script>
 <script src="core/import.js"></script>
 <script src="core/layout.js"></script>
+<script src="core/guide.js"></script>
 <script src="core/vwin.js"></script>
 <script src="core/colors.js"></script>
 <script src="core/f0.js"></script>

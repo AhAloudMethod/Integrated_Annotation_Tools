@@ -48,6 +48,25 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
       check('設定パネルは開くたびに基本のタブ（再生速度は高度な設定、グリッド線は基本）', t.basic && !t.adv && !t.rate && t.grid, JSON.stringify(t));
       await p.click('#setBtn');
     }
+    // 使い方（？）：見えているボタンごとに吹き出しが出て、画面の中に収まり、互いに重ならない。閉じると消える
+    await p.click('#helpBtn'); await p.waitForTimeout(150);
+    const g = await p.evaluate(([W, H]) => {
+      const rs = [...document.querySelectorAll('.guideTip')].map(e => e.getBoundingClientRect());
+      const out = rs.filter(r => r.left < 0 || r.right > W + 0.5 || r.top < 0 || r.bottom > H + 0.5).length;
+      let overlap = 0;
+      for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) { const a = rs[i], b = rs[j]; if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) overlap++; }
+      return { n: rs.length, out, overlap, play: !!document.querySelector('.guideTip[data-for="playBtn"]'), arm: !!document.querySelector('.guideTip[data-for="armBtn"]') };
+    }, [W, H]);
+    check(`${W}x${H} で使い方の吹き出しがボタンごとに出て、画面に収まり重ならない`, g.n >= 10 && g.play && !g.arm && !g.out && !g.overlap, JSON.stringify(g));
+    await p.click('#guideClose'); await p.waitForTimeout(100);
+    check(`${W}x${H} で使い方を閉じると吹き出しが消える`, await p.evaluate(() => !document.querySelector('.guideTip') && document.getElementById('guideLayer').hidden));
+    if (W === 1280) {   // ヘッダーのボタンに乗せると説明がすぐ出て、離すと title が戻る
+      await p.hover('#reviewBtn'); await p.waitForTimeout(400);
+      const t = await p.evaluate(() => ({ shown: !document.querySelector('.quickTip').hidden, text: document.querySelector('.quickTip').textContent }));
+      await p.mouse.move(5, H - 5); await p.waitForTimeout(50);
+      const back = await p.evaluate(() => document.getElementById('reviewBtn').title);
+      check('ヘッダーのボタンの説明がすぐ出て、離すと title が戻る', t.shown && t.text.includes('視聴') && back.includes('視聴'), JSON.stringify({ ...t, back }));
+    }
     await c.close();
   }
   // 動画の別窓

@@ -152,7 +152,6 @@ canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 .rgPanel .segList{display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow-y:auto}
 .rgPanel .segList button{font-variant-numeric:tabular-nums;padding:2px 6px}
 #vidSize{width:110px !important;padding:0 !important;border:0 !important;vertical-align:middle}
-#helpPanel{width:min(620px,92vw);color:var(--muted);line-height:1.6}
 /* 設定：「基本」は1列、「高度な設定」は3列（表示・再生／声の入力／コントローラー・色）。画面の高さに収め、はみ出す分はパネルの中でスクロール */
 .rgPanel.setPanel{width:min(360px,96vw)}
 .rgPanel.setPanel.adv{width:min(980px,96vw)}
@@ -164,7 +163,39 @@ canvas.trace{width:100%;height:280px;display:block;cursor:ns-resize}
 .setCol>.sub:first-of-type{border-top:0;padding-top:0}
 @media (max-width:900px){.setAdv{grid-template-columns:1fr}}
 #setPanel,#helpPanel,#rgPanel{max-height:calc(100vh - 60px);overflow:auto}
+/* 使い方（「？」）：右下のカード＋各ボタンの近くの番号つき吹き出し（core/guide.js）。画面の下側は少し暗くしてヘッダーを目立たせる */
+/* カードは左下に横長の2列（左：方式の入力・もっと詳しく、右：キー操作）。上の吹き出しの場所を空けておく */
+#helpPanel{position:fixed;top:auto;left:16px;right:auto;bottom:16px;width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 250px);z-index:21;
+  grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);grid-template-areas:"head head" "mode keys" "more keys";align-content:start;
+  color:var(--ink);line-height:1.6;gap:8px 20px;border-color:var(--val);box-shadow:0 8px 28px rgba(0,0,0,.22)}
+#helpPanel .guideHead{grid-area:head} #helpPanel .guideSec.gMode{grid-area:mode} #helpPanel .guideSec.gKeys{grid-area:keys} #helpPanel .guideSec.gMore{grid-area:more}
+@media (max-width:900px){#helpPanel{grid-template-columns:1fr;grid-template-areas:"head" "mode" "keys" "more"}}
 #helpPanel p,#helpPanel #modeHelp p{margin:0 0 6px;font-size:13px}
+.guideHead{display:flex;align-items:baseline;gap:8px}
+.guideHead b{font-size:14px}
+.guideHead .muted{font-size:12px;flex:1}
+.guideHead button{padding:0 8px;line-height:1.4}
+.guideSec{display:grid;gap:4px;align-content:start}
+.guideSec.gMore{border-top:1px dashed var(--line);padding-top:8px}
+.guideSec.gKeys{border-left:1px dashed var(--line);padding-left:16px}
+@media (max-width:900px){.guideSec.gKeys{border-left:0;padding-left:0}}
+.keyList{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0;font-size:12px;align-items:center}
+.keyList dt{white-space:nowrap;text-align:right}
+.keyList dd{margin:0;color:var(--muted)}
+.guideSec details{font-size:13px}
+.guideSec summary{cursor:pointer;color:var(--val)}
+.guideSec details p{color:var(--muted);margin:4px 0 6px 1em !important}
+.guideDim{position:fixed;inset:0;z-index:14;background:rgba(10,15,20,.38);pointer-events:none}
+.guideLayer{position:fixed;inset:0;z-index:20;pointer-events:none}
+.guideTip{position:fixed;max-width:210px;font-size:12px;line-height:1.45;padding:5px 8px;border-radius:6px;
+  background:var(--panel);color:var(--ink);border:1px solid var(--val);box-shadow:0 3px 12px rgba(0,0,0,.25)}
+.guideTip b{display:inline-block;min-width:1.5em;margin-right:4px;text-align:center;border-radius:9px;background:var(--val);color:#fff;font-size:11px}
+.guideNum{position:fixed;width:18px;height:18px;border-radius:9px;background:var(--val);color:#fff;font-size:11px;line-height:18px;text-align:center;font-weight:700;box-shadow:0 0 0 2px var(--panel)}
+.guideLine{position:fixed;width:0;border-left:1px dashed var(--val);transform:translateX(-.5px)}
+#helpBtn.on{background:var(--val);border-color:var(--val);color:#fff}
+/* すぐ出るツールチップ（ヘッダーのボタンに乗せたとき） */
+.quickTip{position:fixed;z-index:40;max-width:320px;font-size:12px;line-height:1.45;padding:4px 8px;border-radius:4px;
+  background:var(--ink);color:var(--panel);box-shadow:0 3px 10px rgba(0,0,0,.2);pointer-events:none}
 /* 設定：コントローラー（機器の名前・軸のバー・ボタン。パネルを開いている間だけ更新） */
 .padBox label.chk select{width:auto;max-width:9.5em;margin-left:auto;font-size:12px;padding:1px 4px}
 .padList{display:grid;gap:4px;font-size:11px}

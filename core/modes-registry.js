@@ -9,6 +9,7 @@
     $('stage').style.boxShadow = '';
     document.body.dataset.side = _.M.side || 'normal';
     $('modeHelp').innerHTML = _.relabel(_.M.help || ''); _.localizeKeys($('modeHelp'));
+    $('modeName').textContent = _.M.label;
     _.M.mount({ panel: $('panel'), overlay: $('overlay'), under: $('under') });
     _.resize();
   }
