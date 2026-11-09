@@ -2,7 +2,7 @@
 // planCollect は計画を作るだけで，ファイルは何も変えない．録画と試行の紐づけは推測せず，確かめられなければ止める
 const fs = require('fs');
 const path = require('path');
-const { readTrialZip, loadConfig, matchGlob } = require('./lib');
+const { readTrialZip, loadConfig, matchGlob, csvWrite } = require('./lib');
 
 const pad = n => String(n).padStart(2, '0');
 const safe = s => String(s).replace(/[\\/:*?"<>|]/g, '_');
@@ -225,31 +225,153 @@ function planCollect(expDir, cfg) {
   return { people, left, warnings: uniq(warnings), errors: uniq(errors) };
 }
 
-// 計画に沿って移す（Task 4 で作る）
-function runCollect() {
-  throw new Error('runCollect はまだありません');
+const KIND = { zip: 'zip', recording: '録画', log: 'ログ' };
+
+// src（ファイルかフォルダ）の中のファイルが dst に同じ大きさでそろっているか．そろっていなければ理由を返す
+function mismatch(src, dst) {
+  const st = fs.statSync(src);
+  if (st.isDirectory()) {
+    for (const e of fs.readdirSync(src)) { const why = mismatch(path.join(src, e), path.join(dst, e)); if (why) return why; }
+    return null;
+  }
+  let got;
+  try { got = fs.statSync(dst); } catch (_e) { return `「${src}」のコピーが「${dst}」にありません`; }
+  if (got.size !== st.size) return `「${src}」のコピーの大きさ（${got.size} バイト）が元（${st.size} バイト）と合いません`;
+  return null;
+}
+
+// src を dst へコピーする．フォルダは下の階層までコピーする．ファイルごとに大きさを確かめ，更新日時を元にそろえる
+function copyTree(src, dst, copy) {
+  const st = fs.statSync(src);
+  if (st.isDirectory()) {
+    fs.mkdirSync(dst, { recursive: true });
+    for (const e of fs.readdirSync(src)) copyTree(path.join(src, e), path.join(dst, e), copy);
+    return;
+  }
+  fs.mkdirSync(path.dirname(dst), { recursive: true });
+  copy(src, dst);
+  const why = mismatch(src, dst);
+  if (why) throw new Error(why);
+  fs.utimesSync(dst, st.atime, st.mtime);
+}
+
+// .collect-state.json に 1 人分を足す．別名で書いてから置き換え，書きかけのまま残らないようにする
+function appendState(dataDir, entry) {
+  const file = path.join(dataDir, '.collect-state.json');
+  fs.mkdirSync(dataDir, { recursive: true });
+  const state = fs.existsSync(file) ? JSON.parse(stripBom(fs.readFileSync(file, 'utf8'))) : { people: [] };
+  state.people.push(entry);
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
+  fs.renameSync(tmp, file);
+}
+
+// 1 人分を移す．すべてコピーして大きさを確かめてから元を消す．
+// コピーの途中で失敗したら，この人の作ったコピーを消して元はすべて残し，投げる．元を消せなかったものは返す
+function movePerson(p, copy) {
+  for (const m of p.moves) if (fs.existsSync(m.dst)) throw new Error(`${p.pid} を移せません：移し先にすでに同じ名前があります（${m.dst}）．上書きしないので止めました．元のファイルは消していません`);
+  const made = [];
+  try {
+    for (const m of p.moves) { made.push(m.dst); copyTree(m.src, m.dst, copy); }
+    // 全部コピーした後に元が変わっていないかも確かめる（録画の書き込みが続いていた場合など）
+    for (const m of p.moves) { const why = mismatch(m.src, m.dst); if (why) throw new Error(why); }
+  } catch (e) {
+    const stuck = [];
+    for (const d of made) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (_e) { stuck.push(d); } }
+    throw new Error(`${p.pid} を移せません：${e.message}．元のファイルは消していません`
+      + (stuck.length ? `．作りかけのコピー（${stuck.join('，')}）を消せなかったので，手で消してから実行し直してください` : ''));
+  }
+  const kept = [];
+  for (const m of p.moves) { try { fs.rmSync(m.src, { recursive: true }); } catch (_e) { kept.push(m.src); } }
+  return kept;
+}
+
+// 計画に沿って参加者ごとに移し，files.csv と .collect-state.json を書く．途中で失敗したらそこで止める
+function runCollect(expDir, plan, { copy = fs.copyFileSync } = {}) {
+  const done = [];
+  if (plan.errors.length) return { done, failed: `止める理由があるので何も移していません（${plan.errors.join('／')}）` };
+  const dataDir = path.join(expDir, 'データ');
+  for (const p of plan.people) {
+    let kept;
+    try {
+      kept = movePerson(p, copy);
+      const rows = [['元の場所', '移した先', '種類', '役割', '参照した zip'], ...p.moves.map(m => [m.src, m.dst, m.kind, m.role, m.zip])];
+      fs.writeFileSync(path.join(dataDir, p.pid, 'files.csv'), csvWrite(rows));
+      appendState(dataDir, { pid: p.pid, to: p.to, at: new Date().toISOString() });
+    } catch (e) {
+      return { done, failed: e.message };
+    }
+    done.push(p.pid);
+    // コピーは確かめ済みなので集めたと記録するが，残った元は手で消してもらう
+    if (kept.length) return { done, failed: `${p.pid} は移し先にそろいましたが，元のファイルを消せませんでした（${kept.join('，')}）．使っているソフトを閉じて手で消してください` };
+  }
+  return { done, failed: null };
 }
 
 function printPlan(plan) {
   for (const p of plan.people) {
-    console.log(`\n${p.pid}（${fmt(p.from)} 〜 ${fmt(p.to)}）`);
-    for (const m of p.moves) console.log(`  ${m.src}\n    → ${m.dst}`);
+    const n = k => p.moves.filter(m => m.kind === k).length;
+    console.log(`\n■ ${p.pid}（時間帯 ${fmt(p.from)} 〜 ${fmt(p.to)}）  zip ${n('zip')} 個，録画 ${n('recording')} 個，ログ ${n('log')} 個`);
+    for (const m of p.moves) console.log(`  [${KIND[m.kind]}] ${m.src}\n      → ${m.dst}`);
   }
-  console.log(`\n時間帯の外なので残した：後 ${plan.left.outside} 個，前 ${plan.left.before} 個`);
-  for (const w of plan.warnings) console.log(`警告：${w}`);
+  if (plan.people.length) console.log(`\n時間帯の外なので残すもの：最後の参加者の後 ${plan.left.outside} 個，最初の参加者の前 ${plan.left.before} 個`);
+  const ws = plan.warnings.filter(w => w !== '集める対象の参加者がいません');
+  if (ws.length) console.log('');
+  for (const w of ws) console.log(`警告：${w}`);
+  if (plan.errors.length) console.log('');
   for (const e of plan.errors) console.log(`止める：${e}`);
 }
 
-if (require.main === module) {
-  const expDir = path.resolve(process.argv[2] || path.join(__dirname, '..'));
+// 標準入力から 1 行ずつ読む．入力が終わっていれば空を返す
+function lineReader() {
+  const rl = require('readline').createInterface({ input: process.stdin });
+  const lines = [];
+  let waiting = null, closed = false;
+  rl.on('line', l => { if (waiting) { const w = waiting; waiting = null; w(l); } else lines.push(l); });
+  rl.on('close', () => { closed = true; if (waiting) { const w = waiting; waiting = null; w(''); } });
+  return {
+    ask(q) {
+      process.stdout.write(q);
+      if (lines.length) return Promise.resolve(lines.shift());
+      if (closed) return Promise.resolve('');
+      return new Promise(r => { waiting = r; });
+    },
+    close: () => rl.close(),
+  };
+}
+
+// node collect.js <実験フォルダ> [--yes]．--yes なら確認も最後の Enter も待たない
+async function main(argv) {
+  const yes = argv.includes('--yes');
+  const expDir = path.resolve(argv.filter(a => a !== '--yes')[0] || path.join(__dirname, '..'));
+  const input = yes ? null : lineReader();
   try {
+    console.log(`実験フォルダ：${expDir}`);
     const cfg = loadConfig(expDir);
     if (cfg.defaulted) console.log('ツール/設定.json が無いので，既定の置き場（ダウンロード・ビデオ）を使います');
-    printPlan(planCollect(expDir, cfg));
+    const plan = planCollect(expDir, cfg);
+    printPlan(plan);
+    if (plan.errors.length) {
+      console.log('\n止める理由があるので，何も移していません．上の「止める：」を直してから実行し直してください');
+      process.exitCode = 1;
+    }
+    else if (!plan.people.length) console.log('\n集める対象の参加者がいません．何も移していません');
+    else {
+      const ok = yes || /^[yｙ]$/i.test((await input.ask('\nこの計画で移しますか？ 移すなら y を押して Enter：')).trim());
+      if (!ok) console.log('取りやめました．何も移していません');
+      else {
+        const r = runCollect(expDir, plan);
+        if (r.done.length) console.log(`\n集めました：${r.done.join('，')}`);
+        if (r.failed) { console.log(`\n止めました：${r.failed}`); process.exitCode = 1; }
+      }
+    }
   } catch (e) {
-    console.error(e.message);
+    console.log(`\n思わぬ失敗で止まりました：${e && e.message ? e.message : e}`);
     process.exitCode = 1;
   }
+  if (input) { await input.ask('\nEnter で閉じる'); input.close(); }
 }
+
+if (require.main === module) main(process.argv.slice(2));
 
 module.exports = { planCollect, runCollect };

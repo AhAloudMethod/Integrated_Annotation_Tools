@@ -343,5 +343,118 @@ function makeFile(file, size, mtime) {
   check('集める対象がいなければ警告して何も移さない', p5.people.length === 0 && p5.errors.length === 0 && p5.warnings.some(w => w.includes('対象')));
 }
 
+// ---------- Task 4：runCollect と CLI ----------
+{
+  const { spawnSync } = require('child_process');
+  const { planCollect, runCollect } = require('../tools/collect/collect');
+  const CLI = path.join(__dirname, '..', 'tools', 'collect', 'collect.js');
+  const T = (h, m, s = 0, d = 9) => new Date(2026, 10, d, h, m, s).getTime();
+  const iso = t => new Date(t).toISOString();
+  const moves = plan => plan.people.flatMap(p => p.moves);
+  const exists = p => fs.existsSync(p);
+  function scene(name) {
+    const d = fresh(name), exp = path.join(d, 'exp');
+    fs.mkdirSync(path.join(exp, 'ツール'), { recursive: true });
+    const one = [{ mode: 'custom', video: 'a.mp4' }];
+    fs.writeFileSync(path.join(exp, 'experiment.json'), JSON.stringify({ name: 'exp3', participants: { P01: one, P02: one } }));
+    fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify({ zips: '../dl', recordings: '../rec', logs: [{ name: 'OVGL', path: '../OVGL', include: '*/log_*' }] }));
+    for (const sub of ['dl', 'rec', 'OVGL']) fs.mkdirSync(path.join(d, sub));
+    const s = { exp, dl: path.join(d, 'dl'), rec: path.join(d, 'rec'), ovgl: path.join(d, 'OVGL'), data: path.join(exp, 'データ') };
+    s.plan = () => planCollect(exp, loadConfig(exp));
+    s.state = () => JSON.parse(fs.readFileSync(path.join(s.data, '.collect-state.json'), 'utf8'));
+    return s;
+  }
+  const rec = (s, name, size, mtime) => { makeFile(path.join(s.rec, name), size, mtime); return { file: name, size, lastModified: mtime }; };
+  const trial = (s, o) => makeTrialZip(s.dl, { exp: 'exp3', condition: 'EscapeFish', video: 'EscapeFish', ...o, start: iso(o.start), end: iso(o.end),
+    record: { file: o.play.file, size: o.play.size, last_modified: o.play.lastModified, ref_video: o.ref.file, ref_video_size: o.ref.size, ref_video_last_modified: o.ref.lastModified } });
+  // P01 は 10 時台，P02 は 11 時台．それぞれ zip・録画 2 つ・どの zip にも出ない録画・ゲームのログ（フォルダ）を持つ
+  function two(name) {
+    const s = scene(name);
+    trial(s, { pid: 'P01', trial: 0, play: rec(s, 'P1main.mkv', 200, T(10, 20)), ref: rec(s, 'P1ref.mkv', 60, T(10, 18)), start: T(10, 22), end: T(10, 30) });
+    trial(s, { pid: 'P02', trial: 0, play: rec(s, 'P2main.mkv', 210, T(11, 20)), ref: rec(s, 'P2ref.mkv', 61, T(11, 18)), start: T(11, 22), end: T(11, 30) });
+    makeFile(path.join(s.rec, 'P1free.mkv'), 31, T(10, 1));
+    makeFile(path.join(s.ovgl, 'EscapeFish', 'log_a', 'trial_1', 'x.json'), 10, T(10, 25));
+    makeFile(path.join(s.ovgl, 'EscapeFish', 'log_a', 'y.csv'), 12, T(10, 25));
+    makeFile(path.join(s.ovgl, 'EscapeFish', 'log_b', 'x.json'), 11, T(11, 25));
+    return s;
+  }
+
+  const s = two('run-2人');
+  const plan = s.plan();
+  check('実行前の計画に止める理由が無い', plan.errors.length === 0 && plan.people.length === 2, JSON.stringify(plan.errors));
+  const r = runCollect(s.exp, plan);
+  const ms = moves(plan);
+  check('runCollect は集めた参加者を返し failed は null', JSON.stringify(r) === JSON.stringify({ done: ['P01', 'P02'], failed: null }), JSON.stringify(r));
+  check('実行すると移し先にそろい元は消える', ms.length > 0 && ms.every(m => exists(m.dst) && !exists(m.src)), JSON.stringify(ms.filter(m => !exists(m.dst) || exists(m.src))));
+  const logDst = path.join(s.data, 'P01', 'logs', 'OVGL', 'EscapeFish', 'log_a');
+  check('ログのフォルダは中のファイルごと移す', fs.statSync(path.join(logDst, 'trial_1', 'x.json')).size === 10 && fs.statSync(path.join(logDst, 'y.csv')).size === 12);
+  check('移した録画の大きさと更新日時は元と同じ', fs.statSync(path.join(s.data, 'P01', 'recordings', 'P01_t01_EscapeFish_本番.mkv')).size === 200
+    && Math.floor(fs.statSync(path.join(s.data, 'P01', 'recordings', 'P01_t01_EscapeFish_本番.mkv')).mtimeMs) === T(10, 20));
+  const csv = csvParse(fs.readFileSync(path.join(s.data, 'P01', 'files.csv'), 'utf8'));
+  const p1moves = plan.people[0].moves;
+  check('files.csv に元の場所・移した先・参照した zip が並ぶ', csv.length === p1moves.length + 1 && JSON.stringify(csv[0]) === JSON.stringify(['元の場所', '移した先', '種類', '役割', '参照した zip'])
+    && p1moves.every(m => csv.some(row => row[0] === m.src && row[1] === m.dst && row[2] === m.kind && row[3] === m.role && row[4] === m.zip)), JSON.stringify(csv));
+  const st = s.state();
+  check('参加者ごとに .collect-state.json に記録する', st.people.map(p => p.pid).join() === 'P01,P02' && st.people.every((p, i) => p.to === plan.people[i].to && isFinite(Date.parse(p.at))), JSON.stringify(st));
+  const again = s.plan();
+  check('2 回目の実行では集め済みを集め直さない', again.people.length === 0 && again.errors.length === 0, JSON.stringify(again));
+  check('止める理由がある計画では何もしない', runCollect(s.exp, { people: plan.people, left: plan.left, warnings: [], errors: ['x'] }).failed !== null);
+
+  // 2 人目のコピーで 1 バイト欠けさせる
+  const s2 = two('run-大きさ違い');
+  const plan2 = s2.plan();
+  const shortCopy = (src, dst) => { fs.copyFileSync(src, dst); if (path.basename(src) === 'P2main.mkv') fs.truncateSync(dst, fs.statSync(src).size - 1); };
+  const r2 = runCollect(s2.exp, plan2, { copy: shortCopy });
+  const p2moves = plan2.people[1].moves;
+  check('コピーの大きさが合わなければ元を消さずに止める', !!r2.failed && r2.failed.includes('P2main.mkv') && p2moves.every(m => exists(m.src))
+    && JSON.stringify(r2.done) === '["P01"]' && s2.state().people.map(p => p.pid).join() === 'P01', JSON.stringify(r2));
+  check('止めた参加者の作りかけのコピーは消し，files.csv も書かない', p2moves.every(m => !exists(m.dst)) && !exists(path.join(s2.data, 'P02', 'files.csv')));
+  const redo = s2.plan();
+  check('止めた後にもう一度実行すると残りの参加者を集められる', redo.errors.length === 0 && redo.people.map(p => p.pid).join() === 'P02'
+    && runCollect(s2.exp, redo).failed === null && p2moves.every(m => exists(m.dst) && !exists(m.src)), JSON.stringify(redo.errors));
+
+  // コピーした後に元が書き換わった（録画の書き込みが続いていたなど）
+  const s8 = two('run-元が変わった');
+  const plan8 = s8.plan();
+  const grow = (src, dst) => { fs.copyFileSync(src, dst); if (path.basename(src) === 'P1ref.mkv') fs.appendFileSync(path.join(s8.rec, 'P1main.mkv'), 'x'); };
+  const r8 = runCollect(s8.exp, plan8, { copy: grow });
+  check('コピーした後に元が変わっていれば元を消さずに止める', !!r8.failed && r8.failed.includes('P1main.mkv') && r8.done.length === 0
+    && moves(plan8).every(m => exists(m.src)) && !exists(path.join(s8.data, '.collect-state.json')), JSON.stringify(r8));
+
+  // 計画の後に移し先ができた
+  const s3 = two('run-移し先あり');
+  const plan3 = s3.plan();
+  const blocker = plan3.people[0].moves.find(m => m.kind === 'recording').dst;
+  makeFile(blocker, 1);
+  const r3 = runCollect(s3.exp, plan3);
+  check('計画の後に移し先ができていれば上書きせずに止める', !!r3.failed && r3.done.length === 0 && fs.statSync(blocker).size === 1 && moves(plan3).every(m => exists(m.src)), JSON.stringify(r3));
+
+  // CLI
+  // 失敗したときだけ出力を見せる
+  const said = (ok, c) => (ok ? '' : `${c.status} ${c.stdout} ${c.stderr}`);
+  const run = (args, input) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', input: input || '', timeout: 20000 });
+  const s4 = two('cli-yes');
+  const plan4 = s4.plan();
+  const c4 = run([s4.exp, '--yes']);
+  { const ok = c4.status === 0 && moves(plan4).every(m => exists(m.dst) && !exists(m.src)); check('CLI に --yes を付けると確認せずに動く', ok, said(ok, c4)); }
+  { const ok = c4.stdout.includes('P01') && c4.stdout.includes('P01_t01_EscapeFish_本番.mkv') && c4.stdout.includes('→'); check('CLI は計画を日本語で表示する', ok, said(ok, c4)); }
+  const c4b = run([s4.exp, '--yes']);
+  { const ok = c4b.status === 0 && c4b.stdout.includes('集める対象の参加者がいません'); check('CLI は集める対象がいなければそう言って終わる', ok, said(ok, c4b)); }
+
+  const s5 = two('cli-止める');
+  fs.rmSync(path.join(s5.rec, 'P2ref.mkv'));
+  const c5 = run([s5.exp, '--yes']);
+  { const ok = c5.status === 1 && c5.stdout.includes('P2ref.mkv') && c5.stdout.includes('見つかりません') && exists(path.join(s5.rec, 'P1main.mkv')); check('CLI は止める条件があれば終了コード 1', ok, said(ok, c5)); }
+
+  const s6 = two('cli-確認');
+  const c6n = run([s6.exp], 'n\n\n');
+  { const ok = c6n.status === 0 && !exists(s6.data) && c6n.stdout.includes('Enter'); check('CLI は y 以外なら何も移さない', ok, said(ok, c6n)); }
+  const c6y = run([s6.exp], 'y\n\n');
+  { const ok = c6y.status === 0 && s6.state().people.length === 2; check('CLI は y で移す', ok, said(ok, c6y)); }
+
+  const c7 = run([path.join(ROOT, '無い実験'), '--yes']);
+  { const ok = c7.status === 1 && /experiment\.json/.test(c7.stdout + c7.stderr); check('CLI は思わぬ失敗を日本語で知らせて終了コード 1', ok, said(ok, c7)); }
+}
+
 console.log('ERRORS:', failed ? `${failed} 件` : 'none');
 process.exitCode = failed ? 1 : 0;
