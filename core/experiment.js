@@ -370,7 +370,7 @@
       addLog('exp_redo', { value: r.n, detail: JSON.stringify({ ...ex.redo, file: r.session ? r.session.name : '' }) });
       if (ph !== 'new') {   // 読み込んだ評価の区間のまま「開始」の覆いへ。録画の試行は、開いた録画を記録し、進行に区間が無ければ（別の PC）残す
         if (t.record) {
-          const rec = { ...(ex.record || {}), file: X.file.name, size: X.file.size, duration: +S.meta.duration.toFixed(3) };
+          const rec = openedRec(ex.record || {});
           ex.record = rec;
           if (!loadRec(i) && rec.start != null) saveRec(i, { file: rec.file, size: rec.size, duration: rec.duration, start: rec.start, end: rec.end });
         }
@@ -453,11 +453,15 @@
     showAlign();
   }
   // 区間を当てた後：記録して開始の覆いへ。中断の後に選び直した録画が違っても、実際に開いた録画を残す
-  function handOff(prev) {
-    // 名前・大きさ・更新日時は、回収ツールが録画のファイルを確実に見つけるために残す
+  // 実際に開いた録画と基準音声の録画を record に書く。名前・大きさ・更新日時は、回収ツールが録画のファイルを確実に見つけるために残す
+  function openedRec(prev) {
     const rec = { ...prev, file: X.file.name, size: X.file.size, last_modified: X.file.lastModified, duration: +S.meta.duration.toFixed(3) };
     if (X.refFile) Object.assign(rec, { ref_video: X.refFile.name, ref_video_size: X.refFile.size, ref_video_last_modified: X.refFile.lastModified });
     else { delete rec.ref_video; delete rec.ref_video_size; delete rec.ref_video_last_modified; }
+    return rec;
+  }
+  function handOff(prev) {
+    const rec = openedRec(prev);
     S.meta.experiment.record = rec;
     addLog('exp_record', { detail: JSON.stringify(rec) });
     logTrial(recRange(rec));

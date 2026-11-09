@@ -567,6 +567,7 @@ const BAD = makeFolder('exp_bad', {
   const r4 = await p.evaluate(() => ({ s0: AH.binStart(0), end: AH._.rangeEnd(), mode: AH.S.meta.mode, rec: AH.S.meta.experiment.record, redo: AH.S.meta.experiment.redo }));
   check('終えた録画の試行をやり直す：同じ録画を選ぶと、区間合わせを飛ばして前の区間（2〜10.5 秒）のまま開始の覆いに戻る', r4.mode === 'excel' && Math.abs(r4.s0 - 2) < 0.02 && Math.abs(r4.end - 10.5) < 0.02
     && r4.rec.file === 'take.mp4' && r4.redo.n === 1 && !(await alignShown()), JSON.stringify(r4));
+  check('やり直しで戻した録画の試行も，開いた録画の更新日時を record に残す', typeof r4.rec.last_modified === 'number' && r4.rec.last_modified > 0, JSON.stringify(r4.rec));
 
   await p.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase('ahann_exp'); });
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
