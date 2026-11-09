@@ -227,11 +227,15 @@ function planCollect(expDir, cfg) {
 
 const KIND = { zip: 'zip', recording: '録画', log: 'ログ' };
 
-// src（ファイルかフォルダ）の中のファイルが dst に同じ大きさでそろっているか．そろっていなければ理由を返す
-function mismatch(src, dst) {
+const exists = why => `移し先にすでに同じ名前があります（${why}）．上書きしないので止めました`;
+
+// src（ファイルかフォルダ）の中のファイルが dst に同じ大きさでそろっているか．そろっていなければ理由を返す．
+// seen を渡すと，確かめた元のファイルとフォルダを上の階層から順に入れる
+function mismatch(src, dst, seen = []) {
   const st = fs.statSync(src);
+  seen.push({ path: src, dir: st.isDirectory() });
   if (st.isDirectory()) {
-    for (const e of fs.readdirSync(src)) { const why = mismatch(path.join(src, e), path.join(dst, e)); if (why) return why; }
+    for (const e of fs.readdirSync(src)) { const why = mismatch(path.join(src, e), path.join(dst, e), seen); if (why) return why; }
     return null;
   }
   let got;
@@ -240,16 +244,19 @@ function mismatch(src, dst) {
   return null;
 }
 
-// src を dst へコピーする．フォルダは下の階層までコピーする．ファイルごとに大きさを確かめ，更新日時を元にそろえる
-function copyTree(src, dst, copy) {
+// src を dst へコピーする．フォルダは下の階層までコピーする．既にある名前には書かない．
+// 作ったと確かめたファイルとフォルダだけを made に入れる．ファイルごとに大きさを確かめ，更新日時を元にそろえる
+function copyTree(src, dst, copy, made) {
   const st = fs.statSync(src);
+  fs.mkdirSync(path.dirname(dst), { recursive: true });
   if (st.isDirectory()) {
-    fs.mkdirSync(dst, { recursive: true });
-    for (const e of fs.readdirSync(src)) copyTree(path.join(src, e), path.join(dst, e), copy);
+    try { fs.mkdirSync(dst); } catch (e) { throw e.code === 'EEXIST' ? new Error(exists(dst)) : e; }
+    made.push({ path: dst, dir: true });
+    for (const e of fs.readdirSync(src)) copyTree(path.join(src, e), path.join(dst, e), copy, made);
     return;
   }
-  fs.mkdirSync(path.dirname(dst), { recursive: true });
-  copy(src, dst);
+  try { copy(src, dst); } catch (e) { throw e.code === 'EEXIST' ? new Error(exists(dst)) : e; }
+  made.push({ path: dst, dir: false });
   const why = mismatch(src, dst);
   if (why) throw new Error(why);
   fs.utimesSync(dst, st.atime, st.mtime);
@@ -267,45 +274,66 @@ function appendState(dataDir, entry) {
 }
 
 // 1 人分を移す．すべてコピーして大きさを確かめてから元を消す．
-// コピーの途中で失敗したら，この人の作ったコピーを消して元はすべて残し，投げる．元を消せなかったものは返す
-function movePerson(p, copy) {
-  for (const m of p.moves) if (fs.existsSync(m.dst)) throw new Error(`${p.pid} を移せません：移し先にすでに同じ名前があります（${m.dst}）．上書きしないので止めました．元のファイルは消していません`);
-  const made = [];
+// コピーの途中で失敗したら，この実行で作ったコピーだけを消して元はすべて残し，投げる．
+// 元は確かめたファイルだけを 1 つずつ消し，空になったフォルダだけを消す．消せずに残ったものを返す
+function movePerson(p, copy, unlink) {
+  for (const m of p.moves) if (fs.existsSync(m.dst)) throw new Error(`${p.pid} を移せません：${exists(m.dst)}．元のファイルは消していません`);
+  const made = [], seen = [];
   try {
-    for (const m of p.moves) { made.push(m.dst); copyTree(m.src, m.dst, copy); }
+    for (const m of p.moves) copyTree(m.src, m.dst, copy, made);
     // 全部コピーした後に元が変わっていないかも確かめる（録画の書き込みが続いていた場合など）
-    for (const m of p.moves) { const why = mismatch(m.src, m.dst); if (why) throw new Error(why); }
+    for (const m of p.moves) { const why = mismatch(m.src, m.dst, seen); if (why) throw new Error(why); }
   } catch (e) {
     const stuck = [];
-    for (const d of made) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (_e) { stuck.push(d); } }
+    for (const d of made.reverse()) { try { if (d.dir) fs.rmdirSync(d.path); else fs.unlinkSync(d.path); } catch (_e) { stuck.push(d.path); } }
     throw new Error(`${p.pid} を移せません：${e.message}．元のファイルは消していません`
-      + (stuck.length ? `．作りかけのコピー（${stuck.join('，')}）を消せなかったので，手で消してから実行し直してください` : ''));
+      + (stuck.length ? `．作りかけのコピー（${stuck.join('，')}）を消せなかったので，確かめて手で消してから実行し直してください` : ''));
   }
   const kept = [];
-  for (const m of p.moves) { try { fs.rmSync(m.src, { recursive: true }); } catch (_e) { kept.push(m.src); } }
+  for (const s of seen) if (!s.dir) { try { unlink(s.path); } catch (_e) { kept.push(s.path); } }
+  // 確かめた後にできたファイルが中にあれば，そのフォルダは消さずに残す
+  for (const s of seen.slice().reverse()) if (s.dir) { try { fs.rmdirSync(s.path); } catch (_e) { kept.push(s.path); } }
   return kept;
 }
 
-// 計画に沿って参加者ごとに移し，files.csv と .collect-state.json を書く．途中で失敗したらそこで止める
-function runCollect(expDir, plan, { copy = fs.copyFileSync } = {}) {
+// 計画に沿って参加者ごとに移し，files.csv と .collect-state.json を書く．途中で失敗したらそこで止める．
+// copy と unlink はテストで失敗を差し込むためのもの
+function runCollect(expDir, plan, { copy = (s, d) => fs.copyFileSync(s, d, fs.constants.COPYFILE_EXCL), unlink = fs.unlinkSync } = {}) {
   const done = [];
   if (plan.errors.length) return { done, failed: `止める理由があるので何も移していません（${plan.errors.join('／')}）` };
   const dataDir = path.join(expDir, 'データ');
-  for (const p of plan.people) {
-    let kept;
-    try {
-      kept = movePerson(p, copy);
-      const rows = [['元の場所', '移した先', '種類', '役割', '参照した zip'], ...p.moves.map(m => [m.src, m.dst, m.kind, m.role, m.zip])];
-      fs.writeFileSync(path.join(dataDir, p.pid, 'files.csv'), csvWrite(rows));
-      appendState(dataDir, { pid: p.pid, to: p.to, at: new Date().toISOString() });
-    } catch (e) {
-      return { done, failed: e.message };
-    }
-    done.push(p.pid);
-    // コピーは確かめ済みなので集めたと記録するが，残った元は手で消してもらう
-    if (kept.length) return { done, failed: `${p.pid} は移し先にそろいましたが，元のファイルを消せませんでした（${kept.join('，')}）．使っているソフトを閉じて手で消してください` };
+  const lock = path.join(dataDir, '.collect.lock');
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(lock, `${new Date().toISOString()} pid ${process.pid}\n`, { flag: 'wx' });
+  } catch (e) {
+    if (e.code !== 'EEXIST') return { done, failed: `${lock} を作れません（${e.message}）．何も移していません` };
+    return { done, failed: `${lock} があるので何も移していません．もう 1 つの窓で集めている途中か，前回が途中で止まりました．`
+      + 'もう 1 つの窓が無いことと，前回止まった参加者のファイルを確かめてから .collect.lock を消し，実行し直してください' };
   }
-  return { done, failed: null };
+  try {
+    for (const p of plan.people) {
+      let kept;
+      try { kept = movePerson(p, copy, unlink); } catch (e) { return { done, failed: e.message }; }
+      // ここから先は元を消した後なので，書けなくても移したファイルは データ/<pid>/ にある
+      const entry = { pid: p.pid, to: p.to, at: new Date().toISOString() }, miss = [];
+      try {
+        const rows = [['元の場所', '移した先', '種類', '役割', '参照した zip'], ...p.moves.map(m => [m.src, m.dst, m.kind, m.role, m.zip])];
+        fs.writeFileSync(path.join(dataDir, p.pid, 'files.csv'), csvWrite(rows));
+      } catch (e) { miss.push(`files.csv を書けませんでした（${e.message}）`); }
+      try { appendState(dataDir, entry); } catch (e) {
+        miss.push(`.collect-state.json に記録できませんでした（${e.message}）．次の実行で集め直さないよう，.collect-state.json の people に ${JSON.stringify(entry)} を手で足してください`);
+      }
+      if (miss.length) return { done, failed: `${p.pid} のファイルは データ/${p.pid}/ へ移し終えて元は消しましたが，${miss.join('．')}` };
+      done.push(p.pid);
+      // コピーは確かめ済みなので集めたと記録するが，残った元は確かめてから手で消してもらう
+      if (kept.length) return { done, failed: `${p.pid} は移し先にそろいましたが，元の一部を消さずに残しました（${kept.join('，')}）．`
+        + '使っているソフトを閉じるか，確かめた後に書き足されたものでないかを見てから，手で消してください' };
+    }
+    return { done, failed: null };
+  } finally {
+    try { fs.unlinkSync(lock); } catch (_e) { /* 消せなくても結果は変わらない */ }
+  }
 }
 
 function printPlan(plan) {
