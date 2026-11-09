@@ -507,5 +507,47 @@ function makeFile(file, size, mtime) {
   { const ok = c7.status === 1 && /experiment\.json/.test(c7.stdout + c7.stderr); check('CLI は思わぬ失敗を日本語で知らせて終了コード 1', ok, said(ok, c7)); }
 }
 
+// ---------- Task 5：aggregate ----------
+{
+  const { aggregate } = require('../tools/collect/aggregate');
+  const exp = fresh('まとめ'), A = p => path.join(exp, 'データ', p, 'annotator');
+  const T = (h, m) => `2026-11-09T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
+  const sum = rows => 'trial,practice,mode\r\n' + rows.join('\r\n') + '\r\n';
+  // P01：練習（excel），本番 t02（やり直し 1 回あり），本番 t03 は途中で抜けた zip だけ．bins の列は方式で違う
+  makeTrialZip(A('P01'), { pid: 'P01', trial: 0, practice: true, condition: 'EscapeFish', method: 'excel', video: 'p.mkv', start: T(1, 0), end: T(1, 5),
+    csvs: { 'bins.csv': 'sec,valence\r\n0,1\r\n1,2\r\n', 'events.csv': 'wall_ms,type\r\n1,a\r\n' }, trials: sum(['1,1,excel']) });
+  makeTrialZip(A('P01'), { pid: 'P01', trial: 1, condition: 'EscapeFish', method: 'custom', video: 'm.mkv', start: T(1, 10), end: T(1, 15),
+    csvs: { 'bins.csv': 'sec,valence,curve\r\n0,9,9\r\n' }, trials: sum(['1,1,excel', '2,0,custom']) });
+  const redo = makeTrialZip(A('P01'), { pid: 'P01', trial: 1, condition: 'EscapeFish', method: 'custom', video: 'm.mkv', redo: 1, start: T(1, 20), end: T(1, 25),
+    csvs: { 'bins.csv': 'sec,valence,curve\r\n0,5,6\r\n' }, trials: sum(['1,1,excel', '2,0,custom']) });
+  fs.copyFileSync(redo, redo.replace(/\.zip$/, ' (1).zip'));
+  makeTrialZip(A('P01'), { pid: 'P01', trial: 2, condition: 'Sliding Penguin', method: 'custom', video: 'q.mkv', partial: true, start: T(1, 30),
+    csvs: { 'bins.csv': 'sec,valence,curve\r\n0,7,7\r\n' }, trials: sum(['1,1,excel', '2,0,custom', '3,0,custom']) });
+  // P02：本番 1 つ
+  makeTrialZip(A('P02'), { pid: 'P02', trial: 0, condition: 'iwashi', method: 'custom', video: 'r.mkv', start: T(2, 0), end: T(2, 5),
+    csvs: { 'bins.csv': 'sec,valence,curve\r\n0,3,4\r\n' }, trials: sum(['1,0,custom']) });
+
+  const r = aggregate(exp);
+  const read = n => csvParse(fs.readFileSync(path.join(exp, 'データ', '全員分', n), 'utf8'));
+  check('種類ごとに 1 つの表になる', r.written.map(f => path.basename(f)).join() === 'bins.csv,events.csv,trials.csv', r.written.map(f => path.basename(f)).join());
+  const bins = read('bins.csv'), head = bins[0];
+  check('先頭に participant〜redo の列が付く', JSON.stringify(head.slice(0, 7)) === JSON.stringify(['participant', 'trial', 'practice', 'condition', 'method', 'video', 'redo']), JSON.stringify(head));
+  const col = (row, c) => row[head.indexOf(c)];
+  const p1t2 = bins.filter(x => x[0] === 'P01' && x[1] === '2');
+  check('やり直しは最後の回だけ', p1t2.length === 1 && col(p1t2[0], 'valence') === '5' && col(p1t2[0], 'redo') === '1', JSON.stringify(p1t2));
+  check('_partial と重複とやり直し前は除き，一覧に出す', !bins.some(x => x[1] === '3') && r.skipped.some(s => s.includes('_partial')) && r.skipped.some(s => s.includes('(1)')) && r.skipped.some(s => s.includes('やり直す前')), JSON.stringify(r.skipped));
+  const p1t1 = bins.filter(x => x[0] === 'P01' && x[1] === '1');
+  check('方式で列が違えば和集合にして空欄で埋める', head.includes('curve') && p1t1.length === 2 && p1t1.every(x => col(x, 'curve') === '') && col(p1t1[0], 'practice') === '1' && col(p1t1[0], 'method') === 'excel' && col(p1t1[0], 'video') === 'p.mkv', JSON.stringify(p1t1));
+  check('試行の番号は 1 始まり，条件名が入る', bins.some(x => x[0] === 'P02' && x[1] === '1' && col(x, 'condition') === 'iwashi'));
+  const tr = read('trials.csv');
+  check('trials.csv は参加者ごとに最後の zip のものだけ', tr[0].join() === 'participant,trial,practice,mode' && tr.filter(x => x[0] === 'P01').length === 2 && tr.filter(x => x[0] === 'P02').length === 1, JSON.stringify(tr));
+  const before = fs.readFileSync(path.join(exp, 'データ', '全員分', 'bins.csv'));
+  fs.writeFileSync(path.join(exp, 'データ', '全員分', 'old.csv'), 'x');
+  aggregate(exp);
+  check('2 回実行しても同じ結果で，全員分/ を作り直す', before.equals(fs.readFileSync(path.join(exp, 'データ', '全員分', 'bins.csv'))) && !fs.existsSync(path.join(exp, 'データ', '全員分', 'old.csv')));
+  const cli = require('child_process').spawnSync(process.execPath, [path.join(__dirname, '..', 'tools', 'collect', 'aggregate.js'), exp, '--yes'], { encoding: 'utf8' });
+  check('CLI に --yes を付けると待たずに終わる', cli.status === 0 && cli.stdout.includes('全員分'), cli.stdout + cli.stderr);
+}
+
 console.log('ERRORS:', failed ? `${failed} 件` : 'none');
 process.exitCode = failed ? 1 : 0;
