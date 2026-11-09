@@ -549,5 +549,37 @@ function makeFile(file, size, mtime) {
   check('CLI に --yes を付けると待たずに終わる', cli.status === 0 && cli.stdout.includes('全員分'), cli.stdout + cli.stderr);
 }
 
+// ---------- Task 6：bat と配布用の zip ----------
+{
+  const SRC = path.join(__dirname, '..', 'tools', 'collect'), ZIP = path.join(__dirname, '..', 'collect-tools.zip');
+  const bats = fs.readdirSync(SRC).filter(n => n.endsWith('.bat'));
+  check('bat は 3 つで，番号順の名前', bats.sort().join() === '0_最初に1回_Node.jsを入れる.bat,1_結果を集める.bat,2_全員終わったら_表にまとめる.bat', bats.join());
+  check('bat の中身は ASCII だけ', bats.every(n => fs.readFileSync(path.join(SRC, n)).every(b => b < 0x80)));
+  check('bat の改行は CRLF', bats.every(n => { const t = fs.readFileSync(path.join(SRC, n), 'latin1'); return t.includes('\r\n') && !/[^\r]\n/.test(t); }));
+  check('bat は自分の 1 つ上を実験フォルダとして渡す', /node "%~dp0collect\.js" "%~dp0\.\."/.test(fs.readFileSync(path.join(SRC, '1_結果を集める.bat'), 'latin1'))
+    && /node "%~dp0aggregate\.js" "%~dp0\.\."/.test(fs.readFileSync(path.join(SRC, '2_全員終わったら_表にまとめる.bat'), 'latin1')));
+  const sample = JSON.parse(fs.readFileSync(path.join(SRC, '設定.json'), 'utf8'));
+  check('設定の見本の logs は空', Array.isArray(sample.logs) && sample.logs.length === 0 && sample.zips && sample.recordings);
+  const buf = fs.readFileSync(ZIP), ents = unzip(buf), names = fs.readdirSync(SRC).sort();
+  check('配布用の zip が tools/collect/ と一致する（npm run build-collect で作り直す）', ents.map(e => e.name).sort().join() === names.map(n => `ツール/${n}`).join()
+    && ents.every(e => e.data.equals(fs.readFileSync(path.join(SRC, e.name.slice('ツール/'.length))))), ents.map(e => e.name).join());
+  let flags = true;
+  for (let at = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06])), p = buf.readUInt32LE(at + 16), k = 0; k < buf.readUInt16LE(at + 10); k++) {
+    if (!(buf.readUInt16LE(p + 8) & 0x0800)) flags = false;
+    p += 46 + buf.readUInt16LE(p + 28) + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+  }
+  check('配布用の zip は名前を UTF-8 と示す', flags);
+  // 一式を実験フォルダに展開して，ツール/collect.js と ツール/aggregate.js がそこだけで動く
+  const exp = fresh('配布の一式'), dl = path.join(exp, '..', '配布の一式-dl'), vids = path.join(exp, '..', '配布の一式-録画');
+  fs.rmSync(dl, { recursive: true, force: true }); fs.rmSync(vids, { recursive: true, force: true }); fs.mkdirSync(vids, { recursive: true });
+  for (const e of ents) { const f = path.join(exp, e.name); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, e.data); }
+  fs.writeFileSync(path.join(exp, 'experiment.json'), JSON.stringify({ name: 'exp3', participants: { P01: [{ mode: 'custom' }] } }));
+  fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify({ zips: dl, recordings: vids, logs: [] }));
+  makeTrialZip(dl, { pid: 'P01', trial: 0, condition: 'iwashi', start: '2026-11-09T01:00:00.000Z', end: '2026-11-09T01:05:00.000Z' });
+  const run = js => require('child_process').spawnSync(process.execPath, [path.join(exp, 'ツール', js), exp, '--yes'], { encoding: 'utf8' });
+  const c = run('collect.js'), a = run('aggregate.js');
+  check('ツール/ に置いた一式で集めて表にまとめられる', c.status === 0 && a.status === 0 && fs.existsSync(path.join(exp, 'データ', 'P01', 'annotator')) && fs.existsSync(path.join(exp, 'データ', '全員分', 'bins.csv')), c.stdout + c.stderr + a.stdout + a.stderr);
+}
+
 console.log('ERRORS:', failed ? `${failed} 件` : 'none');
 process.exitCode = failed ? 1 : 0;

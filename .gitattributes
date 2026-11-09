@@ -1,0 +1,3 @@
+# 回収ツールの一式は配布用の zip（collect-tools.zip）と中身を一致させるので，改行を変換しない（bat は CRLF のまま）
+tools/collect/** -text
+collect-tools.zip binary

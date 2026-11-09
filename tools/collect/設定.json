@@ -1,0 +1,6 @@
+{
+  "zips": "%USERPROFILE%/Downloads",
+  "recordings": "%USERPROFILE%/Videos",
+  "recordingExts": [".mkv", ".mp4"],
+  "logs": []
+}
