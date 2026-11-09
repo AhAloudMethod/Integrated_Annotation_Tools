@@ -114,6 +114,9 @@ function makeFolder(name, files, videos) {
   await p.click('#expRecGo'); await p.waitForFunction(() => AH._.expState() === 'ready');
   const r1 = await p.evaluate(() => AH.S.meta.experiment.record);
   check('渡すと meta.experiment.record に基準音声の録画の名前を残す', r1.ref_video === 'ref.mp4', JSON.stringify(r1));
+  check('渡すと record に基準音声の大きさと更新日時を残す',
+    typeof r1.ref_video_size === 'number' && r1.ref_video_size > 0 && typeof r1.ref_video_last_modified === 'number', JSON.stringify(r1));
+  check('渡すと record にプレイの録画の更新日時を残す', typeof r1.last_modified === 'number' && r1.last_modified > 0, JSON.stringify(r1));
   await p.click('#expStart'); await p.click('#expDoneBtn');
   await p.waitForFunction(() => AH._.expState() === 'done'); await p.click('#expNext');
   await p.waitForFunction(() => AH._.expState() === 'pick');

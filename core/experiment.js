@@ -454,8 +454,10 @@
   }
   // 区間を当てた後：記録して開始の覆いへ。中断の後に選び直した録画が違っても、実際に開いた録画を残す
   function handOff(prev) {
-    const rec = { ...prev, file: X.file.name, size: X.file.size, duration: +S.meta.duration.toFixed(3) };
-    if (X.refFile) rec.ref_video = X.refFile.name; else delete rec.ref_video;
+    // 名前・大きさ・更新日時は、回収ツールが録画のファイルを確実に見つけるために残す
+    const rec = { ...prev, file: X.file.name, size: X.file.size, last_modified: X.file.lastModified, duration: +S.meta.duration.toFixed(3) };
+    if (X.refFile) Object.assign(rec, { ref_video: X.refFile.name, ref_video_size: X.refFile.size, ref_video_last_modified: X.refFile.lastModified });
+    else { delete rec.ref_video; delete rec.ref_video_size; delete rec.ref_video_last_modified; }
     S.meta.experiment.record = rec;
     addLog('exp_record', { detail: JSON.stringify(rec) });
     logTrial(recRange(rec));
