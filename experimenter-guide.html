@@ -407,6 +407,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
         <li><strong>フォルダの検査</strong>：「設定」→「実験フォルダを開く」で実験フォルダを選び、参加者を選ぶ画面に誤りや「確かめてください」の警告が出ないかを確かめる。警告の意味が分からなければ Claude に聞く。</li>
         <li><strong>リハーサル</strong>：試しの参加者 ID で 1 人分を通し、zip がダウンロード先に入ることを確かめる。試しの記録は、参加者を選ぶ画面の「この参加者の記録をブラウザから消す」で消しておく。</li>
         <li><strong>機器</strong>：録画のソフト（発声者側）、ヘッドホンやスピーカーの音量、画面の明るさを本番の状態にしておく。</li>
+        <li><strong>回収ツール</strong>：<a href="collect-tools.zip" download>collect-tools.zip</a> をダウンロードし、実験フォルダの中で展開する（<code>ツール</code> フォルダができる）。<code>ツール _最初に1回_Node.jsを入れる.bat</code> をダブルクリックして Node.js を入れる。<code>ツール\設定.json</code> に、zip のダウンロード先（<code>zips</code>）、録画の保存先（<code>recordings</code>）、ゲームなどのログの置き場（<code>logs</code>）を書く。ダウンロード先を実験フォルダの <code>results</code> に変えたなら、<code>zips</code> は <code>"results"</code> でよい。</li>
       </ol>
 
       <div class="info"><span class="lbl">補足</span><p>フォルダを選ぶ画面では、フォルダの中のファイルが表示されないが、そのフォルダを選べば読み込める。エクスプローラーからフォルダをボタンへドラッグ＆ドロップしても開ける。</p></div>
@@ -485,11 +486,13 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
 
       <ol>
         <li>ダウンロード先に、試行の数だけ zip があることを確かめる。やり直した試行には、前の zip と <code>_redo</code> の付いた zip の両方がある。どちらも消さずに保存する。</li>
-        <li>結果を実験の保存場所へ移す。</li>
+        <li><code>ツール_結果を集める.bat</code> をダブルクリックする。参加者ごとに何をどこへ移すかの一覧が出るので、確かめて <code>y</code> と Enter を押す。zip・録画・ログが <code>データ\参加者ID</code> に移り、録画には「本番」「基準音声」「評価の練習」の名前が付く。毎回でなくてもよい（集め忘れた参加者は次に押したときに集まる）。</li>
         <li>Ctrl+Shift+E で実験モードを抜ける。もう一度「実験フォルダを開く」で開き、参加者を選んで「この参加者の記録をブラウザから消す」を押す。zip、進行、途中の自動保存がブラウザから消える。</li>
       </ol>
 
       <div class="caution"><span class="lbl">注意</span><p>ブラウザの記録は、ファイルを確かめてから消す。消した後は「ブラウザに残っている結果」から書き出し直せない。</p></div>
+      <div class="caution"><span class="lbl">注意</span><p>一覧に止めた理由（録画が見つからない、時刻が重なるなど）が出たときは、何も移していない。理由を直してからもう一度押す。分からなければ Claude に聞く。</p></div>
+      <div class="info"><span class="lbl">補足</span><p>全員が終わったら <code>ツール_全員終わったら_表にまとめる.bat</code> を押すと、全員分の CSV が種類ごとに 1 つの表になって <code>データ\全員分</code> に入る。</p></div>
       <div class="info"><span class="lbl">補足</span><p>最後の画面の「要約をもう一度書き出す」で、全試行の要約（<code>_trials.csv</code>）だけを書き出し直せる。</p></div>
     </section>
 
@@ -597,7 +600,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       <ul class="clean">
         <li>試行の数だけ zip がある（やり直した試行は <code>_redo</code> の zip もある）。</li>
         <li>やり直した試行があれば、その旨（試行と理由）を実験の記録に書いた。</li>
-        <li>結果を保存場所へ移した。</li>
+        <li><code>1_結果を集める.bat</code> で結果を集めた（あとでまとめて集めてもよい）。</li>
         <li class="warn">ファイルを確かめてから、その参加者の記録をブラウザから消した。</li>
       </ul>
     </section>

@@ -31,6 +31,7 @@ Claude Code を `annotator` フォルダで起動して頼むと，内容に合�
 - `style.css`：見た目
 - `sam/`：SAM の原典画像を置くフォルダ（置き方は `sam/README.txt`）
 - `tests/`：自動テスト（`npm test`）
+- `tools/collect/`：実験の成果物の回収ツール（`collect-tools.zip` はその配布用．使い方は「実験モード」の「結果の回収」）
 - 前の版（v0.2）の `../ah_annotator.html` も残してある．
 
 `file://` で直接開けるように，ES Modules は使っていない．`index.html` が `<script src>` でファイルを順に読み込み，グローバルの `AH` でつなぐ．
@@ -82,7 +83,9 @@ modes/                入力方式（読み込み順が「入力方式」の選�
   carma.js ranktrace.js excel.js affectgrid.js sam.js panas.js affectrank.js custom.js
 sam/                  SAM の原典画像
 vendor/               同梱した外部ライブラリ（vosk.js）
-tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する）
+tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する．build-collect.js：collect-tools.zip を作る）
+  collect/            回収ツール（bat，設定.json の見本，collect.js，aggregate.js，lib.js）
+collect-tools.zip     回収ツールの配布用（npm run build-collect で作る．中身は ツール/ フォルダ 1 つ）
 .claude/skills/       Claude Code の skill（一覧は冒頭の「Claude Code に頼めること」）
 models/               Vosk のモデル（npm run vosk-model で作る．git には入れない）
 tests/                自動テスト（Playwright で Edge を動かす）
@@ -714,6 +717,16 @@ exp2/
 - **書き出し先**：ブラウザのダウンロード先のフォルダに入る．ブラウザはページから任意のフォルダへ書き込めない（Firefox には書き込みの API が無い）．実験用の PC では，ブラウザのダウンロード先を実験フォルダの中（`results/` など）に変えておくとよい．
 - **ブラウザにも残す**：zip はブラウザ（IndexedDB）にも残る．やり直した試行は，前の zip とやり直した zip の両方が並ぶ．参加者を選ぶ画面の「ブラウザに残っている結果」で，1 つずつ，またはまとめて書き出し直せる．ダウンロードに失敗したときや，ファイルを消してしまったときに使う．
 - **容量**：zip を残したら，その試行の自動保存（localStorage）は消す．書き出したファイルを確かめたら，「この参加者の記録をブラウザから消す」で zip，進行，途中の自動保存を消せる．
+
+### 結果の回収
+
+実験フォルダの `ツール/` に置いた bat で，参加者ごとの成果物を `データ/<ID>/` へ移し，全員分の CSV を表にまとめる．Node.js だけで動き，annotator のリポジトリは要らない．
+
+- **置き方**：Pages の `collect-tools.zip`（[実験の進め方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/experimenter-guide.html)からダウンロードできる）を実験フォルダで展開する．`ツール/設定.json` に，zip（`zips`），録画（`recordings`，`recordingExts`），外のソフトのログ（`logs`：`name`，`path`，`include`）の置き場を書く．`%USERPROFILE%` などの環境変数を展開し，相対パスは実験フォルダから読む．`include` は `path` からの相対のパターンで（`*` は `/` 以外の 0 文字以上．例：`*/PlayLogs/*`），合うものだけを移す．
+- **`0_最初に1回_Node.jsを入れる.bat`**：Node.js が無ければ `winget` で LTS を入れる．
+- **`1_結果を集める.bat`**（`node ツール/collect.js <実験フォルダ>`）：まだ集めていない参加者を全員分集める．zip の `_session.json` の `meta.experiment.record` に残る名前・大きさ・更新日時がすべて一致する録画だけを，その試行の録画とみなし，`<ID>_t02_<条件名>_本番.mkv`，`<ID>_t01p_<条件名>_評価の練習.mkv`，`<ID>_t02_<条件名>_基準音声.mkv` と名前を付ける．どの zip にも出てこない録画（`recordings/その他/`）とログ（`logs/<name>/`）は，参加者の時間帯（1 つ前の参加者の最後の評価の終わりから，その参加者の最後の評価の終わりまで．途中で抜けた zip は zip の更新日時を終わりとする）で振り分ける．ログのフォルダは中のファイルの最も新しい更新日時で判断する．まず計画を出し，`y` で移す．移すときはコピーして大きさを確かめてから元を消し，上書きはしない．参加者ごとに `files.csv`（元の場所と移した先の対応）を書き，`データ/.collect-state.json` に集めた記録を残す．照合できない録画，参加者どうしの時刻の重なり，移し先の重なりがあれば，何も移さずに止まる．
+- **`2_全員終わったら_表にまとめる.bat`**（`node ツール/aggregate.js <実験フォルダ>`）：`データ/*/annotator/` の zip の CSV を接尾辞（`bins.csv` など）ごとに縦につなぎ，`データ/全員分/` に書く．先頭に `participant`，`trial`（1 始まり），`practice`，`condition`，`method`，`video`，`redo` の列を足す．同じ試行は最後のやり直しだけを使い，途中で抜けた zip は除く．`trials.csv` は参加者ごとに最後の zip のものだけを使う．毎回作り直す．
+- **作り直し**：`tools/collect/` を変えたら `npm run build-collect` で `collect-tools.zip` を作り直す（テストが中身の一致を確かめる）．
 
 ### 記録
 
