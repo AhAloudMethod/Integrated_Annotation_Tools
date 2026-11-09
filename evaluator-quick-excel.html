@@ -364,6 +364,28 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
 
       <div class="info"><span class="lbl">補足</span><p>区切りを間違えたら、その近くで止めて「近くの区切りを消す」を押す。いちばん近い区切りが消える。</p></div>
       <div class="info"><span class="lbl">補足</span><p>録画は何度でも巻き戻して構わない。戻すときは「−1秒」を押すか、グラフの下端の目盛りの帯で戻りたい時刻を押す。</p></div>
+
+      <h3>グラフの上で区切る・直す</h3>
+      <p>区切りは、いちばん下のグラフを右クリックしても入れられる。ボタンで区切った後に位置を直すときにも使う。</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th class="c-min">マウスの操作</th><th>はたらき</th></tr></thead>
+          <tbody>
+            <tr><td class="rowhead">区切りの無い所を右クリック</td><td>押した時刻に区切りを入れる</td></tr>
+            <tr><td class="rowhead">区切りの縦線を右ドラッグ</td><td>区切りを動かす。縦線の上ではマウスの矢印が左右の矢印に変わる</td></tr>
+            <tr><td class="rowhead">区切りの縦線を右クリック</td><td>その区切りを消す</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>グラフを拡大して位置を合わせる</h3>
+      <p>短い区間を区切るときは、グラフの時間軸を拡大すると位置を合わせやすい。</p>
+      <ol>
+        <li>マウスをグラフの上の、拡大したい時刻に置く。</li>
+        <li>Ctrl キーを押しながら、マウスのホイールを奥へ回す。マウスを置いた時刻を中心に拡大する。手前へ回すと縮小する。</li>
+        <li>拡大している間は、Shift キーを押しながらホイールを回すと、グラフを左右に送れる。</li>
+      </ol>
+      <div class="info"><span class="lbl">補足</span><p>ホイールだけを回しても、グラフは変わらない。Mac では Ctrl キーの代わりに ⌘（Command）キーを押す。</p></div>
     </section>
 
     <section id="s4">
@@ -388,6 +410,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       <ul class="clean">
         <li>どの感情がどの数に当たるかは、右の欄の図を見る。</li>
         <li>発声の無いところは、評価の代わりに 0 を入れてもよい。</li>
+        <li>区間が多くて表が横にはみ出したときは、表の上でマウスのホイールを回すと、表が左右に動く。</li>
         <li class="warn">2 つの値で迷ったときは、間の値（4 と 6 で迷ったときの 5）にせず、どちらか 1 つに決める。</li>
       </ul>
     </section>
@@ -461,7 +484,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
 
     <footer>
       出典：あアラウド 統合アノテーションツールの評価ツールの使い方（evaluator-manual.html）と画面（index.html）。実験モード、カスタム方式（Excel の表・小数・自分で区切る・区間内で変化・描くだけ）を前提に作成した。画面の画像は評価ツールの使い方のものを使った。<br>
-      作成日：2026-11-05
+      作成日：2026-11-05　更新日：2026-11-09（グラフの上での区切りとホイール操作を追記）
     </footer>
   </main>
 </div>
