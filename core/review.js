@@ -1,5 +1,6 @@
 // 視聴：評価し終えた記録を、止まらずに再生しながら追う。視聴の間は値を変えない（書き込み・区間の値・変化の入力・グラフの編集・声の入力を止め、
-// 入力面は操作できなくする）。聴いてから入力の自動停止もしない。画面は記録済みの値を映す。ヘッダーの「視聴」か V キーで切り替え、操作ログに review を残す
+// 入力面は操作できなくする）。聴いてから入力の自動停止もしない。画面は記録済みの値を映す。ヘッダーの「視聴」か V キーで切り替え、操作ログに review を残す。
+// 視聴を始めたら今の位置からすぐ再生し、終えたら止める（評価に戻ったとたんに再生中の値が書き込まれないように）
 (() => {
   const _ = AH._;
   const { $, addLog } = _;
@@ -13,7 +14,10 @@
     document.body.classList.toggle('review', on);
     $('reviewBtn').classList.toggle('on', on);
     $('reviewBtn').textContent = on ? '視聴中' : '視聴';
-    addLog('review', { value: on ? 'on' : 'off' }); _.refresh();
+    addLog('review', { value: on ? 'on' : 'off' });
+    const video = _.video;
+    if (video.src && on === video.paused) _.togglePlay();
+    _.refresh();
   }
   $('reviewBtn').addEventListener('click', e => { setReview(!on); e.currentTarget.blur(); });
   Object.assign(_, { reviewing, setReview });

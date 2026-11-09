@@ -33,10 +33,10 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     const ui = await p.evaluate(() => ({ btn: document.getElementById('reviewBtn').textContent, listen: !document.getElementById('listenBox').hidden, body: document.body.classList.contains('review') }));
     check('V で視聴になり、ボタンが「視聴中」・聴いてから入力の案内は消える', ui.btn === '視聴中' && !ui.listen && ui.body, JSON.stringify(ui));
     const before = await pts(p);
-    await p.keyboard.press('Space'); await p.waitForTimeout(1500);
+    await p.waitForTimeout(1500);   // 視聴を始めるとすぐ再生する（Space は押さない）
     const r = await p.evaluate(() => ({ t: AH.video.currentTime, playing: !AH.video.paused }));
     const shown = await nowTxt(p);
-    check('区間の終わりで止まらずに再生し、画面は記録済みの値（8・2）を映す', r.playing && r.t > 1.1 && shown === '8.00/2.00', JSON.stringify(r) + ' ' + shown);
+    check('視聴を始めるとすぐ再生し、区間の終わりで止まらず、画面は記録済みの値（8・2）を映す', r.playing && r.t > 1.1 && shown === '8.00/2.00', JSON.stringify(r) + ' ' + shown);
     // 平面を押しても書き込まれない（入力面は操作できない）
     const b = await p.locator('canvas.plane').boundingBox();
     await p.mouse.move(b.x + b.width * 0.2, b.y + b.height * 0.2); await p.mouse.down(); await p.waitForTimeout(300); await p.mouse.up();
@@ -45,6 +45,19 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
     const off = await p.evaluate(() => ({ btn: document.getElementById('reviewBtn').textContent, listen: !document.getElementById('listenBox').hidden, log: AH.S.log.filter(l => l.type === 'review').map(l => l.value).join(',') }));
     check('もう一度 V で戻る（聴いてから入力の案内も戻る・操作ログ review）', off.btn === '視聴' && off.listen && off.log === 'on,off', JSON.stringify(off));
+    // 再生中に視聴を終えると止まる（評価に戻ったとたんに値が書き込まれないように）
+    await p.keyboard.press('KeyV'); await p.waitForTimeout(300);
+    const playOn = await p.evaluate(() => !AH.video.paused);
+    await p.keyboard.press('KeyV'); await p.waitForTimeout(100);
+    check('再生中に視聴を終えると動画が止まる', playOn && (await p.evaluate(() => AH.video.paused)));
+    await p.close();
+  }
+
+  // ---- ボタンで視聴を始めても、すぐ再生する
+  {
+    const p = await open('excel');
+    await p.click('#reviewBtn'); await p.waitForTimeout(400);
+    check('「視聴」ボタンを押すとすぐ再生する', await p.evaluate(() => !AH.video.paused && AH.video.currentTime > 0));
     await p.close();
   }
 
@@ -65,7 +78,7 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
   {
     const p = await open('darma');
     await p.evaluate(id => window.__connect(id, 0), JOY); await p.waitForTimeout(150);
-    await p.click('#reviewBtn'); await at(p, 1.5);
+    await p.click('#reviewBtn'); await p.evaluate(() => AH.video.pause()); await at(p, 1.5);   // 視聴ですぐ再生するので、止めてからボタン0を確かめる
     await p.evaluate(() => { window.__pads[0].axes[0] = 1; window.__pads[0].axes[1] = 1; }); await p.waitForTimeout(150);
     const btn = async () => { await p.evaluate(() => { window.__pads[0].buttons[0].pressed = true; }); await p.waitForTimeout(100); await p.evaluate(() => { window.__pads[0].buttons[0].pressed = false; }); await p.waitForTimeout(100); };
     const before = await pts(p);
