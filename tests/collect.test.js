@@ -119,5 +119,191 @@ function makeFile(file, size, mtime) {
   check('LF だけの CSV も読む', JSON.stringify(csvParse('a,b\n1,2\n')) === JSON.stringify([['a', 'b'], ['1', '2']]));
 }
 
+// ---------- Task 3：planCollect ----------
+{
+  const { planCollect } = require('../tools/collect/collect');
+  // 2026-11-09（d 日）のローカル時刻を ms で返す
+  const T = (h, m, s = 0, d = 9) => new Date(2026, 10, d, h, m, s).getTime();
+  const iso = t => new Date(t).toISOString();
+  const slash = p => p.replace(/\\/g, '/');
+  const moves = plan => plan.people.flatMap(p => p.moves);
+  const names = plan => moves(plan).map(m => path.basename(m.dst));
+  const movedFrom = (plan, src) => moves(plan).find(m => path.resolve(m.src) === path.resolve(src));
+  const personOf = (plan, src) => (plan.people.find(p => p.moves.some(m => path.resolve(m.src) === path.resolve(src))) || {}).pid;
+
+  // 実験フォルダ（exp/），ダウンロード先（dl/），録画のフォルダ（rec/），ログ（OVGL/）を作る
+  function scene(name, participants) {
+    const d = fresh(name), exp = path.join(d, 'exp');
+    fs.mkdirSync(path.join(exp, 'ツール'), { recursive: true });
+    fs.writeFileSync(path.join(exp, 'experiment.json'), JSON.stringify({ name: 'exp3', participants }));
+    fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify({ zips: '../dl', recordings: '../rec', logs: [{ name: 'OVGL', path: '../OVGL', include: '*/log_*' }] }));
+    for (const sub of ['dl', 'rec', 'OVGL']) fs.mkdirSync(path.join(d, sub));
+    return { exp, dl: path.join(d, 'dl'), rec: path.join(d, 'rec'), ovgl: path.join(d, 'OVGL'), plan: () => planCollect(exp, loadConfig(exp)) };
+  }
+  // 録画を作り，zip に残す値（{ file, size, lastModified }）を返す
+  const rec = (s, name, size, mtime) => { makeFile(path.join(s.rec, name), size, mtime); return { file: name, size, lastModified: mtime }; };
+  // プレイの録画 play と基準音声 ref を選んだ試行の zip を作る
+  const trial = (s, o) => makeTrialZip(s.dl, { exp: 'exp3', condition: 'EscapeFish', video: o.condition || 'EscapeFish', ...o, start: iso(o.start), end: iso(o.end),
+    record: { file: o.play.file, size: o.play.size, last_modified: o.play.lastModified, ref_video: o.ref.file, ref_video_size: o.ref.size, ref_video_last_modified: o.ref.lastModified } });
+  // ログのフォルダ（中に trial_1/x.json）を作る．フォルダ自体の更新日時は dirTime にする
+  const log = (s, rel, mtime, dirTime) => {
+    const dir = path.join(s.ovgl, rel);
+    makeFile(path.join(dir, 'trial_1', 'x.json'), 10, mtime);
+    if (dirTime != null) for (const p of [path.join(dir, 'trial_1'), dir]) fs.utimesSync(p, new Date(dirTime), new Date(dirTime));
+    return dir;
+  };
+
+  // 2 人分．P01 は 10 時台，P02 は 11 時台
+  const two = [{ mode: 'custom', video: 'p.mp4', practice: true }, { mode: 'custom', video: 'a.mp4' }];
+  const s = scene('plan-2人', { P01: two, P02: two });
+  const p1prac = rec(s, 'P1prac.mkv', 100, T(10, 10)), p1ref1 = rec(s, 'P1ref1.mkv', 50, T(10, 5));
+  const p1main = rec(s, 'P1main.mkv', 200, T(10, 20)), p1ref2 = rec(s, 'P1ref2.mkv', 60, T(10, 18));
+  trial(s, { pid: 'P01', trial: 0, practice: true, play: p1prac, ref: p1ref1, start: T(10, 12), end: T(10, 15) });
+  const p1t2 = trial(s, { pid: 'P01', trial: 1, play: p1main, ref: p1ref2, start: T(10, 22), end: T(10, 30) });
+  fs.copyFileSync(p1t2, path.join(s.dl, 'P01_t02_EscapeFish_custom (1).zip'));
+  const p2prac = rec(s, 'P2prac.mkv', 110, T(11, 10)), p2ref1 = rec(s, 'P2ref1.mkv', 55, T(11, 5));
+  trial(s, { pid: 'P02', trial: 0, practice: true, play: p2prac, ref: p2ref1, start: T(11, 12), end: T(11, 15) });
+  makeTrialZip(s.dl, { pid: 'P01', exp: 'other', trial: 3, start: iso(T(10, 0)), end: iso(T(10, 1)), name: 'P01_t04_other.zip' });
+  makeFile(path.join(s.rec, '2026-11-09 10-00-00.mkv'), 30, T(10, 0, 30));
+  makeFile(path.join(s.rec, 'P1free.mkv'), 31, T(10, 1));
+  makeFile(path.join(s.rec, 'P2free.MKV'), 32, T(11, 1));
+  makeFile(path.join(s.rec, 'memo.txt'), 3, T(10, 2));
+  makeFile(path.join(s.rec, 'late.mkv'), 33, T(12, 0));
+  makeFile(path.join(s.rec, 'prev.mkv'), 34, T(15, 0, 0, 8));
+  const logA = log(s, 'EscapeFish/log_a', T(10, 25));
+  const logB = log(s, 'EscapeFish/log_b', T(11, 11), T(15, 0, 0, 8));
+  const logLate = log(s, 'EscapeFish/log_late', T(12, 0));
+  makeFile(path.join(s.ovgl, 'EscapeFish', 'Player.log'), 5, T(10, 25));
+
+  const before = fs.readdirSync(s.dl).concat(fs.readdirSync(s.rec)).join();
+  const p1 = s.plan();
+  check('計画ではファイルを変えない', fs.readdirSync(s.dl).concat(fs.readdirSync(s.rec)).join() === before && !fs.existsSync(path.join(s.exp, 'データ')));
+  check('2 人分で止める理由が無い', p1.errors.length === 0, JSON.stringify(p1.errors));
+  const n1 = names(p1);
+  check('1 人分：本番・基準音声・評価の練習の名前を付ける', ['P01_t02_EscapeFish_本番.mkv', 'P01_t02_EscapeFish_基準音声.mkv', 'P01_t01p_EscapeFish_評価の練習.mkv', 'P01_t01p_EscapeFish_基準音声.mkv'].every(n => n1.includes(n)), n1.join());
+  const main = movedFrom(p1, path.join(s.rec, 'P1main.mkv'));
+  check('本番の録画は recordings/ へ，role と参照した zip を残す', !!main && slash(main.dst).endsWith('データ/P01/recordings/P01_t02_EscapeFish_本番.mkv') && main.kind === 'recording' && main.role === '本番' && main.zip === path.basename(p1t2), JSON.stringify(main));
+  check('zip に出ない録画は その他/ に元の名前で', moves(p1).some(m => slash(m.dst).endsWith('データ/P01/recordings/その他/2026-11-09 10-00-00.mkv') && m.role === 'その他'));
+  check('2 人分を時間帯で振り分ける', personOf(p1, path.join(s.rec, 'P1free.mkv')) === 'P01' && personOf(p1, path.join(s.rec, 'P2free.MKV')) === 'P02'
+    && personOf(p1, path.join(s.rec, 'P2prac.mkv')) === 'P02' && personOf(p1, logA) === 'P01');
+  check('時間帯：最初の人は日の 0 時から，次の人は前の人の最後の end から', p1.people.map(p => `${p.pid}:${p.from}-${p.to}`).join() === `P01:${T(0, 0)}-${T(10, 30)},P02:${T(10, 30)}-${T(11, 15)}`, JSON.stringify(p1.people.map(p => [p.pid, p.from, p.to])));
+  check('最後の参加者の後の録画とログは残す', p1.left.outside === 2 && !movedFrom(p1, path.join(s.rec, 'late.mkv')) && !movedFrom(p1, logLate), JSON.stringify(p1.left));
+  check('最初の参加者の日より前は残す', !movedFrom(p1, path.join(s.rec, 'prev.mkv')) && p1.left.before === 1, JSON.stringify(p1.left));
+  const logMoves = moves(p1).filter(m => m.kind === 'log');
+  check('ログは include に合うものだけ', logMoves.length === 2 && logMoves.every(m => /log_[ab]$/.test(m.src)) && !names(p1).includes('Player.log')
+    && logMoves.some(m => slash(m.dst).endsWith('データ/P01/logs/OVGL/EscapeFish/log_a')), JSON.stringify(logMoves));
+  check('ログのフォルダは中のファイルの最も新しい日時で振り分ける（フォルダの日時は使わない）', personOf(p1, logB) === 'P02');
+  check('(1) の付いた重複の zip も annotator/ へ', n1.includes('P01_t02_EscapeFish_custom (1).zip') && n1.includes('P01_t02_EscapeFish_custom.zip')
+    && moves(p1).filter(m => m.kind === 'zip').every(m => slash(m.dst).includes('/annotator/')) && !n1.includes('P01_t04_other.zip'));
+  check('録画の拡張子の大文字小文字を問わず，録画でないファイルは移さない', !!movedFrom(p1, path.join(s.rec, 'P2free.MKV')) && !movedFrom(p1, path.join(s.rec, 'memo.txt')));
+  check('試行の数が足りなければ警告', p1.warnings.some(w => w.includes('P02') && w.includes('試行の数')) && !p1.warnings.some(w => w.includes('P01') && w.includes('試行の数')), JSON.stringify(p1.warnings));
+
+  // 移し先にすでに同じ名前がある
+  const existing = makeFile(path.join(s.exp, 'データ', 'P01', 'recordings', 'P01_t02_EscapeFish_本番.mkv'), 1, null);
+  check('移し先に同じ名前があれば止める', s.plan().errors.some(e => e.includes('すでに')));
+  fs.rmSync(path.join(s.exp, 'データ'), { recursive: true, force: true });
+  void existing;
+  // 大きさの違う同名の録画
+  makeFile(path.join(s.rec, 'P1main.mkv'), 201, T(10, 20));
+  const pSize = s.plan();
+  check('大きさが違う同名の録画は止める', pSize.errors.some(e => e.includes('P01') && e.includes('t02') && e.includes('P1main.mkv')), JSON.stringify(pSize.errors));
+  makeFile(path.join(s.rec, 'P1main.mkv'), 200, T(10, 21));
+  check('更新日時が違う同名の録画も止める', s.plan().errors.some(e => e.includes('P1main.mkv')));
+  makeFile(path.join(s.rec, 'P1main.mkv'), 200, T(10, 20));
+  fs.rmSync(path.join(s.rec, 'P1ref2.mkv'));
+  const pMiss = s.plan();
+  check('参照した録画が無ければ止める', pMiss.errors.some(e => e.includes('見つかりません') && e.includes('P1ref2.mkv') && e.includes('t02')), JSON.stringify(pMiss.errors));
+  rec(s, 'P1ref2.mkv', 60, T(10, 18));
+  check('元に戻せば止める理由が無い', s.plan().errors.length === 0);
+  // 名前・大きさ・日時が同じ録画が 2 つ：録画のフォルダの直下だけを探すので同じ名前のファイルは 2 つできない．この検査は置かない
+
+  // 集め済みの参加者
+  fs.mkdirSync(path.join(s.exp, 'データ'), { recursive: true });
+  fs.writeFileSync(path.join(s.exp, 'データ', '.collect-state.json'), JSON.stringify({ people: [{ pid: 'P01', to: T(10, 30), at: iso(T(13, 0)) }] }));
+  const pDone = s.plan();
+  check('集め済みの参加者は除き，その人の新しい zip は警告', !pDone.people.some(p => p.pid === 'P01') && pDone.warnings.some(w => w.includes('P01') && w.includes('集め済み'))
+    && !moves(pDone).some(m => path.basename(m.src).startsWith('P01_')), JSON.stringify(pDone.warnings));
+  check('集め済みの人の後は記録の終わりから始める', pDone.people.length === 1 && pDone.people[0].from === T(10, 30) && pDone.errors.length === 0, JSON.stringify(pDone.people.map(p => [p.pid, p.from])) + JSON.stringify(pDone.errors));
+  check('集め済みの人の zip が参照する録画は その他/ にしない', !movedFrom(pDone, path.join(s.rec, 'P1main.mkv')) && !movedFrom(pDone, path.join(s.rec, 'P1free.mkv')));
+}
+{
+  const { planCollect } = require('../tools/collect/collect');
+  const T = (h, m, s = 0, d = 9) => new Date(2026, 10, d, h, m, s).getTime();
+  const iso = t => new Date(t).toISOString();
+  const slash = p => p.replace(/\\/g, '/');
+  const moves = plan => plan.people.flatMap(p => p.moves);
+  const names = plan => moves(plan).map(m => path.basename(m.dst));
+  function scene(name, participants) {
+    const d = fresh(name), exp = path.join(d, 'exp');
+    fs.mkdirSync(path.join(exp, 'ツール'), { recursive: true });
+    fs.writeFileSync(path.join(exp, 'experiment.json'), JSON.stringify({ name: 'exp3', participants }));
+    fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify({ zips: '../dl', recordings: '../rec', logs: [{ name: 'OVGL', path: '../OVGL', include: '*/log_*' }] }));
+    for (const sub of ['dl', 'rec', 'OVGL']) fs.mkdirSync(path.join(d, sub));
+    return { exp, dl: path.join(d, 'dl'), rec: path.join(d, 'rec'), plan: () => planCollect(exp, loadConfig(exp)) };
+  }
+  const rec = (s, name, size, mtime) => { makeFile(path.join(s.rec, name), size, mtime); return { file: name, size, lastModified: mtime }; };
+  const trial = (s, o) => makeTrialZip(s.dl, { exp: 'exp3', condition: 'EscapeFish', video: o.condition || 'EscapeFish', ...o, start: iso(o.start), end: iso(o.end),
+    record: { file: o.play.file, size: o.play.size, last_modified: o.play.lastModified, ref_video: o.ref.file, ref_video_size: o.ref.size, ref_video_last_modified: o.ref.lastModified } });
+  const four = [0, 1, 2, 3].map(() => ({ mode: 'custom', video: 'a.mp4' }));
+
+  // やり直しと途中終了
+  const s = scene('plan-やり直し', { P01: four });
+  const ref = rec(s, 'ref.mkv', 40, T(10, 5)), old = rec(s, 'old.mkv', 100, T(10, 10)), neu = rec(s, 'new.mkv', 101, T(10, 20));
+  const z0 = trial(s, { pid: 'P01', trial: 1, play: old, ref, start: T(10, 11), end: T(10, 15) });
+  trial(s, { pid: 'P01', trial: 1, redo: 1, play: neu, ref, start: T(10, 21), end: T(10, 25) });
+  const pRefC = rec(s, 'refC.mkv', 41, T(10, 30)), hunt = rec(s, 'hunt.mkv', 102, T(10, 35));
+  trial(s, { pid: 'P01', trial: 2, partial: true, condition: 'HunterChameleon', play: hunt, ref: pRefC, start: T(10, 36), end: T(10, 40) });
+  const p = s.plan(), n = names(p);
+  check('やり直しで止める理由が無い', p.errors.length === 0, JSON.stringify(p.errors));
+  check('やり直した試行は最後のやり直しの録画に名前を付ける', n.includes('P01_t02_EscapeFish_本番.mkv') && slash(moves(p).find(m => m.dst.endsWith('P01_t02_EscapeFish_本番.mkv')).src).endsWith('new.mkv'));
+  check('同じ録画を 2 つの zip が参照しても名前は 1 つ', n.filter(x => x === 'P01_t02_EscapeFish_基準音声.mkv').length === 1 && moves(p).filter(m => m.src.endsWith('ref.mkv')).length === 1);
+  const om = moves(p).find(m => m.src.endsWith('old.mkv'));
+  check('やり直し前だけが参照する録画は その他/ へ', !!om && slash(om.dst).endsWith('recordings/その他/old.mkv') && om.zip === path.basename(z0), JSON.stringify(om));
+  check('_partial しか無い試行の録画は _本番_partial', n.includes('P01_t03_HunterChameleon_本番_partial.mkv') && n.includes('P01_t03_HunterChameleon_基準音声_partial.mkv'), n.join());
+  check('_partial の zip があれば警告', p.warnings.some(w => w.includes('_partial')), JSON.stringify(p.warnings));
+  check('時間帯にゲームのログが無ければ警告', p.warnings.some(w => w.includes('ログ')));
+  check('完了した試行の数を数えて警告', p.warnings.some(w => w.includes('試行の数') && w.includes('1') && w.includes('4')));
+
+  // 更新日時の無い古い zip
+  const s2 = scene('plan-古いzip', { P01: [{ mode: 'custom', video: 'a.mp4' }] });
+  const a = rec(s2, 'a.mkv', 100, T(10, 10)), b = rec(s2, 'b.mkv', 50, T(10, 5));
+  trial(s2, { pid: 'P01', trial: 0, play: { file: a.file, size: a.size }, ref: { file: b.file, size: b.size }, start: T(10, 11), end: T(10, 15) });
+  const p2 = s2.plan();
+  check('更新日時の無い古い zip は名前と大きさで照合し警告する', p2.errors.length === 0 && p2.warnings.some(w => w.includes('更新日時')) && names(p2).includes('P01_t01_EscapeFish_本番.mkv'), JSON.stringify(p2));
+
+  // 時刻が重なる 2 人
+  const s3 = scene('plan-重なり', { P01: [{ mode: 'custom', video: 'a.mp4' }], P02: [{ mode: 'custom', video: 'a.mp4' }] });
+  trial(s3, { pid: 'P01', trial: 0, play: rec(s3, 'a.mkv', 1, T(10, 0)), ref: rec(s3, 'b.mkv', 2, T(10, 0)), start: T(10, 0), end: T(11, 0) });
+  trial(s3, { pid: 'P02', trial: 0, play: rec(s3, 'c.mkv', 3, T(10, 40)), ref: rec(s3, 'd.mkv', 4, T(10, 40)), start: T(10, 30), end: T(11, 30) });
+  check('時刻が重なる 2 人は止める', s3.plan().errors.some(e => e.includes('重な')));
+
+  // 名前に使えない文字・条件名が無いとき
+  const s4 = scene('plan-名前', { P01: [{ mode: 'custom', video: 'a.mp4' }, { mode: 'custom', video: 'a.mp4' }] });
+  trial(s4, { pid: 'P01', trial: 0, condition: 'A/B:C?', video: 'v', play: rec(s4, 'a.mp4', 1, T(10, 0)), ref: rec(s4, 'b.mkv', 2, T(10, 0)), start: T(10, 1), end: T(10, 2) });
+  trial(s4, { pid: 'P01', trial: 1, condition: '', video: 'x', method: 'sam', play: rec(s4, 'c.mkv', 3, T(10, 3)), ref: rec(s4, 'd.mkv', 4, T(10, 3)), start: T(10, 4), end: T(10, 5) });
+  const n4 = names(s4.plan());
+  check('使えない文字は _ にし，拡張子は残し，条件名が無ければ方式 id', n4.includes('P01_t01_A_B_C__本番.mp4') && n4.includes('P01_t02_sam_本番.mkv'), n4.join());
+
+  // 実際のゲームのログの形：OVGL/<ゲーム>/PlayLogs/<項目>
+  const s6 = scene('plan-PlayLogs', { P01: [{ mode: 'custom', video: 'a.mp4' }] });
+  fs.writeFileSync(path.join(s6.exp, 'ツール', '設定.json'), JSON.stringify({ zips: '../dl', recordings: '../rec', logs: [{ name: 'OVGL', path: '../OVGL', include: '*/PlayLogs/*' }] }));
+  const ov = path.join(path.dirname(s6.exp), 'OVGL');
+  trial(s6, { pid: 'P01', trial: 0, play: rec(s6, 'a.mkv', 1, T(10, 0)), ref: rec(s6, 'b.mkv', 2, T(10, 0)), start: T(10, 1), end: T(10, 30) });
+  makeFile(path.join(ov, 'Sliding-Penguin', 'PlayLogs', 'play_1', 'x.json'), 5, T(10, 10));
+  makeFile(path.join(ov, 'iwashi', 'PlayLogs', 'play_2.csv'), 5, T(10, 20));
+  makeFile(path.join(ov, 'iwashi', 'Player.log'), 5, T(10, 20));
+  makeFile(path.join(ov, 'New-HunterChameleon', 'Saves', 'x'), 5, T(10, 20));
+  makeFile(path.join(ov, 'New-HunterChameleon', 'PlayLogs'), 5, T(10, 20)); // 途中の深さのファイルには入らない
+  const lm6 = moves(s6.plan()).filter(m => m.kind === 'log');
+  check('include が */PlayLogs/* でも，その深さのフォルダとファイルだけを移す', lm6.length === 2
+    && lm6.some(m => slash(m.dst).endsWith('logs/OVGL/Sliding-Penguin/PlayLogs/play_1')) && lm6.some(m => slash(m.dst).endsWith('logs/OVGL/iwashi/PlayLogs/play_2.csv')),
+  JSON.stringify(lm6.map(m => slash(m.src))));
+
+  // 対象がいない
+  const s5 = scene('plan-空', { P01: [] });
+  const p5 = s5.plan();
+  check('集める対象がいなければ警告して何も移さない', p5.people.length === 0 && p5.errors.length === 0 && p5.warnings.some(w => w.includes('対象')));
+}
+
 console.log('ERRORS:', failed ? `${failed} 件` : 'none');
 process.exitCode = failed ? 1 : 0;
