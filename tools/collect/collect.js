@@ -10,6 +10,7 @@ const tagOf = t => `t${pad(t.trial + 1)}${t.practice ? 'p' : ''}`;
 const toMs = iso => { const v = iso ? Date.parse(iso) : NaN; return isFinite(v) ? v : null; };
 const fmt = t => new Date(t).toLocaleString('ja-JP');
 const uniq = a => [...new Set(a)];
+const stripBom = s => (s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s);
 // ブラウザが重複のダウンロードに付ける「 (1)」を除いた名前
 const baseName = n => n.replace(/ \(\d+\)(?=\.zip$)/i, '');
 
@@ -20,7 +21,8 @@ function listFiles(dir) {
 
 // ファイルならその更新日時，フォルダなら中のファイル（下の階層も含む）の最も新しい更新日時．ファイルが無ければ null
 function newest(p) {
-  const st = fs.statSync(p);
+  let st;
+  try { st = fs.statSync(p); } catch (e) { throw new Error(`ログ「${p}」の更新日時を読めません（${e.message}）`); }
   if (!st.isDirectory()) return Math.floor(st.mtimeMs);
   let best = null;
   for (const e of fs.readdirSync(p)) { const t = newest(path.join(p, e)); if (t != null && (best == null || t > best)) best = t; }
@@ -28,14 +30,17 @@ function newest(p) {
 }
 
 // ログのフォルダから include に合うフォルダかファイルを探す．* は / をまたがないので，include の階層の深さまでだけ下りる
-function findLogs(log) {
+function findLogs(log, errors) {
   const depth = log.include.split('/').length, out = [];
   const walk = (dir, rel, d) => {
     let ents;
     try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch (_e) { return; }
     for (const e of ents) {
       const r = rel ? `${rel}/${e.name}` : e.name, full = path.join(dir, e.name);
-      if (d === depth) { if (matchGlob(r, log.include)) out.push({ src: full, rel: r, time: newest(full), name: log.name }); }
+      if (d === depth) {
+        if (!matchGlob(r, log.include)) continue;
+        try { out.push({ src: full, rel: r, time: newest(full), name: log.name }); } catch (err) { errors.push(err.message); }
+      }
       else if (e.isDirectory()) walk(full, r, d + 1);
     }
   };
@@ -56,19 +61,36 @@ function planCollect(expDir, cfg) {
   const warnings = [], errors = [];
   const exFile = path.join(expDir, 'experiment.json');
   let ex;
-  try { ex = JSON.parse(fs.readFileSync(exFile, 'utf8').replace(/^﻿/, '')); } catch (e) { throw new Error(`experiment.json を読めません（${e.message}）`); }
+  try { ex = JSON.parse(stripBom(fs.readFileSync(exFile, 'utf8'))); } catch (e) { throw new Error(`experiment.json を読めません（${e.message}）`); }
   const dataDir = path.join(expDir, 'データ');
   const stateFile = path.join(dataDir, '.collect-state.json');
   let state = { people: [] };
   if (fs.existsSync(stateFile)) {
-    try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8').replace(/^﻿/, '')); } catch (e) { throw new Error(`データ/.collect-state.json を読めません（${e.message}）`); }
+    // 集めた記録が読めなければ，誰を集め済みとするか決められないので止める
+    let bad = '';
+    try { state = JSON.parse(stripBom(fs.readFileSync(stateFile, 'utf8'))); } catch (e) { bad = e.message; }
+    if (!bad && !(state && Array.isArray(state.people) && state.people.every(p => p && typeof p.pid === 'string' && typeof p.to === 'number' && isFinite(p.to)))) bad = '参加者 ID と時間帯の終わり（to）の形が違います';
+    if (bad) return { people: [], left: { outside: 0, before: 0 }, warnings: [], errors: [`${stateFile} を読めません（${bad}）．中身を直すまで集められません`] };
   }
-  const donePeople = Array.isArray(state.people) ? state.people : [];
+  const donePeople = state.people;
   const done = new Set(donePeople.map(p => p.pid));
 
-  // この実験の試行の zip．ID はファイル名でなく中身から取る．重複のダウンロードより元の名前を先にする
-  const zips = listFiles(cfg.zips).filter(f => /\.zip$/i.test(f)).map(readTrialZip)
-    .filter(t => t && t.exp === ex.name && t.name.startsWith(`${t.pid}_t`))
+  // この実験の試行の zip．ID はファイル名でなく中身から取る．重複のダウンロードより元の名前を先にする．
+  // 試行の zip に見える名前なのに読めないものは，ダウンロードの途中か壊れているので止める．
+  // end_iso の無い zip（途中で抜けた _partial は end_iso を持たない）は，zip の更新日時を終わりとみなす
+  const zips = [];
+  for (const f of listFiles(cfg.zips).filter(f => /\.zip$/i.test(f))) {
+    const t = readTrialZip(f);
+    if (!t) {
+      if (/_t\d+p?_/.test(path.basename(f))) errors.push(`${path.basename(f)} を読めません．ダウンロードが終わっていないか壊れています．ダウンロードし直すか，この実験の zip でなければ別の場所へ移してください`);
+      continue;
+    }
+    if (t.exp !== ex.name || !t.name.startsWith(`${t.pid}_t`)) continue;
+    t.endMs = toMs(t.endIso);
+    if (t.endMs == null) t.endMs = Math.floor(fs.statSync(f).mtimeMs);
+    zips.push(t);
+  }
+  zips
     .sort((a, b) => baseName(a.name).localeCompare(baseName(b.name)) || a.name.length - b.name.length || a.name.localeCompare(b.name));
 
   // 録画のフォルダ直下の録画
@@ -79,7 +101,7 @@ function planCollect(expDir, cfg) {
   // どれかの zip（集め済みの人の zip も含む）が参照する録画は，時間帯で その他/ に振り分けない
   const referenced = new Set();
   for (const t of zips) for (const ref of refsOf(t)) for (const c of find(ref)) referenced.add(c.file);
-  const logItems = cfg.logs.flatMap(findLogs);
+  const logItems = cfg.logs.flatMap(l => findLogs(l, errors));
 
   // 参加者ごとに zip をまとめ，最も早い start の順に並べる
   const byPid = new Map();
@@ -87,20 +109,27 @@ function planCollect(expDir, cfg) {
   const targets = [];
   for (const [pid, ts] of byPid) {
     if (done.has(pid)) {
-      warnings.push(`${pid} は集め済みですが，新しい zip が ${ts.length} 個見つかりました（${ts.map(t => t.name).join('，')}）．移していません．手で データ/${pid}/annotator/ へ移し，files.csv に書き足してください`);
+      const recNames = uniq(ts.flatMap(t => refsOf(t).map(r => r.file)));
+      warnings.push(`${pid} は集め済みですが，新しい zip が ${ts.length} 個見つかりました（${ts.map(t => t.name).join('，')}）．`
+        + `zip も${recNames.length ? `，zip が参照する録画（${recNames.join('，')}）も` : ''}移していません．手で データ/${pid}/ へ移し，files.csv に書き足してください`);
       continue;
     }
-    const starts = ts.map(t => toMs(t.startIso)).filter(v => v != null), ends = ts.map(t => toMs(t.endIso)).filter(v => v != null);
-    if (!starts.length || !ends.length) { errors.push(`${pid} の zip に開始・終了の時刻がないため，時間帯を決められません`); continue; }
-    targets.push({ pid, zips: ts, start: Math.min(...starts), to: Math.max(...ends) });
+    const starts = ts.map(t => toMs(t.startIso)).filter(v => v != null);
+    if (!starts.length) { errors.push(`${pid} の zip に開始の時刻がないため，時間帯を決められません`); continue; }
+    targets.push({ pid, zips: ts, start: Math.min(...starts), to: Math.max(...ts.map(t => t.endMs)) });
   }
   targets.sort((a, b) => a.start - b.start);
   if (!targets.length) warnings.push('集める対象の参加者がいません');
 
   // 時間帯：始まりは 1 つ前の参加者の終わり．記録が何も無ければ最初の start の日の 0 時
-  let prev = donePeople.length ? Math.max(...donePeople.map(p => p.to)) : null;
+  let prev = donePeople.length ? Math.max(...donePeople.map(p => p.to)) : null, prevDone = prev != null;
   for (const p of targets) {
-    if (prev != null && p.start < prev) errors.push(`${p.pid} の zip の時刻（${fmt(p.start)}〜）が 1 つ前の参加者の時間帯（〜${fmt(prev)}）と重なるため，振り分けられません`);
+    if (prev != null && p.start < prev) {
+      if (prevDone) errors.push(`${p.pid} の zip の時刻（${fmt(p.start)}〜）が集め済みの参加者の時間帯（〜${fmt(prev)}）と重なります．集め忘れた参加者が集め済みの参加者より前にいるため，時間帯で振り分けられません．`
+        + `${p.pid} の zip と録画とログは手で データ/${p.pid}/ へ移し，files.csv に書き足してから，データ/.collect-state.json に ${p.pid} を足してください`);
+      else errors.push(`${p.pid} の zip の時刻（${fmt(p.start)}〜）が 1 つ前の参加者の時間帯（〜${fmt(prev)}）と重なるため，振り分けられません`);
+    }
+    prevDone = false;
     if (prev != null) p.from = prev;
     else { const d = new Date(p.start); d.setHours(0, 0, 0, 0); p.from = d.getTime(); }
     prev = p.to;
@@ -118,7 +147,7 @@ function planCollect(expDir, cfg) {
     const adopted = [];
     for (const list of byTrial.values()) {
       const complete = list.filter(t => !t.partial), pool = complete.length ? complete : list;
-      adopted.push(pool.reduce((a, b) => (b.redo > a.redo || (b.redo === a.redo && (toMs(b.endIso) || 0) > (toMs(a.endIso) || 0)) ? b : a)));
+      adopted.push(pool.reduce((a, b) => (b.redo > a.redo || (b.redo === a.redo && b.endMs > a.endMs) ? b : a)));
     }
     adopted.sort((a, b) => a.trial - b.trial);
     const completed = [...byTrial.values()].filter(list => list.some(t => !t.partial)).length;
@@ -142,7 +171,7 @@ function planCollect(expDir, cfg) {
       for (const ref of refsOf(t)) {
         const r = resolve(t, ref);
         if (!r || named.has(r.file)) continue;
-        const name = safe(`${p.pid}_${tagOf(t)}_${t.condition || t.method}_${ref.role}${t.partial ? '_partial' : ''}`) + path.extname(r.name);
+        const name = safe(`${p.pid}_${tagOf(t)}_${t.condition || t.method || 'trial'}_${ref.role}${t.partial ? '_partial' : ''}`) + path.extname(r.name);
         named.set(r.file, { src: r.file, dst: dst('recordings', name), kind: 'recording', role: ref.role, zip: t.name });
       }
     }
