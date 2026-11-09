@@ -7,7 +7,7 @@ if not errorlevel 1 (
   exit /b 0
 )
 echo Installing Node.js LTS with winget...
-winget install -e --id OpenJS.NodeJS.LTS
+winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements
 if errorlevel 1 (
   echo Installation failed. Install Node.js LTS from https://nodejs.org/ by hand.
   pause

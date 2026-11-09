@@ -73,7 +73,9 @@ function aggregate(expDir) {
   for (const t of adopted) if (t.csvs.some(c => c.suffix === SUMMARY)) lastByPid.set(t.pid, lastByPid.has(t.pid) && endOf(lastByPid.get(t.pid)) > endOf(t) ? lastByPid.get(t.pid) : t);
   const summaries = [...lastByPid.values()].map(t => ({ prefix: { participant: t.pid }, rows: csvParse(t.csvs.find(c => c.suffix === SUMMARY).text) }));
 
-  fs.rmSync(outDir, { recursive: true, force: true });
+  try { fs.rmSync(outDir, { recursive: true, force: true }); } catch (e) {
+    throw new Error(`データ/全員分/ を作り直せません（${e.code || e.message}）．Excel などで開いている表を閉じてから，もう一度押してください`);
+  }
   fs.mkdirSync(outDir, { recursive: true });
   const written = [];
   for (const [suf, tables] of [...bySuffix].sort((a, b) => a[0].localeCompare(b[0]))) {

@@ -79,10 +79,10 @@ function planCollect(expDir, cfg) {
   // 試行の zip に見える名前なのに読めないものは，ダウンロードの途中か壊れているので止める．
   // end_iso の無い zip（途中で抜けた _partial は end_iso を持たない）は，zip の更新日時を終わりとみなす
   const zips = [];
-  for (const f of listFiles(cfg.zips).filter(f => /\.zip$/i.test(f))) {
+  for (const f of listFiles(cfg.zips).filter(f => /_t\d+p?_.*\.zip$/i.test(path.basename(f)))) {
     const t = readTrialZip(f);
     if (!t) {
-      if (/_t\d+p?_/.test(path.basename(f))) errors.push(`${path.basename(f)} を読めません．ダウンロードが終わっていないか壊れています．ダウンロードし直すか，この実験の zip でなければ別の場所へ移してください`);
+      errors.push(`${path.basename(f)} を読めません．ダウンロードが終わっていないか壊れています．ダウンロードし直すか，この実験の zip でなければ別の場所へ移してください`);
       continue;
     }
     if (t.exp !== ex.name || !t.name.startsWith(`${t.pid}_t`)) continue;

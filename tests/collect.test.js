@@ -581,5 +581,19 @@ function makeFile(file, size, mtime) {
   check('ツール/ に置いた一式で集めて表にまとめられる', c.status === 0 && a.status === 0 && fs.existsSync(path.join(exp, 'データ', 'P01', 'annotator')) && fs.existsSync(path.join(exp, 'データ', '全員分', 'bins.csv')), c.stdout + c.stderr + a.stdout + a.stderr);
 }
 
+// ---------- 全体レビューの後に足した検査 ----------
+{
+  const R = path.join(__dirname, '..');
+  const docs = ['README.md', 'experimenter-guide.html', '.claude/skills/experiment-config/SKILL.md'];
+  const bad = docs.filter(d => /[\x00-\x08]/.test(fs.readFileSync(path.join(R, d), 'utf8')));
+  check('文書に制御文字が混ざっていない（\0 などのエスケープの化け）', bad.length === 0, bad.join());
+  const e = fresh('設定の検査'); fs.mkdirSync(path.join(e, 'ツール'));
+  fs.writeFileSync(path.join(e, 'ツール', '設定.json'), JSON.stringify({ recordingExts: ['mkv', '.MP4'] }));
+  check('拡張子の点を省いても補う', loadConfig(e).recordingExts.join() === '.mkv,.mp4');
+  fs.writeFileSync(path.join(e, 'ツール', '設定.json'), JSON.stringify({ logs: [{ path: 'x' }] }));
+  let m = ''; try { loadConfig(e); } catch (err) { m = err.message; }
+  check('logs の name が無ければ形を案内して止める', m.includes('logs'), m);
+}
+
 console.log('ERRORS:', failed ? `${failed} 件` : 'none');
 process.exitCode = failed ? 1 : 0;

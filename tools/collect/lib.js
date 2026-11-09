@@ -84,10 +84,14 @@ function loadConfig(expDir) {
     defaulted = false;
   }
   const dir = p => path.resolve(expDir, expand(p));
+  for (const k of ['zips', 'recordings']) if (c[k] !== undefined && typeof c[k] !== 'string') throw new Error(`ツール/設定.json の ${k} はフォルダのパス（文字列）で書いてください`);
+  if (c.logs !== undefined && (!Array.isArray(c.logs) || c.logs.some(l => !l || typeof l.name !== 'string' || !l.name || typeof l.path !== 'string' || !l.path)))
+    throw new Error('ツール/設定.json の logs は [{ "name": "名前", "path": "フォルダ", "include": "パターン" }] の形で書いてください');
+  const ext = x => { const s = String(x).toLowerCase(); return s.startsWith('.') ? s : '.' + s; };   // "mkv" と書いても .mkv として扱う
   return {
     zips: dir(c.zips || def.zips),
     recordings: dir(c.recordings || def.recordings),
-    recordingExts: (Array.isArray(c.recordingExts) ? c.recordingExts : def.recordingExts).map(x => x.toLowerCase()),
+    recordingExts: (Array.isArray(c.recordingExts) ? c.recordingExts : def.recordingExts).map(ext),
     logs: (Array.isArray(c.logs) ? c.logs : def.logs).map(l => ({ name: l.name, path: dir(l.path), include: l.include || '*' })),
     defaulted,
   };
