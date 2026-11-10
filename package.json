@@ -10,6 +10,7 @@
     "vosk-model": "node tools/vosk-model.js",
     "voice-fixture": "node tests/make-voice-fixture.js",
     "exp-check": "node tools/exp-check.js",
+    "voiced-why": "node tools/voiced-why.js",
     "build-collect": "node tools/build-collect.js"
   },
   "devDependencies": {

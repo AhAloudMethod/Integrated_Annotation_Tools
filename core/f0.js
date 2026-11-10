@@ -3,47 +3,17 @@
 (() => {
   const _ = AH._;
   const { $, video, S, addLog } = _;
-  const SR = 16000, HOP = 0.01, WIN = 640;        // 16kHz、10ms ごと、窓 40ms
-  const FMIN = 70, FMAX = 1000;                   // 探す範囲（Hz）。叫び声の高い「あ」も入るよう広めに
-  const YIN_TH = 0.15;                            // YIN のしきい値（小さいほど厳しく「声あり」とする）
+  const C = _.f0calc, { SR, HOP, WIN, yin } = C;   // 計算は core/f0-calc.js（tools/voiced-why.js と共通）
   const F0 = { status: 'none', t0: 0, hop: HOP, f0: null, rms: null, file: '', lo: 100, hi: 400 };
   let shown = true;
   try { shown = localStorage.getItem('ahann_f0') !== '0'; } catch (_) {}
 
-  // YIN（de Cheveigné & Kawahara, 2002）で1つの窓の F0 を求める。声がはっきりしなければ NaN
-  function yin(x, off, sr = SR, win = WIN, fmin = FMIN, fmax = FMAX, th = YIN_TH) {
-    const tMin = Math.max(2, Math.floor(sr / fmax)), tMax = Math.min(Math.floor(sr / fmin), win - 1);
-    const d = new Float32Array(tMax + 2);
-    for (let tau = 1; tau <= tMax + 1; tau++) {
-      let s = 0;
-      for (let i = 0; i < win - tMax - 1; i++) { const v = x[off + i] - x[off + i + tau]; s += v * v; }
-      d[tau] = s;
-    }
-    // 累積平均で正規化した差分関数
-    let run = 0; const dn = new Float32Array(tMax + 2); dn[0] = 1;
-    for (let tau = 1; tau <= tMax + 1; tau++) { run += d[tau]; dn[tau] = run > 0 ? d[tau] * tau / run : 1; }
-    let tau = -1;
-    for (let t = tMin; t <= tMax; t++) if (dn[t] < th) { while (t + 1 <= tMax && dn[t + 1] < dn[t]) t++; tau = t; break; }
-    if (tau < 0) return NaN;
-    // 放物線補間で細かく
-    const a = dn[tau - 1], b = dn[tau], c = dn[tau + 1], den = a - 2 * b + c;
-    const shift = den !== 0 ? 0.5 * (a - c) / den : 0;
-    return sr / (tau + (Math.abs(shift) < 1 ? shift : 0));
-  }
   // 音声全体を処理する（重いので少しずつ。alive() が偽になったら（ほかの動画に替わったら）打ち切る）
   async function analyse(samples, alive, progress) {
-    const n = Math.max(0, Math.floor((samples.length - WIN) / (SR * HOP)) + 1);
-    const f0 = new Float32Array(n).fill(NaN), rms = new Float32Array(n);
+    const rms = C.rmsFrames(samples), n = rms.length, f0 = new Float32Array(n).fill(NaN);
+    const floor = C.floorOf(rms);   // 小さすぎる音は声なしとする（最大の 5%、かつ -50dBFS 相当）
     for (let k = 0; k < n; k++) {
-      const off = Math.round(k * SR * HOP);
-      let e = 0; for (let i = 0; i < WIN; i++) e += samples[off + i] * samples[off + i];
-      rms[k] = Math.sqrt(e / WIN);
-    }
-    // 小さすぎる音は声なしとする（最大の 5%、かつ -50dBFS 相当）
-    let mx = 0; for (const v of rms) if (v > mx) mx = v;
-    const floor = Math.max(0.003, mx * 0.05);
-    for (let k = 0; k < n; k++) {
-      if (rms[k] >= floor) f0[k] = yin(samples, Math.round(k * SR * HOP));
+      if (rms[k] >= floor) f0[k] = yin(samples, C.frameOff(k));
       if (k % 150 === 149) { await new Promise(r => setTimeout(r, 0)); if (!alive()) return null; progress(Math.round(k / n * 100)); }
     }
     return { f0, rms };

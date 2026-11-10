@@ -4,7 +4,6 @@
 (() => {
   const _ = AH._;
   const { $, addLog } = _;
-  const GAP = 10, MIN_RUN = 5;   // つなぐ切れ目・除く短さ（10 ms の窓の数）
   let shown = true;
   try { shown = localStorage.getItem('ahann_voiced') !== '0'; } catch (_e) {}
   let cache = { f0: null, spans: [] };
@@ -12,15 +11,7 @@
   function spans() {
     const F = _.F0; if (!F || F.status !== 'ready') return [];
     if (cache.f0 === F.f0) return cache.spans;
-    const out = [], n = F.f0.length, v = k => F.f0[k] > 0;
-    for (let k = 0; k < n;) {
-      if (!v(k)) { k++; continue; }
-      let e = k; while (e < n && v(e)) e++;
-      // 短い切れ目をつなぐ
-      for (;;) { let g = e; while (g < n && !v(g) && g - e < GAP) g++; if (g < n && v(g) && g - e < GAP) { e = g; while (e < n && v(e)) e++; } else break; }
-      if (e - k >= MIN_RUN) out.push([k * F.hop, e * F.hop + 0.04]);   // 窓（40 ms）の終わりまで
-      k = e;
-    }
+    const out = _.f0calc.spans(F.f0, F.hop);   // 計算は core/f0-calc.js（tools/voiced-why.js と共通）
     cache = { f0: F.f0, spans: out };
     return out;
   }

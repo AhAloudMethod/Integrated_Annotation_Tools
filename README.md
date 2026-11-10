@@ -68,6 +68,7 @@ core/                 共通部分（読み込み順に依存するので，inde
   vwin.js             動画を別ウィンドウに出す
   colors.js           色の設定欄
   axes.js             評価軸の組（VA，PANA，Thayer）
+  f0-calc.js          F0 と発声の区間の計算（YIN，音量の下限，区間のつなぎ方．ブラウザと tools/voiced-why.js で共通）
   f0.js               動画の音声の F0
   voiced.js           発声の区間（声のある所を評価グラフに出す）
   ref.js              基準音声（動画の最初か，別の基準音声の動画に入る声を聴き直す）
@@ -83,7 +84,7 @@ modes/                入力方式（読み込み順が「入力方式」の選�
   carma.js ranktrace.js excel.js affectgrid.js sam.js panas.js affectrank.js custom.js
 sam/                  SAM の原典画像
 vendor/               同梱した外部ライブラリ（vosk.js）
-tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する．build-collect.js：collect-tools.zip を作る）
+tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する．build-collect.js：collect-tools.zip を作る．voiced-why.js：発声の帯が出ない理由を録画から調べる（npm run voiced-why -- <録画>））
   collect/            回収ツール（bat，設定.json の見本，collect.js，aggregate.js，lib.js）
 collect-tools.zip     回収ツールの配布用（npm run build-collect で作る．中身は ツール/ フォルダ 1 つ）
 .claude/skills/       Claude Code の skill（一覧は冒頭の「Claude Code に頼めること」）
