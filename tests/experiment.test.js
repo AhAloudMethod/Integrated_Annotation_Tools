@@ -44,7 +44,7 @@ const GOOD = makeFolder('exp_good', {
         { mode: 'emujoy', video: 'practice.mp4', practice: true, options: { face: false }, condition: '練習用' },
         { mode: 'excel', video: 'a.mp4', settings: { review: true } },
       ],
-      P02: [{ mode: 'sam', video: 'a.mp4' }],
+      P02: [{ mode: 'sam', video: 'a.mp4' }, { mode: 'excel', video: './sub/b.mp4', range: { start: 0, end: 5 } }],
       P03: [{ mode: 'sam', video: 'c.mp4' }],
       P04: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'self' } }],
       P06: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'sec1' } }],
@@ -60,6 +60,8 @@ const GOOD = makeFolder('exp_good', {
   'setup.json': { settings: { f0: false, review: false, videoWindow: false, listen: false },
     videos: { 'practice.mp4': { start: 0, end: 12, bin: 1 }, 'a.mp4': { start: 1, end: 11, bin: 2, ref: 1.5 }, 'c.mp4': { start: 0, end: 20, bin: 1 } } },
 }, ['practice.mp4', 'a.mp4', 'c.mp4']);
+// 下の階層の動画：回収した録画（データ）は名前を挙げていないので、setup.json の画面の表に出さない。experiment.json が挙げた sub/b.mp4 は出す
+for (const f of ['データ/P01/take.mp4', 'sub/b.mp4']) { fs.mkdirSync(path.dirname(path.join(GOOD, f)), { recursive: true }); fs.copyFileSync(VID, path.join(GOOD, f)); }
 // 録画の試行だけの実験フォルダ（動画も setup.json も置かない）。録画は別のフォルダに置く
 const REC = makeFolder('exp_rec', {
   'experiment.json': {
@@ -114,6 +116,9 @@ const BAD = makeFolder('exp_bad', {
   await p.waitForSelector('#esSave');
   const rows = await p.$$eval('.expVids tr', trs => trs.map(t => t.textContent));
   check('setup.json の画面：フォルダの動画と、覚えてある評価区間を並べる', rows.some(r => r.includes('a.mp4') && r.includes('2〜10 秒，1 秒ごと')), JSON.stringify(rows));
+  const hid = await p.$eval('#expCover', c => c.textContent);
+  check('setup.json の画面：下の階層の動画は、experiment.json が挙げたもの（sub/b.mp4）だけを出し、出さなかった本数を案内する',
+    rows.some(r => r.includes('sub/b.mp4')) && !rows.some(r => r.includes('take.mp4')) && hid.includes('下の階層の動画 1 本は表に出していません'), JSON.stringify(rows));
   check('setup.json の画面：覚えていない動画は、フォルダの setup.json の区間を出す', rows.some(r => r.includes('practice.mp4') && r.includes('0〜12 秒') && r.includes('setup.json のまま')), JSON.stringify(rows));
   const form = await p.evaluate(() => ({ axes: document.getElementById('es_axes').value, listen: document.getElementById('es_listen').checked, review: document.getElementById('es_review').checked, voice: document.getElementById('es_voice').checked }));
   check('設定の欄はフォルダの setup.json の値（視聴を出さない・聴いてから入力しない）で、setup.json に無い項目は今の画面の値（評価軸は PANA）と既定（音声入力は出さない）',

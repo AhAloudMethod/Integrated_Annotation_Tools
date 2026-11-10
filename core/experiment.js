@@ -630,14 +630,20 @@
     return { start: r4(r.start), end: r4(end), bin: r.bin, label: r.label || 'countdown', ...d };
   }
   async function setupExport(list) {
-    const { videos, setupFile } = readFolder(list);
+    const { videos, setupFile, cfgFile } = readFolder(list);
     cover('<h2>実験用設定を保存する</h2><p>フォルダの動画を調べています…</p>');
-    let old = null, oldErr = '';
+    let old = null, oldErr = '', cfg = null;
     try { old = setupFile ? await readJSON(setupFile) : null; } catch (err) { oldErr = err.message; }
+    try { cfg = cfgFile ? await readJSON(cfgFile) : null; } catch (_e) {}
     const oldSet = old && isObj(old.settings) ? old.settings : {}, oldVids = old && isObj(old.videos) ? old.videos : {};
     const refPaths = new Set(Object.values(oldVids).filter(e => isObj(e) && typeof e.refVideo === 'string').map(e => e.refVideo));   // 基準音声の動画（評価区間は要らない）
+    // 表に出す動画：フォルダ直下の動画、experiment.json の試行が挙げた動画、setup.json にある動画（基準音声の動画を含む）。
+    // 下の階層に置いたゲーム・ツール・回収した録画（データ）の動画は、名前を挙げていなければ出さない
+    const named = new Set([...Object.keys(oldVids), ...refPaths]);
+    if (cfg && isObj(cfg.participants)) for (const ts of Object.values(cfg.participants)) if (Array.isArray(ts)) for (const t of ts) if (isObj(t) && typeof t.video === 'string') named.add(t.video.replace(/^\.\//, '').replace(/\\/g, '/'));
+    const shown = videos.filter(v => !v.path.includes('/') || named.has(v.path)), nHidden = videos.length - shown.length;
     const rows = [];
-    for (const v of videos) {
+    for (const v of shown) {
       const dur = await durationOf(v.file);
       const r = dur ? _.loadRange(v.file.name, `${v.file.size}:${dur.toFixed(2)}`) : null;
       const prev = isObj(oldVids[v.path]) ? oldVids[v.path] : null;
@@ -682,6 +688,7 @@
       <div id="esAdv" class="expTab"><div class="expForm">${E.SETTINGS.filter(d => d.adv).map(ctl).join('')}</div></div>
       <div class="refTitle">動画ごとの評価区間（通常の画面で動画を開いて合わせたもの）</div>
       ${rows.length ? `<table class="expVids"><tr><th>動画</th><th>評価区間</th></tr>${rows.map(r => `<tr><td>${esc(r.path)}</td><td>${cell(r)}</td></tr>`).join('')}</table>` : '<p class="muted">動画がありません</p>'}
+      ${nHidden ? `<p class="muted">下の階層の動画 ${nHidden} 本は表に出していません（experiment.json の試行にも setup.json にも無い動画）。実験で使うなら、フォルダ直下に置くか experiment.json の試行に書いてください。</p>` : ''}
       ${missing ? `<p class="expMiss">未設定の動画が ${missing} 本あります。実験で使う動画なら、通常の画面で開いて評価区間を合わせてから書き出し直してください（このまま書き出すと、その動画の試行は始められません）。</p>` : ''}
       <p class="muted">発声者が自分の録画を評価したときの区間区切りを、このフォルダにある同じ名前の録画に反映します。発声者の結果（試行の zip か _session.json）を選んでください。録画は先にこのフォルダに入れておいてください。</p>
       ${notes.map(m => `<p class="expMiss">${esc(m)}</p>`).join('')}
