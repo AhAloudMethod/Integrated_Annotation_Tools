@@ -1,8 +1,8 @@
 // 発声の帯が出ない理由を調べる：npm run voiced-why -- <録画> [--from 秒] [--to 秒] [--csv 出力.csv]
 // ブラウザと同じ計算（core/f0-calc.js）で，10 ms ごとの窓を次のどれかに振り分け，秒数と区間を出す。
-//   帯あり／音量が 5% 未満（声なしにされた）／周期がはっきりしない（YIN が 0.15 未満にならない）／70 Hz 未満／短すぎる（0.05 秒未満）／
-//   -50 dBFS 未満で周期がある（小さい声）／-50 dBFS 未満で周期も無い
-// あわせて，下限（5% と -50 dBFS）と YIN のしきい値（0.15）を変えたときに帯が何秒になるかを出す。音声は ffmpeg（PATH にあること）で 16kHz・モノラルにする。
+//   帯あり／音量が最大の何 % 未満（既定の 0% では出ない）／周期がはっきりしない（YIN が 0.15 未満にならない）／70 Hz 未満／短すぎる（0.05 秒未満）／
+//   下限（-60 dBFS）未満で周期がある（小さい声）／下限未満で周期も無い
+// あわせて，下限（最大の何 % と絶対の dBFS）と YIN のしきい値（0.15）を変えたときに帯が何秒になるかを出す。音声は ffmpeg（PATH にあること）で 16kHz・モノラルにする。
 // ブラウザは音声を自分で 16kHz にするので，ffmpeg との差で値はわずかに変わる
 const fs = require('fs');
 const path = require('path');
@@ -10,16 +10,17 @@ const { spawnSync } = require('child_process');
 const C = require('../core/f0-calc');
 
 const WIDE = [40, 2000];   // 範囲の外の声を見つけるときに探す範囲（Hz）
+const ABS_DB = Math.round(20 * Math.log10(C.FLOOR_ABS));
 const REASONS = {
   voiced: '帯あり',
   short: '短すぎる（0.05 秒未満）',
   range: `高さが ${C.FMIN} Hz 未満`,   // ${C.FMAX} Hz を超える声は半分の高さに読まれて帯になるので，外れるのは低いほうだけ
   aperiodic: `周期がはっきりしない（YIN ≥ ${C.YIN_TH}）`,
-  below: `音量が最大の ${C.FLOOR_REL * 100}% 未満`,
-  quiet: '-50 dBFS 未満だが周期がある（小さい声）',
-  silent: '-50 dBFS 未満で周期も無い（無音・雑音）',
+  below: `音量が最大の ${C.FLOOR_REL * 100}% 未満`,   // 既定（0%）では出ない
+  quiet: `${ABS_DB} dBFS 未満だが周期がある（小さい声）`,
+  silent: `${ABS_DB} dBFS 未満で周期も無い（無音・雑音）`,
 };
-const LOW = 0.0005;   // 絶対の下限を下げたときを調べる最小（-66 dBFS）。これより小さい窓は YIN を求めない
+const LOW = 0.0003;   // 絶対の下限を下げたときを調べる最小（-70 dBFS）。これより小さい窓は YIN を求めない
 const db = v => (v > 0 ? 20 * Math.log10(v) : -Infinity);
 const fmtDb = v => (Number.isFinite(db(v)) ? db(v).toFixed(1) : '-inf');
 const sec = n => (n * C.HOP).toFixed(2);
@@ -101,7 +102,7 @@ function report(file, d, from, to) {
   L.push(`録画：${path.basename(file)}（${t(d.n)} 秒）` + (from > 0 || to < d.n ? `　調べた範囲：${t(from)}〜${t(to)} 秒` : ''));
   L.push(`最大の音量：${fmtDb(d.peak)} dBFS（${t(d.peakK)} 秒）`);
   const relFloor = d.peak * C.FLOOR_REL;
-  L.push(`声なしにする下限：${fmtDb(d.floor)} dBFS（${relFloor >= C.FLOOR_ABS ? `最大の ${C.FLOOR_REL * 100}% で決まる` : `-50 dBFS（${C.FLOOR_ABS}）で決まる`}）`);
+  L.push(`声なしにする下限：${fmtDb(d.floor)} dBFS（${relFloor >= C.FLOOR_ABS ? `最大の ${C.FLOOR_REL * 100}% で決まる` : `${ABS_DB} dBFS（${C.FLOOR_ABS}）で決まる`}）`);
   L.push('大きな音の上位：' + loudest(d.rms).map(k => `${t(k)} 秒 ${fmtDb(d.rms[k])} dB`).join('，'));
   L.push('');
   L.push('■ 窓の振り分け（秒）');
@@ -109,14 +110,14 @@ function report(file, d, from, to) {
   for (const [key, label] of Object.entries(REASONS)) L.push(`  ${sec(cnt[key] || 0).padStart(8)}  ${label}`);
   L.push('');
   L.push('■ 値を変えたときの帯の長さ（秒，録画全体。行が下限，列が YIN のしきい値）');
-  const THS = [0.15, 0.2, 0.25, 0.3], RELS = [0.05, 0.02, 0.01, 0];
+  const THS = [0.15, 0.2, 0.25, 0.3], RELS = [0, 0.01, 0.02, 0.05];
   L.push('           ' + THS.map(x => String(x).padStart(8)).join(''));
   for (const r of RELS) L.push(`  ${(r * 100 + '%').padStart(9)} ` + THS.map(x => d.bandSec(r, x).toFixed(1).padStart(8)).join(''));
-  L.push('  （下限 0% は -50 dBFS だけで切る。既定は 5%・0.15）');
+  L.push(`  （下限 0% は ${ABS_DB} dBFS だけで切る。既定は 0%・0.15）`);
   L.push('');
-  L.push('■ 絶対の下限（既定 -50 dBFS）を変えたときの帯の長さ（秒，下限 5%）');
+  L.push(`■ 絶対の下限（既定 ${ABS_DB} dBFS）を変えたときの帯の長さ（秒，下限 ${C.FLOOR_REL * 100}%）`);
   L.push('           ' + THS.map(x => String(x).padStart(8)).join(''));
-  for (const a of [C.FLOOR_ABS, 10 ** (-55 / 20), 10 ** (-60 / 20), LOW]) L.push(`  ${(Math.round(db(a)) + ' dB').padStart(9)} ` + THS.map(x => d.bandSec(C.FLOOR_REL, x, a).toFixed(1).padStart(8)).join(''));   // 既定は 0.003（-50.5 dB）
+  for (const a of [0.003, 10 ** (-55 / 20), C.FLOOR_ABS, LOW]) L.push(`  ${(Math.round(db(a)) + ' dB').padStart(9)} ` + THS.map(x => d.bandSec(C.FLOOR_REL, x, a).toFixed(1).padStart(8)).join(''));   // 0.003 は以前の既定（-50 dB）
   L.push('');
   L.push('■ 帯の無い所で音のある区間（0.2 秒以上）');
   const gs = gaps(d, from, to);

@@ -4,7 +4,9 @@
   const SR = 16000, HOP = 0.01, WIN = 640;        // 16kHz、10ms ごと、窓 40ms
   const FMIN = 70, FMAX = 1000;                   // 探す範囲（Hz）。叫び声の高い「あ」も入るよう広めに
   const YIN_TH = 0.15;                            // YIN のしきい値（小さいほど厳しく「声あり」とする）
-  const FLOOR_ABS = 0.003, FLOOR_REL = 0.05;      // 小さすぎる音は声なし（-50dBFS 相当、かつ最大の 5%）
+  // 小さすぎる音は声なし（-60dBFS）。声かどうかは YIN の周期で決め、音量の下限は低く置く。
+  // 以前は -50dBFS と最大の 5% だったが、小さく録れた声（実験3 の P02 は最大 -37dBFS）や、効果音で最大が上がった録画の声を切っていた
+  const FLOOR_ABS = 0.001, FLOOR_REL = 0;
   const GAP = 10, MIN_RUN = 5;                    // 発声の区間：つなぐ切れ目・除く短さ（10 ms の窓の数）
 
   // YIN（de Cheveigné & Kawahara, 2002）。f0 は声がはっきりしなければ NaN。
@@ -43,7 +45,7 @@
     }
     return rms;
   }
-  // 声なしとする音量の下限：録画全体の最大の rel 倍と abs の大きいほう
+  // 声なしとする音量の下限：録画全体の最大の rel 倍と abs の大きいほう（既定は rel = 0 で abs だけ）
   function floorOf(rms, rel = FLOOR_REL, abs = FLOOR_ABS) {
     let mx = 0; for (const v of rms) if (v > mx) mx = v;
     return Math.max(abs, mx * rel);

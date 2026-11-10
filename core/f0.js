@@ -11,7 +11,7 @@
   // 音声全体を処理する（重いので少しずつ。alive() が偽になったら（ほかの動画に替わったら）打ち切る）
   async function analyse(samples, alive, progress) {
     const rms = C.rmsFrames(samples), n = rms.length, f0 = new Float32Array(n).fill(NaN);
-    const floor = C.floorOf(rms);   // 小さすぎる音は声なしとする（最大の 5%、かつ -50dBFS 相当）
+    const floor = C.floorOf(rms);   // 小さすぎる音（-60dBFS 未満）は声なしとする
     for (let k = 0; k < n; k++) {
       if (rms[k] >= floor) f0[k] = yin(samples, C.frameOff(k));
       if (k % 150 === 149) { await new Promise(r => setTimeout(r, 0)); if (!alive()) return null; progress(Math.round(k / n * 100)); }
