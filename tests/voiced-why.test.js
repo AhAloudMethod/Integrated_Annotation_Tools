@@ -15,6 +15,7 @@ noise(5, 6, 0.3);              // 息・雑音：周期がはっきりしない
 tone(7, 8, 55, 0.3);           // 低すぎる声：70 Hz 未満
 tone(8.3, 8.6, 1500, 0.3);     // 1000 Hz を超える声は半分の高さに読まれる（帯になる）
 tone(9, 9.02, 200, 0.3);       // 短すぎる声
+tone(9.3, 9.8, 200, 0.002);    // -50 dBFS 未満の小さい声
 
 const d = diagnose(x);
 const g = gaps(d, 0, d.n);
@@ -31,3 +32,5 @@ const k9 = Math.round(9.0 / C.HOP);
 check('短すぎる声は帯にならず「短すぎる」', d.reason.slice(k9 - 3, k9 + 3).includes('short') && !d.spans.some(([a]) => Math.abs(a - 9) < 0.1));
 check('既定の値の帯の長さは振り分けの「帯あり」と同じ', Math.abs(d.bandSec(0.05, 0.15) - d.reason.filter(r => r === 'voiced').length * C.HOP) < 1e-6);
 check('下限を 1% にすると小さい声も帯になる', d.bandSec(0.01, 0.15) > d.bandSec(0.05, 0.15) + 0.9, `${d.bandSec(0.05, 0.15).toFixed(2)} → ${d.bandSec(0.01, 0.15).toFixed(2)}`);
+check('-50 dBFS 未満の声は「小さい声」で，絶対の下限を下げると帯になる', mainOf(9.5) === 'quiet' && d.bandSec(0.0, 0.15, 10 ** (-60 / 20)) > d.bandSec(0.0, 0.15) + 0.4,
+  `${mainOf(9.5)} ${d.bandSec(0.0, 0.15).toFixed(2)} → ${d.bandSec(0.0, 0.15, 10 ** (-60 / 20)).toFixed(2)}`);

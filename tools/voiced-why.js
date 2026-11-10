@@ -1,7 +1,8 @@
 // 発声の帯が出ない理由を調べる：npm run voiced-why -- <録画> [--from 秒] [--to 秒] [--csv 出力.csv]
 // ブラウザと同じ計算（core/f0-calc.js）で，10 ms ごとの窓を次のどれかに振り分け，秒数と区間を出す。
-//   帯あり／音量が 5% 未満（声なしにされた）／周期がはっきりしない（YIN が 0.15 未満にならない）／70 Hz 未満／短すぎる（0.05 秒未満）／無音（-50 dBFS 未満）
-// あわせて，下限（5%）と YIN のしきい値（0.15）を変えたときに帯が何秒になるかを出す。音声は ffmpeg（PATH にあること）で 16kHz・モノラルにする。
+//   帯あり／音量が 5% 未満（声なしにされた）／周期がはっきりしない（YIN が 0.15 未満にならない）／70 Hz 未満／短すぎる（0.05 秒未満）／
+//   -50 dBFS 未満で周期がある（小さい声）／-50 dBFS 未満で周期も無い
+// あわせて，下限（5% と -50 dBFS）と YIN のしきい値（0.15）を変えたときに帯が何秒になるかを出す。音声は ffmpeg（PATH にあること）で 16kHz・モノラルにする。
 // ブラウザは音声を自分で 16kHz にするので，ffmpeg との差で値はわずかに変わる
 const fs = require('fs');
 const path = require('path');
@@ -15,8 +16,10 @@ const REASONS = {
   range: `高さが ${C.FMIN} Hz 未満`,   // ${C.FMAX} Hz を超える声は半分の高さに読まれて帯になるので，外れるのは低いほうだけ
   aperiodic: `周期がはっきりしない（YIN ≥ ${C.YIN_TH}）`,
   below: `音量が最大の ${C.FLOOR_REL * 100}% 未満`,
-  silent: '無音（-50 dBFS 未満）',
+  quiet: '-50 dBFS 未満だが周期がある（小さい声）',
+  silent: '-50 dBFS 未満で周期も無い（無音・雑音）',
 };
+const LOW = 0.0005;   // 絶対の下限を下げたときを調べる最小（-66 dBFS）。これより小さい窓は YIN を求めない
 const db = v => (v > 0 ? 20 * Math.log10(v) : -Infinity);
 const fmtDb = v => (Number.isFinite(db(v)) ? db(v).toFixed(1) : '-inf');
 const sec = n => (n * C.HOP).toFixed(2);
@@ -37,9 +40,10 @@ function diagnose(samples, { th = C.YIN_TH, rel = C.FLOOR_REL } = {}) {
   const floor = C.floorOf(rms, rel);
   const f0 = new Float32Array(n).fill(NaN), dmin = new Float32Array(n).fill(NaN), wide = new Float32Array(n).fill(NaN);
   for (let k = 0; k < n; k++) {
-    if (rms[k] < C.FLOOR_ABS) continue;   // 無音はどの設定でも声なし
+    if (rms[k] < LOW) continue;
     const y = C.yinDetail(samples, C.frameOff(k), C.SR, C.WIN, C.FMIN, C.FMAX, th);
-    dmin[k] = y.dmin; if (rms[k] >= floor) f0[k] = y.f0;
+    dmin[k] = y.dmin; if (rms[k] < C.FLOOR_ABS) continue;
+    if (rms[k] >= floor) f0[k] = y.f0;
     if (!(y.f0 > 0)) wide[k] = C.yin(samples, C.frameOff(k), C.SR, C.WIN, WIDE[0], WIDE[1], th);
   }
   const spans = C.spans(f0);
@@ -47,15 +51,15 @@ function diagnose(samples, { th = C.YIN_TH, rel = C.FLOOR_REL } = {}) {
   for (const [t0, t1] of spans) for (let k = Math.round(t0 / C.HOP); k < n && k * C.HOP < t1 - C.WIN / C.SR - 1e-9; k++) inBand[k] = 1;
   const reason = Array.from({ length: n }, (_x, k) => {
     if (inBand[k]) return 'voiced';
-    if (rms[k] < C.FLOOR_ABS) return 'silent';
+    if (rms[k] < C.FLOOR_ABS) return dmin[k] < th ? 'quiet' : 'silent';
     if (rms[k] < floor) return 'below';
     if (f0[k] > 0) return 'short';
     if (wide[k] > 0 && (wide[k] < C.FMIN || wide[k] > C.FMAX)) return 'range';
     return 'aperiodic';
   });
   // 下限としきい値を変えたら帯は何秒か
-  const bandSec = (r, t) => {
-    const fl = C.floorOf(rms, r), g = new Float32Array(n);
+  const bandSec = (r, t, abs = C.FLOOR_ABS) => {
+    const fl = C.floorOf(rms, r, Math.max(abs, LOW)), g = new Float32Array(n);
     for (let k = 0; k < n; k++) g[k] = rms[k] >= fl && dmin[k] < t ? 1 : NaN;   // 探す範囲で dmin < t なら YIN は声ありとする
     return C.spans(g).reduce((s, [a, b]) => s + (b - a - C.WIN / C.SR), 0);   // 窓の数で数える（振り分けの秒と同じ数え方）
   };
@@ -73,7 +77,7 @@ function loudest(rms, top = 5) {
 function gaps(d, from, to) {
   const out = [];
   for (let k = from; k < to;) {
-    if (d.reason[k] === 'voiced' || d.reason[k] === 'silent') { k++; continue; }
+    if (d.reason[k] === 'voiced' || d.reason[k] === 'silent') { k++; continue; }   // 小さい声（quiet）は区間に入れる
     let e = k;
     // 0.1 秒未満の無音はつなぐ（声の途切れで区間が細切れにならないように）
     while (e < to && d.reason[e] !== 'voiced') {
@@ -109,6 +113,10 @@ function report(file, d, from, to) {
   L.push('           ' + THS.map(x => String(x).padStart(8)).join(''));
   for (const r of RELS) L.push(`  ${(r * 100 + '%').padStart(9)} ` + THS.map(x => d.bandSec(r, x).toFixed(1).padStart(8)).join(''));
   L.push('  （下限 0% は -50 dBFS だけで切る。既定は 5%・0.15）');
+  L.push('');
+  L.push('■ 絶対の下限（既定 -50 dBFS）を変えたときの帯の長さ（秒，下限 5%）');
+  L.push('           ' + THS.map(x => String(x).padStart(8)).join(''));
+  for (const a of [C.FLOOR_ABS, 10 ** (-55 / 20), 10 ** (-60 / 20), LOW]) L.push(`  ${(Math.round(db(a)) + ' dB').padStart(9)} ` + THS.map(x => d.bandSec(C.FLOOR_REL, x, a).toFixed(1).padStart(8)).join(''));   // 既定は 0.003（-50.5 dB）
   L.push('');
   L.push('■ 帯の無い所で音のある区間（0.2 秒以上）');
   const gs = gaps(d, from, to);
