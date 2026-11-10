@@ -92,7 +92,7 @@
     axesOnly: 'pana',   // PA・NA の尺度なので，評価の軸の組にかかわらず PANA（core/axes.js）
     id: 'panas', group: '離散', label: 'PANAS（日本語版・16項目）', model: 'table', side: 'wide', init: { v: 5, a: 5 },
     options: { autoNext: false, to9: false },
-    help: '<p>今の区間について、16 の気分の項目がどれだけ当てはまるかを 1〜6 で答えます（1＝全く当てはまらない、6＝非常によく当てはまる）。全項目に答えると区間の値が入ります（「合計を 1〜9 にしてグラフに出す」をオフにすると、区間の値は入れず、グラフには合計 8〜48 をそのまま描きます）。数字キー <kbd>1</kbd>〜<kbd>6</kbd> で今の項目に答えて次へ進み、<kbd>↑</kbd><kbd>↓</kbd> で項目を移り、<kbd>Backspace</kbd> で消します。声のない区間は <kbd>0</kbd>（または「発声なし」）で印を付け、答えずに次へ進みます（もう一度押すと解除）。評価の対象から外れます。</p>',
+    help: '<p>今の区間について、16 の気分の項目がどれだけ当てはまるかを 1〜6 で答えます（1＝全く当てはまらない、6＝非常によく当てはまる）。全項目に答えると区間の値が入ります（「合計を 1〜9 にしてグラフに出す」をオフにすると、区間の値は入れず、グラフには合計 8〜48 をそのまま描きます）。数字キー <kbd>1</kbd>〜<kbd>6</kbd> で今の項目に答えて次へ進み、<kbd>↑</kbd><kbd>↓</kbd> で項目を移り、<kbd>Backspace</kbd> で消します。声のない区間は <kbd>0</kbd>（または「発声なし」）で印を付け、答えずに次へ進みます（もう一度押すと解除）。評価の対象から外れます。直前の区間で選んだ段階は、点線の枠でうっすら出ます。</p>',
     mount({ panel, under }) {
       rows = []; lastSec = -1; lastAct = -1; mounted = order().join(',');
       box = h('div', { class: 'planeBox panas' });
@@ -141,9 +141,10 @@
       const lk = locked(s);
       list.classList.toggle('nv', nv); list.classList.toggle('lock', lk); nvBtn.classList.toggle('on', nv); nvBtn.disabled = lk;
       head.innerHTML = nv ? `<b>区間 ${AH.secLabel(s)}</b>　<span class="pnSum">${lk ? '発声なし（事前設定。変更できません）' : '発声なし（評価の対象外）'}</span>` : `<b>区間 ${AH.secLabel(s)}</b>　<span>回答 ${t.n}/${ITEMS.length}</span>　<span class="pnSum">PA ${t.n === ITEMS.length ? t.pa : '–'}</span>　<span class="pnSum">NA ${t.n === ITEMS.length ? t.na : '–'}</span>`;
+      const pr = s > 0 ? row(s - 1) : [];   // 直前の区間の回答（うっすら出す．発声なしの区間なら出さない）
       rows.forEach((el, k) => {
         el.classList.toggle('act', k === act);
-        for (const b of el.querySelectorAll('button')) b.classList.toggle('on', +b.dataset.v === r[k]);
+        for (const b of el.querySelectorAll('button')) { b.classList.toggle('on', +b.dataset.v === r[k]); b.classList.toggle('prev', +b.dataset.v === pr[k]); }
       });
       // 今の項目が見える位置へ（項目か区間が変わったときだけ．スクロールしているのは一覧ではなく右の列なので scrollIntoView で上位の枠ごと動かす。手でスクロールした位置は変えない）
       if (act !== lastAct && rows[act]) { lastAct = act; rows[act].style.scrollMarginTop = (topBar.offsetHeight + 4) + 'px'; rows[act].scrollIntoView({ block: 'nearest' }); }   // 上に固定した見出しの下に隠れないよう余白を取る

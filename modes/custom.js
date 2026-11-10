@@ -268,7 +268,7 @@
       if (x < 0) continue;
       let lo_ = 1, hi_ = 9;
       if (rel()) { const vs = [...S.data.points[ax].map(p => p.val), cv[ax] ?? 5]; lo_ = Math.min(...vs) - 1; hi_ = Math.max(...vs) + 1; }
-      const Y = v => y1 - (v - lo_) / (hi_ - lo_) * (y1 - y0), col = AH.css(ax === 'v' ? '--val' : '--aro');
+      const Y = v => y1 - (v - lo_) / (hi_ - lo_) * (y1 - y0), col = AH.css(ax === 'v' ? '--axv' : '--axa');
       g.fillStyle = AH.css('--muted'); g.font = '12px system-ui, sans-serif'; g.textAlign = 'center';
       g.fillText(name + (rel() ? '（相対）' : ''), x, 14); g.font = '10px system-ui, sans-serif';
       if (!rel()) { g.fillText(hi, x, 28); g.fillText(lo, x, H - 24); }

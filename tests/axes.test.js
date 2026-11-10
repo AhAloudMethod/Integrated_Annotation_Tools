@@ -41,6 +41,18 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('PANA：説明文の「快度」「覚醒度」も置き換わる', /ポジティブ/.test(r.help) && !/快度|覚醒度/.test(r.help), r.help.slice(0, 80));
     check('PANA：色の欄のラベル', col.includes('ネガティブ高・ポジティブ高') && col.includes('ネガティブ低・ポジティブ低'), JSON.stringify(col));
     check('PANA：設定が保存され、操作ログに残る', saved[0] === 'pana' && saved[1] === 'pana', JSON.stringify(saved));
+    const c = await p.evaluate(() => ({ v: AH.css('--axv'), a: AH.css('--axa'), val: AH.css('--val'), aro: AH.css('--aro'), now: getComputedStyle(document.querySelector('.axis.v .now')).color }));
+    check('PANA：軸の色を入れ替える（ポジティブ＝暖色，ネガティブ＝寒色）', c.v === c.aro && c.a === c.val, JSON.stringify(c));
+    await p.close();
+  }
+  // 2b. PANAS は設定が VA でも PANA の色。VA に戻ると元の色
+  {
+    const p = await open('panas', 'va');
+    const c = await p.evaluate(() => ({ v: AH.css('--axv'), aro: AH.css('--aro') }));
+    check('PANAS：ポジティブは暖色', c.v === c.aro, JSON.stringify(c));
+    await p.selectOption('#mode', 'key'); await p.waitForTimeout(150);
+    const d = await p.evaluate(() => ({ v: AH.css('--axv'), val: AH.css('--val') }));
+    check('VA：快度は元の色', d.v === d.val, JSON.stringify(d));
     await p.close();
   }
   // 3. 平面の方式（EMuJoy）・スロットル・Excel・グラフのラベル
