@@ -178,6 +178,38 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.close();
   }
 
+  // ---- 再生中の ← →（区間方式）：動かした先の区間の終わりで止まる。評価区間の前で Enter を押すと最初の区間を聴く
+  {
+    const p = await open('excel');
+    await p.evaluate(() => { AH._.setRange({ edges: null, start: 3, bin: 1, count: 5, target: 8, label: 'countdown' }); document.activeElement && document.activeElement.blur(); });
+    const at = t => p.evaluate(t => { AH.video.pause(); AH.video.currentTime = t; }, t).then(() => p.waitForTimeout(300));
+    const whilePlaying = async (t0, key) => {
+      await at(t0); await p.keyboard.press('Space'); await p.waitForFunction(() => !AH.video.paused, null, { timeout: 3000 }); await p.waitForTimeout(200);
+      await p.keyboard.press(key);
+      await p.waitForTimeout(300); await p.waitForFunction(() => AH.video.paused, null, { timeout: 4000 }); await p.waitForTimeout(80);
+      return p.evaluate(() => AH.video.currentTime);
+    };
+    const fwd = await whilePlaying(4.2, 'ArrowRight');
+    check('再生中に → を押すと次の区間へ進み、その区間の終わりで止まる', Math.abs(fwd - 5.998) < 0.01, fwd.toFixed(3));
+    const back = await whilePlaying(5.2, 'ArrowLeft');
+    check('再生中に ← を押すと前の区間へ戻り、その区間の終わりで止まる（2 区間流れない）', Math.abs(back - 4.998) < 0.01, back.toFixed(3));
+    // シークバー（グラフの下端の目盛りの帯）を再生中に先へ動かす
+    await at(4.2); await p.keyboard.press('Space'); await p.waitForFunction(() => !AH.video.paused); await p.waitForTimeout(200);
+    await p.evaluate(() => AH._.seekTo(6.3)); await p.waitForTimeout(300); await p.waitForFunction(() => AH.video.paused, null, { timeout: 4000 }); await p.waitForTimeout(80);
+    const bar = await p.evaluate(() => AH.video.currentTime);
+    check('再生中にシークバーで先へ動かすと、動かした先の区間の終わりで止まる', Math.abs(bar - 6.998) < 0.01, bar.toFixed(3));
+    await at(1.0); await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+    const t0 = await p.evaluate(() => AH.video.currentTime);
+    await p.waitForFunction(() => AH.video.paused, null, { timeout: 4000 }); await p.waitForTimeout(80);
+    const t1 = await p.evaluate(() => AH.video.currentTime);
+    check('評価区間の前で Enter を押すと最初の区間を聴く（飛ばさない）', t0 >= 3 && t0 < 3.9 && Math.abs(t1 - 3.998) < 0.01, `${t0.toFixed(3)} → ${t1.toFixed(3)}`);
+    await at(4.5); await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+    const t2 = await p.evaluate(() => AH.video.currentTime);
+    await p.waitForFunction(() => AH.video.paused, null, { timeout: 4000 });
+    check('評価区間の中で Enter を押すと次の区間を聴く（これまでどおり）', t2 >= 5 && t2 < 5.9, t2.toFixed(3));
+    await p.close();
+  }
+
   // 他のテストに設定を残さない
   { const p = await ctx.newPage(); await p.goto(URL); await p.evaluate(() => localStorage.removeItem('ahann_listen')); await p.close(); }
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');

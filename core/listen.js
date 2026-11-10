@@ -4,7 +4,7 @@
 //   3. Enter／ボタン0 で、同じ区間を始めから音声つきで再生し直し、その間の連続の入力を記録する（記録オンと同じ書き込み）
 //   4. 区間の終わりで記録を終え、そのまま次の区間を聴く（1 に戻る）。R は聴いた区間をもう一度聴く（記録なし）
 // 区間方式（表のモデル：Excel、Affect Grid、SAM、カスタムの区間ごと）では記録の段階がない。
-//   止まっている間に聴いた区間の値を入れ、Enter／ボタン0 で次の区間を聴く（Excel は最後の行で Enter を押して次の列へ移ったときも）
+//   止まっている間に聴いた区間の値を入れ、Enter／ボタン0 で次の区間を聴く（評価区間の前で止まっているときは最初の区間）（Excel は最後の行で Enter を押して次の列へ移ったときも）
 // 設定は「設定」パネルで切り替え、ブラウザに保存する（ahann_listen）。操作ログに listen_mode・listen_pause・listen_record・listen_replay、書き出しの meta.listen に残す
 (() => {
   const _ = AH._;
@@ -40,7 +40,9 @@
   video.addEventListener('play', () => { if (usable()) aimFrom(video.currentTime); });
   // 記録中に止めた・動かした（Space・シーク）ときは、そこで記録を終えて聴く段階に戻る
   video.addEventListener('pause', () => { if (usable()) { stopRecording('pause'); resetPen(); } });
-  video.addEventListener('seeking', () => { if (!ownSeek) stopRecording('seek'); });
+  // 再生中に ← →・シークバーで動かしたら、止める位置を動かした先の区間で決め直す（tick が決める）。
+  // 決め直さないと、→ で先へ動かしても元の区間の終わりへ戻されて止まり、← で戻すと 2 区間分流れた
+  video.addEventListener('seeking', () => { if (!ownSeek) { stopRecording('seek'); target = null; } });
   video.addEventListener('seeked', () => { ownSeek = false; if (waiting()) resetPen(); });
   // 毎フレーム（core/loop.js。書き込みのサンプリングより先に呼ぶ）
   function tick() {
@@ -78,7 +80,7 @@
   // ---------- Enter／ボタン0：聴いた区間を始めから再生し直して記録する ----------
   function startRecord() {
     if (!waiting()) return false;
-    if (table()) { let t = _.curSec() + 1; while (t < nSec() && _.novoiceLocked(t)) t++; return playBin(t); }   // 区間方式：次の区間を聴く（発声なしの事前設定の区間は飛ばす）
+    if (table()) { let t = binAt(video.currentTime || 0) < 0 ? 0 : _.curSec() + 1; while (t < nSec() && _.novoiceLocked(t)) t++; return playBin(t); }   // 区間方式：次の区間を聴く（発声なしの事前設定の区間は飛ばす）
     const s = inputSec(); if (s == null) return true;
     recStart = binStart(s);
     ownSeek = true; video.currentTime = recStart;
