@@ -376,3 +376,6 @@ img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:bord
 .pnBtns button.on{color:var(--ink);font-weight:700}
 .pnRow.pa button.on{background:color-mix(in srgb,var(--axv) 25%,transparent);border-color:var(--axv)}
 .pnRow.na button.on{background:color-mix(in srgb,var(--axa) 25%,transparent);border-color:var(--axa)}
+/* 直前の区間で選んだ段階：うっすら出す（今の区間で選んだもの .on が上に重なる） */
+.pnRow.pa button.prev:not(.on){background:color-mix(in srgb,var(--axv) 10%,transparent);border-style:dashed;border-color:color-mix(in srgb,var(--axv) 45%,transparent)}
+.pnRow.na button.prev:not(.on){background:color-mix(in srgb,var(--axa) 10%,transparent);border-style:dashed;border-color:color-mix(in srgb,var(--axa) 45%,transparent)}
