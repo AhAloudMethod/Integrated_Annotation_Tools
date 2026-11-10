@@ -31,7 +31,7 @@
       if (!g) return;
       const w = c.clientWidth, H = c.clientHeight; g.clearRect(0, 0, w, H);
       const V = AH.ax('v'), A = AH.ax('a');
-      const bars = [[V.name, sl.owned(0) ? 'スライダー1' : 'W / S', ctrl.v, AH.css('--val'), V.hi, V.lo], [A.name, sl.owned(1) ? 'スライダー2' : '↑ / ↓', ctrl.a, AH.css('--aro'), A.hi, A.lo]];
+      const bars = [[V.name, sl.owned(0) ? 'スライダー1' : 'W / S', ctrl.v, AH.css('--axv'), V.hi, V.lo], [A.name, sl.owned(1) ? 'スライダー2' : '↑ / ↓', ctrl.a, AH.css('--axa'), A.hi, A.lo]];
       bars.forEach(([name, keys, val, col, hi, lo], i) => {
         const x = w * (i ? 0.72 : 0.28), y0 = 34, y1 = H - 40, Y = v => y1 - (v - 1) / 8 * (y1 - y0);
         g.fillStyle = AH.css('--muted'); g.font = '12px system-ui, sans-serif'; g.textAlign = 'center';

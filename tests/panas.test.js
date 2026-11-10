@@ -77,6 +77,14 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const btns = await p.$$('.pnRow button[data-v="3"]'); for (const b of btns) await b.click();
     c = await cells(p);
     check('全項目 3（平均 3）→ 4', c.v === 4 && c.a === 4, `v=${c.v} a=${c.a}`);
+    // 直前の区間の回答をうっすら出す：区間 1 へ移ると，区間 0 で選んだ 3 に .prev が付く（区間 0 では付かない）
+    {
+      const p0 = await p.$$eval('.pnRow button.prev', bs => bs.length);
+      await p.evaluate(() => AH.seekTo(AH.binStart(1) + 0.001)); await p.waitForTimeout(100);
+      const pv = await p.$$eval('.pnRow button.prev', bs => bs.map(b => b.dataset.v));
+      check('直前の区間で選んだ段階に印（先頭の区間では無し）', p0 === 0 && pv.length === 16 && pv.every(v => v === '3'), JSON.stringify({ p0, pv }));
+      await p.evaluate(() => AH.seekTo(AH.binStart(0) + 0.001)); await p.waitForTimeout(100);
+    }
 
     // 区切り：区間を分けると回答も付いていく
     await p.evaluate(() => AH._.addCut(AH._.binStart(0) + 0.5));

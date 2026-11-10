@@ -40,7 +40,7 @@
       const X = tt => P + tt / D * (w - 2 * P), Y = v => H - P - (v - lo) / (hi - lo) * (H - 2 * P);
       g.clearRect(0, 0, w, H);
       g.strokeStyle = AH.css('--line'); g.strokeRect(P, P, w - 2 * P, H - 2 * P);
-      g.strokeStyle = AH.css(ax() === 'v' ? '--val' : '--aro'); g.lineWidth = 2; g.beginPath();
+      g.strokeStyle = AH.css(ax() === 'v' ? '--axv' : '--axa'); g.lineWidth = 2; g.beginPath();
       ps.forEach((p, i) => { const nx = i + 1 < ps.length ? ps[i + 1].t : t; if (!i) g.moveTo(X(p.t), Y(p.val)); else g.lineTo(X(p.t), Y(p.val)); g.lineTo(X(nx), Y(p.val)); });
       g.stroke();
       g.fillStyle = AH.isWriting() ? AH.css('--pen') : AH.css('--ink'); g.beginPath(); g.arc(X(t), Y(ctrl), 5, 0, 7); g.fill();

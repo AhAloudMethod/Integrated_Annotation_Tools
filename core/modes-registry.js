@@ -8,6 +8,7 @@
     for (const el of ['panel', 'overlay', 'under']) $(el).innerHTML = '';
     $('stage').style.boxShadow = '';
     document.body.dataset.side = _.M.side || 'normal';
+    document.documentElement.dataset.axes = _.axesCurrent();   // 軸の色（style.css の --axv・--axa。PANA で入れ替える）
     $('modeHelp').innerHTML = _.relabel(_.M.help || ''); _.localizeKeys($('modeHelp'));
     $('modeName').textContent = _.M.label;
     _.M.mount({ panel: $('panel'), overlay: $('overlay'), under: $('under') });
