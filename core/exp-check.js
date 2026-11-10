@@ -128,9 +128,9 @@
         else if (t.record && t.video != null) errors.push(`${where}：video と record の両方があります（どちらか一方です）`);
         else if (!t.record && t.video == null) errors.push(`${where}：video（動画）か record（録画の試行）がありません`);
         else if (!t.record && !env.has(t.video)) errors.push(`${where}：動画「${t.video}」がフォルダにありません`);
-        // 自動保存のキー（方式＋参加者ID＋動画名）が衝突するので、同じ組は 1 回だけ。録画の試行のキーは試行の番号なので衝突しない
+        // 自動保存のキー（方式＋参加者ID＋動画名）が衝突するので、本番の同じ組は 1 回だけ。録画の試行と練習の試行のキーは試行の番号なので衝突しない
         const key = `${t.mode}|${t.video}`;
-        if (!t.record && t.video != null) { if (seen.has(key)) errors.push(`${where}：方式と動画の組（${t.mode}・${t.video}）が重複しています`); seen.add(key); }
+        if (!t.record && !t.practice && t.video != null) { if (seen.has(key)) errors.push(`${where}：方式と動画の組（${t.mode}・${t.video}）が重複しています`); seen.add(key); }
         chkSet(t.settings, where); chkRange(t.range, where); chkSurvey(t.survey, where);
         if (t.condition != null && typeof t.condition !== 'string') errors.push(`${where}：condition（条件名）は文字列です`);
         if (useVideos && !t.range && !t.record && t.video && !videos[t.video]) noRange.add(t.video);

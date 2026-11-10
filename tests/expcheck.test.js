@@ -88,6 +88,14 @@ const balanced = Object.fromEntries(LM.map((row, p) => [`P0${p + 1}`, row.flatMa
   const r6 = run(folder('expc_rec2', { name: 'rec', participants: { P01: [{ mode: 'excel', record: true, video: 'a.mp4' }, { mode: 'excel' }, { mode: 'sam', record: 'yes' }] } }, ['a.mp4']));
   check('video と record の両方・どちらも無い・record が true 以外は誤り', r6.code === 1 && r6.text.includes('P01 の 1 番目：video と record の両方があります') && r6.text.includes('P01 の 2 番目：video（動画）か record（録画の試行）がありません')
     && r6.text.includes('P01 の 3 番目：record は true です'), r6.text);
+  // 練習の試行：同じ方式・動画を何度でも使える（操作の説明に既製の動画を使う）。本番の同じ組は今までどおり誤り
+  const SU2 = { videos: { 'a.mp4': { start: 0, end: 5 }, 'b.mp4': { start: 0, end: 5 } } };
+  const xl = extra => ({ rep: 'excel', ...extra });
+  const rp = run(folder('expc_prac2', { name: 'p2', participants: { P01: [{ mode: 'custom', video: 'a.mp4', practice: true, options: xl({ cuts: 'sec1' }) },
+    { mode: 'custom', video: 'a.mp4', practice: true, options: xl({ cuts: 'self', curve: 'on' }) }, { mode: 'custom', video: 'b.mp4', options: xl({ cuts: 'self' }) }] } }, ['a.mp4', 'b.mp4'], SU2));
+  check('練習の試行は、同じ方式・動画を重ねても誤りにしない', rp.code === 0 && !rp.text.includes('重複'), rp.text);
+  const rd = run(folder('expc_dup', { name: 'd', participants: { P01: [{ mode: 'custom', video: 'a.mp4', practice: true }, { mode: 'custom', video: 'b.mp4' }, { mode: 'custom', video: 'b.mp4' }] } }, ['a.mp4', 'b.mp4'], SU2));
+  check('本番の試行で同じ方式・動画を重ねると、今までどおり誤り', rd.code === 1 && rd.text.includes('P01 の 3 番目：方式と動画の組（custom・b.mp4）が重複しています'), rd.text);
   const r7 = run(folder('expc_rec3', { name: 'rec', participants: { P01: [{ mode: 'excel', video: 'a.mp4' }, { mode: 'sam', record: true }] } }, ['a.mp4'], { videos: { 'a.mp4': { start: 0, end: 5 } } }));
   check('動画の試行と録画の試行を混ぜられる（録画の試行には評価区間を求めない）', r7.code === 0 && !r7.text.includes('評価区間がありません'), r7.text);
   const r2 = run(out('expc_none'));

@@ -2,7 +2,7 @@
 (() => {
   const _ = AH._;
   const { video, modes, S, addLog, endStroke } = _;
-  // ---------- 自動保存（方式＋参加者ID＋動画名で復元。実験モードの録画の試行は動画名の代わりに試行の番号 save_key） ----------
+  // ---------- 自動保存（方式＋参加者ID＋動画名で復元。実験モードの録画・練習の試行は動画名の代わりに試行の番号 save_key） ----------
   const key = () => `ahann4:${S.meta.mode}:${S.meta.participant}:${S.meta.save_key || S.meta.video_file}`;
   function autosave() {
     if (!S.meta.video_file || !S.data) return;

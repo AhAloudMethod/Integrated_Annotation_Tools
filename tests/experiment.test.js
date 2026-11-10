@@ -49,6 +49,10 @@ const GOOD = makeFolder('exp_good', {
       P04: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'self' } }],
       P06: [{ mode: 'excel', video: 'a.mp4', options: { cuts: 'sec1' } }],
       P05: [{ mode: 'custom', video: 'a.mp4', options: { rep: 'excel', values: 'int', curve: 'on', curveInput: 'draw' } }],
+      // 操作の説明：同じ既製の動画で、方式の設定を変えた練習を 2 つ続ける
+      P07: [{ mode: 'custom', video: 'practice.mp4', practice: true, options: { rep: 'excel', cuts: 'sec1' } },
+        { mode: 'custom', video: 'practice.mp4', practice: true, options: { rep: 'excel', cuts: 'self', curve: 'on', curveInput: 'draw' } },
+        { mode: 'custom', video: 'a.mp4', options: { rep: 'excel', cuts: 'self' } }],
     },
   },
   // 動画ごとの評価区間。c.mp4 は動画（12 秒）より長い終了にして、試行を始められないことを確かめる
@@ -214,7 +218,7 @@ const BAD = makeFolder('exp_bad', {
     !!T && X1.trial === 0 && X1.practice === true && T.task_ms >= 1000 && T.play_ms >= 800 && T.play_ms <= T.task_ms && T.n_play === 1, JSON.stringify(T));
   const types = (sess.log || []).map(l => l.type);
   check('操作ログに exp_trial・task_start・task_end が順に残る', types.indexOf('exp_trial') >= 0 && types.indexOf('exp_trial') < types.indexOf('task_start') && types.indexOf('task_start') < types.indexOf('task_end'), types.join(','));
-  check('書き出したら、その試行の自動保存は消す', await p.evaluate(() => localStorage.getItem('ahann4:emujoy:P01:practice.mp4') === null));
+  check('書き出したら、その試行の自動保存は消す', await p.evaluate(() => localStorage.getItem('ahann4:emujoy:P01:prac1') === null));
   await p.keyboard.press('Space'); await p.waitForTimeout(200);
   check('完了後は再生できない', await p.evaluate(() => AH.video.paused));
   check('練習の試行にはアンケートを出さず、すぐ「次へ」を出す', !(await vis('#expSurvey')) && (await vis('#expNext')));
@@ -466,6 +470,26 @@ const BAD = makeFolder('exp_bad', {
   const em = await p.$eval('#expCard', c => c.textContent);
   check('評価区間の終了が動画より長ければ、誤りを出して試行を始めない', em.includes('c.mp4') && em.includes('動画の長さ') && !(await vis('#expStart')), em);
 
+  await exitExp();
+  await p.waitForTimeout(500);
+
+  // ---- 同じ方式・動画の練習を 2 つ続ける（操作の説明）：自動保存のキーを試行の番号にして、前の練習の入力を持ち越さない
+  await p.setInputFiles('#expDir', GOOD);
+  await p.waitForSelector('#expGo');
+  check('練習で同じ方式・動画を重ねても誤りにしない', !(await p.$$eval('.expErr li', ls => ls.map(l => l.textContent))).some(e => e.includes('P07')));
+  await p.selectOption('#expPid', 'P07');
+  await p.click('#expGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  await p.click('#expStart');
+  await p.evaluate(() => { AH.setCell('v', 0, 7); AH._.autosave(); });
+  const pr1 = await p.evaluate(() => ({ key: AH.S.meta.save_key, n: AH.nSec(), saved: localStorage.getItem('ahann4:custom:P07:prac1') != null }));
+  check('1 つ目の練習（1秒固定）：自動保存のキーは試行の番号（prac1）', pr1.key === 'prac1' && pr1.n === 12 && pr1.saved, JSON.stringify(pr1));
+  await p.click('#expDoneBtn');
+  await p.waitForFunction(() => AH._.expState() === 'done');
+  await p.click('#expNext');
+  await p.waitForFunction(() => AH._.expState() === 'ready' && AH.S.meta.save_key === 'prac2');
+  const pr2 = await p.evaluate(() => ({ n: AH.nSec(), curve: AH.mode.curve, file: AH.S.meta.video_file, filled: AH.S.data.cells.v.filter(x => x != null && x !== '').length, restore: AH.S.log.some(l => l.type === 'restore') }));
+  check('2 つ目の練習（自分で区切る・区間内で変化）：同じ動画でも前の練習の値を持ち越さず、区切りの無い 1 区間から始める', pr2.n === 1 && pr2.curve && pr2.file === 'practice.mp4' && pr2.filled === 0 && !pr2.restore, JSON.stringify(pr2));
   await exitExp();
   await p.waitForTimeout(500);
 

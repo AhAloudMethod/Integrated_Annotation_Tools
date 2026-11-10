@@ -111,6 +111,8 @@
   const trialName = (t, k) => `${k + 1}. ${t.practice ? '練習　' : ''}${modes[t.mode] ? modes[t.mode].label : t.mode}${cond(t) ? `（${cond(t)}）` : ''}　${t.record ? '（録画）' : t.video}`;
   // 今の試行の動画の名前。録画の試行は選んだ録画のファイル名（選ぶ前は空）
   const vidName = t => (t.record ? ((S.meta.experiment || {}).record || {}).file || '' : t.video);
+  // 自動保存のキー（core/storage.js）で動画名の代わりに使う試行の番号。録画の試行と練習の試行は、同じ方式・動画（録画）を何度も評価できるように試行ごとに分ける
+  const trialKey = (t, k) => (t.record ? `rec${k + 1}` : t.practice ? `prac${k + 1}` : null);
   // pid0 は初めに選んでおく参加者（やり直しの画面から戻ったとき）
   function setup(cfg, get, res, pid0) {
     const { errors: errs, warnings = [] } = res;
@@ -212,7 +214,7 @@
       await zipDel(X.cfg.name, pid);
       try {
         localStorage.removeItem(progKey(pid));
-        X.cfg.participants[pid].forEach((t, k) => localStorage.removeItem(`ahann4:${t.mode}:${pid}:${t.record ? `rec${k + 1}` : t.video.split('/').pop()}`));
+        X.cfg.participants[pid].forEach((t, k) => localStorage.removeItem(`ahann4:${t.mode}:${pid}:${trialKey(t, k) || t.video.split('/').pop()}`));
       } catch (_e) {}
       $('expPid').dispatchEvent(new Event('change'));
     });
@@ -326,6 +328,7 @@
     applySettings(X.set);
     _.remount();
     if (t.record) { setState('pick'); return; }
+    if (trialKey(t, i)) S.meta.save_key = trialKey(t, i);
     setState('loading');
     _.openVideoFile(X.get(t.video), () => loaded(i));
   }
@@ -410,7 +413,7 @@
     if (prev && (f.name !== prev.file || f.size !== prev.size)
       && !confirm(`前に選んだ録画（${prev.file}，${prev.size} バイト）と違います（${f.name}，${f.size} バイト）。このファイルで続けますか？`)) return;
     X.file = f;
-    S.meta.save_key = `rec${X.i + 1}`;   // core/storage.js の自動保存のキー
+    S.meta.save_key = trialKey(X.trials[X.i], X.i);   // core/storage.js の自動保存のキー
     setState('loading');
     _.openVideoFile(f, () => loaded(X.i));
   }
