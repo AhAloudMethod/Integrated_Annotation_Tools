@@ -607,13 +607,13 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
             <tr><td class="rowhead">Space</td><td>再生・停止</td></tr>
             <tr><td class="rowhead">C</td><td>今の時間で区切る</td></tr>
             <tr><td class="rowhead">Ctrl+Z ／ Ctrl+Y</td><td>取り消し ／ やり直し</td></tr>
-            <tr><td class="rowhead">← →</td><td>前の区間・次の区間の始めへ移る（セルに入力中はセルの移動）</td></tr>
+            <tr><td class="rowhead">← →</td><td>前の区間・次の区間の始めへ移る。1 秒ずつは動かない（1 秒動くのは上の「−1秒」「＋1秒」のボタン）。セルに入力中はセルの移動</td></tr>
             <tr><td class="rowhead">Shift+← →</td><td>0.1 秒戻る・進む</td></tr>
             <tr><td class="rowhead"><code>,</code> ／ <code>.</code></td><td>1 コマ戻る ／ 1 コマ進む（Ctrl+← → でも同じ）</td></tr>
             <tr><td class="rowhead">Enter ／ Tab</td><td>セルの値を確定して隣のセルへ移る</td></tr>
             <tr><td class="rowhead">V</td><td>視聴（見直し）の開始・終了</td></tr>
             <tr><td class="rowhead">H</td><td>声のある所の表示を切り替える</td></tr>
-            <tr><td class="rowhead">R</td><td>区間の終わりで止まる設定のとき、同じ区間をもう一度聴く</td></tr>
+            <tr><td class="rowhead">R</td><td>Excel 方式でセルを選んでいるとき、そのセルの区間を始めから終わりまで再生して止まる。区間の終わりで止まる設定のときは、同じ区間をもう一度聴く</td></tr>
             <tr><td class="rowhead">D ／ T</td><td>変化の区間で「描く」／「テンプレート」に切り替える</td></tr>
             <tr><td class="rowhead">Q ／ W ／ E</td><td>テンプレートの形：直線 ／ 前半で変化 ／ 後半で変化</td></tr>
           </tbody>

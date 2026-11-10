@@ -397,7 +397,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       <ol>
         <li>入れたい区間のセルをクリックする。上の行が快度、下の行が覚醒度である。</li>
         <li>数を打つ。5.3 のような小数も使える。</li>
-        <li>Enter を押す。値が決まり、グラフに線が出る。</li>
+        <li>Enter を押す。値が決まり、グラフに線が出る。選んでいるセルは下のセルへ移る。覚醒度のセルで押すと、次の区間の快度のセルへ移る。</li>
         <li>すべての区間の、快度と覚醒度の両方に入れる。</li>
       </ol>
 
@@ -410,6 +410,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
       <ul class="clean">
         <li>どの感情がどの数に当たるかは、右の欄の図を見る。</li>
         <li>発声の無い所は、評価の代わりに 0 を入れてもよい。</li>
+        <li>セルを選んだまま R キーを押すと、そのセルの区間だけを始めから終わりまで再生して止まる。値を決める前に、その区間を聴き直すときに使う。</li>
         <li>区間が多くて表が横にはみ出したときは、表の上でマウスのホイールを回すと、表が左右に動く。</li>
         <li class="warn">2 つの値で迷ったときは、間の値（4 と 6 で迷ったときの 5）にせず、どちらか 1 つに決める。</li>
       </ul>
@@ -471,10 +472,12 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
           <tbody>
             <tr><td class="rowhead">Space</td><td>再生・停止</td></tr>
             <tr><td class="rowhead">C</td><td>今の時間で区切る</td></tr>
+            <tr><td class="rowhead">R</td><td>選んでいるセルの区間を、始めから終わりまで再生して止まる</td></tr>
+            <tr><td class="rowhead">Enter</td><td>セルの値を決めて、下のセルへ移る（覚醒度のセルでは、次の区間の快度のセルへ移る）</td></tr>
             <tr><td class="rowhead">V</td><td>視聴の開始・終了</td></tr>
             <tr><td class="rowhead">Ctrl+Z ／ Ctrl+Y</td><td>取り消し ／ やり直し</td></tr>
             <tr><td class="rowhead">Shift+← →</td><td>0.1 秒戻る・進む</td></tr>
-            <tr><td class="rowhead">← →</td><td>前の区間・次の区間の始めへ移る（セルに入力中はセルの移動）</td></tr>
+            <tr><td class="rowhead">← →</td><td>前の区間・次の区間の始めへ移る。1 秒ずつは動かない（1 秒動くのは上の「−1秒」「＋1秒」のボタン）。セルを選んでいる間は、左右のセルへ移る</td></tr>
           </tbody>
         </table>
       </div>
@@ -484,7 +487,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
 
     <footer>
       出典：あアラウド 統合アノテーションツールの評価ツールの使い方（evaluator-manual.html）と画面（index.html）。実験モード、カスタム方式（Excel の表・小数・自分で区切る・区間内で変化・描くだけ）を前提に作成した。画面の画像は評価ツールの使い方のものを使った。<br>
-      作成日：2026-11-05　更新日：2026-11-09（グラフの上での区切りとホイール操作を追記）
+      作成日：2026-11-05　更新日：2026-11-10（R・Enter・← → のキーの説明を追記）
     </footer>
   </main>
 </div>
