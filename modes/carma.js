@@ -32,7 +32,7 @@
     update() {
       if (!g) return;
       const w = c.clientWidth, H = c.clientHeight, x = w / 2, y0 = 30, y1 = H - 30, Y = v => y1 - (v - 1) / 8 * (y1 - y0);
-      const isV = ax() === 'v', col = AH.css(isV ? '--val' : '--aro');
+      const isV = ax() === 'v', col = AH.css(isV ? '--axv' : '--axa');
       g.clearRect(0, 0, w, H); g.font = '11px system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = AH.css('--muted');
       const L = AH.ax(ax()); g.fillText(L.hi, x, 18); g.fillText(L.lo, x, H - 8);
       gridBar(g, x, Y);

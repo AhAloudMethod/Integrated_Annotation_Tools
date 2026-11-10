@@ -14,8 +14,8 @@
     const tOf = x => D ? t0 + clamp((x - PAD_L) / (w - PAD_L - PAD_R), 0, 1) * span : 0;
     // F0 を表示するときは、下に F0 の欄（FH px）を足す
     const FH = _.f0Shown && _.f0Shown() && video.src ? 56 : 0, H2 = h - RULER - FH;
-    const lanes = [{ ax: 'v', name: _.ax('v').short, col: css('--val'), y0: 8, y1: H2 / 2 - 8 },
-                   { ax: 'a', name: _.ax('a').short, col: css('--aro'), y0: H2 / 2 + 8, y1: H2 - 8 }];
+    const lanes = [{ ax: 'v', name: _.ax('v').short, col: css('--axv'), y0: 8, y1: H2 / 2 - 8 },
+                   { ax: 'a', name: _.ax('a').short, col: css('--axa'), y0: H2 / 2 + 8, y1: H2 - 8 }];
     const f0Lane = FH ? { y0: H2 + 8, y1: h - RULER - 4, top: H2 } : null;
     for (const L of lanes) {
       L.lo = 1; L.hi = 9;
