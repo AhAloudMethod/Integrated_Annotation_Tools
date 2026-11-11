@@ -1,6 +1,6 @@
 ---
 name: annotator-guide
-description: あアラウド アノテーションツール（annotator）の使い方を，使う人（実験者・評価者・発声者）に説明する．「〜はどうやるの？」「このボタンは何？」「ゲームパッドで評価できる？」「CSV のこの列は何？」のような操作・機能・書き出しの質問に答えるとき，「後輩に使い方を説明する資料を作って」「評価者向けのマニュアルを作って」のように説明資料を頼まれたときに使う．experiment.json を作る作業は experiment-config，実験者が読み上げる台本は experiment-script-analyst / experiment-script-speaker を使う．Use when explaining how to use the annotator to its users, answering usage questions, or making a user-facing manual.
+description: あアラウド アノテーションツール（annotator）の使い方を，使う人（実験者・評価者・発声者）に説明する．「〜はどうやるの？」「このボタンは何？」「ゲームパッドで評価できる？」「CSV のこの列は何？」のような操作・機能・書き出しの質問に答えるとき，「後輩に使い方を説明する資料を作って」「評価者向けのマニュアルを作って」のように説明資料を頼まれたときに使う．experiment.json を作る作業は experiment-config，実験者が読み上げる台本は experiment-script-analyst / experiment-script-speaker / experiment-script-designer を使う．Use when explaining how to use the annotator to its users, answering usage questions, or making a user-facing manual.
 ---
 
 # アノテーションツールの使い方を説明する

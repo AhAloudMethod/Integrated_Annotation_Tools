@@ -1,6 +1,6 @@
 ---
 name: experiment-prep
-description: あアラウド法の実験の前に要る準備を，研究室の「実験前準備のガイドライン」に沿って Todo リストにする．「実験をやりたいけど何からやればいい？」「実験の準備リストを作って」のように準備の全体像を求められたとき，「準備がこれで足りているか見て」「抜けている準備はある？」のように今の準備の確認を頼まれたとき，募集や日程確定の Slack の文面を頼まれたときに使う．実験説明の台本は experiment-script-analyst / experiment-script-speaker を使う．Use when a student asks what to prepare before an あアラウド法 experiment, wants a prep to-do list, or wants their current prep checked for gaps.
+description: あアラウド法の実験の前に要る準備を，研究室の「実験前準備のガイドライン」に沿って Todo リストにする．「実験をやりたいけど何からやればいい？」「実験の準備リストを作って」のように準備の全体像を求められたとき，「準備がこれで足りているか見て」「抜けている準備はある？」のように今の準備の確認を頼まれたとき，募集や日程確定の Slack の文面を頼まれたときに使う．実験説明の台本は experiment-script-analyst / experiment-script-speaker / experiment-script-designer を使う．Use when a student asks what to prepare before an あアラウド法 experiment, wants a prep to-do list, or wants their current prep checked for gaps.
 ---
 
 # 実験前準備の Todo リストを作る
@@ -108,7 +108,7 @@ description: あアラウド法の実験の前に要る準備を，研究室の�
 
 リンクの無いものは次のように扱う．
 
-- **実験説明の台本**：テンプレートのリンクに加え，詳細に「annotator の experiment-script-speaker / experiment-script-analyst Skill を使えば，今回の実験に合わせた台本を作れる」と書く
+- **実験説明の台本**：テンプレートのリンクに加え，詳細に「annotator の experiment-script-speaker / experiment-script-analyst / experiment-script-designer Skill を使えば，今回の実験に合わせた台本を作れる」と書く
 - **募集文と参加者への連絡**：リンクは入れない．詳細に「文面はこの Skill に『募集文を作って』と頼めば作れる」と書き，頼まれたら 3.4 で作る．連絡（日程の確定・前日リマインドなど）は「募集文を作る」の子タスクにまとめず，「参加者に日程確定と前日リマインドを送る」の 1 項目にする
 - **日程調整の表と AffectGrid シート**：貼られた本文に URL があればそれを使う．写しを使っているときは「リンクはガイドラインのページにある」と書き，ガイドラインのページへのリンクを入れる
 
