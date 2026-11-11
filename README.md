@@ -23,6 +23,10 @@ Claude Code を `annotator` フォルダで起動して頼むと，内容に合�
 | `experiment-script-speaker` | 「発声者側の実験説明を書いて」 | 発声者（「あ」の声で感情を表す人）に読み上げる台本を書く．収録と回顧評価を含む |
 | `experiment-script-designer` | 「設計者側の実験説明を書いて」 | 設計者（プレイ動画を見てステージを直す人）に読み上げる台本を書く．思考発話を含む |
 
+ウェブ版・デスクトップ版の Claude（claude.ai）で使うときは，[`.claude/skills/claude-web-zip/`](.claude/skills/claude-web-zip/) の zip を 1 つずつ Skill としてアップロードする．台本の 3 つの skill は，共通のテンプレート（`experiment-script-common`）を zip の中に同梱してある．
+
+`experiment-script-*` か `experiment-script-common` を直したら，zip も作り直してコミットする．作り直さないと，ウェブ版だけ古いテンプレートのままになる．各 zip は `<skill 名>/SKILL.md` と `<skill 名>/experiment-script-common/` を入れた形にする（Claude Code に「ウェブ版の zip を作り直して」と頼めばよい）．
+
 
 # 以下、AI用ドキュメント
 
