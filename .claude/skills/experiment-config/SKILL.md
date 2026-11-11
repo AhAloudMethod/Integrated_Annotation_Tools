@@ -7,6 +7,8 @@ description: あアラウド アノテーションツールの実験モード用
 
 実験モード（`core/experiment.js`）が読む `experiment.json` を作る．形式の詳細は README の「実験モード」の節にある．作ったら必ず `npm run exp-check` で検査し，誤りが無くなるまで直す．
 
+README・`core/`・`collect-tools.zip` などは，リポジトリの中で使うならリポジトリの直下のものを，無ければ（claude.ai で使うとき）この skill のフォルダの中の `annotator/` にあるものを使う．`annotator/` を使うときは，`npm run exp-check -- <フォルダ>` の代わりに `node annotator/tools/exp-check.js <フォルダ>` を実行する．
+
 実験フォルダには設定ファイルが 2 つある．役割を混ぜない．
 
 - `experiment.json`（この skill が書く）：実験名，参加者ごとの試行の順，練習，方式の設定（`options`），アンケートの URL．

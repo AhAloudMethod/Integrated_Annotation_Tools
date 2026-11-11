@@ -11,7 +11,8 @@
     "voice-fixture": "node tests/make-voice-fixture.js",
     "exp-check": "node tools/exp-check.js",
     "voiced-why": "node tools/voiced-why.js",
-    "build-collect": "node tools/build-collect.js"
+    "build-collect": "node tools/build-collect.js",
+    "build-skill-zips": "node tools/build-skill-zips.js"
   },
   "devDependencies": {
     "playwright-core": "^1.63.0"
