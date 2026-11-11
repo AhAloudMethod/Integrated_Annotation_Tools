@@ -5,7 +5,7 @@ description: あアラウド法の実験で，分析者（発声者の動画を�
 
 # 分析者側の実験説明（台本）を書く
 
-まず，この skill のフォルダと同じ階層にある `experiment-script-common/rules.md`（共通ルール）を読み，それに従う．共通の文面は同じフォルダの `template.txt`，分析者側の部分は `roles.txt` の `[(* 分析者側]` の部を土台にする．評価の説明は同じフォルダの `evaluation.md`（評価の説明の書き方）を読み，それに沿って書く．
+まず，`experiment-script-common/rules.md`（共通ルール）を読み，それに従う．`experiment-script-common` は，この skill のフォルダの中にあればそれを，無ければ同じ階層にあるものを使う（以下の `experiment-script-common/` も同じ）．共通の文面は同じフォルダの `template.txt`，分析者側の部分は `roles.txt` の `[(* 分析者側]` の部を土台にする．評価の説明は同じフォルダの `evaluation.md`（評価の説明の書き方）を読み，それに沿って書く．
 
 ## 聞き取り（分析者側で必ず聞く項目）
 
