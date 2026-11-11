@@ -448,6 +448,14 @@
       handOff(rec);
     });
   }
+  // 開始の覆いから区間合わせに戻る。前に合わせた区間から始める。操作ログには合わせ直したことを残し、渡し直したときの exp_record・exp_trial を正とする
+  function realignRec() {
+    if (!X || X.state !== 'ready') return;
+    const rec = loadRec(X.i) || S.meta.experiment.record || {};
+    X.align = rec.start != null && rec.end != null ? { start: rec.start, end: rec.end } : { start: 0, end: S.meta.duration };
+    addLog('exp_realign', { value: X.i + 1 });
+    setState('align'); showAlign();
+  }
   // 録画の試行の基準音声の録画（null なら評価する録画の最初の声）。参加者ごとに進行に残し、中断の後に選び直す案内に使う
   function setRef(f) {
     X.refFile = f;
@@ -491,8 +499,12 @@
       $('expRecPick').addEventListener('click', e => { e.currentTarget.blur(); $('expRecFile').click(); });
     } else if (st === 'align') cover('');
     else if (st === 'ready') {
-      cover(head + '<p>準備ができたら「開始」を押してください。</p><button id="expStart" type="button" class="expMain">開始</button>');
+      // 録画の試行は、参加者が「開始」を押す前なら実験者が評価区間を合わせ直せる（やり直しの回は読み込んだ評価があるので出さない）
+      const realign = X.trials[X.i].record && X.file && !S.meta.experiment.redo;
+      cover(head + '<p>準備ができたら「開始」を押してください。</p><button id="expStart" type="button" class="expMain">開始</button>'
+        + (realign ? '<p class="expRealign"><button id="expRealign" type="button">評価区間を合わせ直す（実験者の方へ）</button></p>' : ''));
       $('expStart').addEventListener('click', start);   // フォーカスは置かない（Space で誤って始めないように）
+      if (realign) $('expRealign').addEventListener('click', e => { e.currentTarget.blur(); realignRec(); });
     } else if (st === 'done' || st === 'finished') {
       // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（残りが無ければ終わりの案内）を出さない。最後の試行の後には finalSurvey も出す
       // （やり直した試行の後に残りが無くても、最後の試行でなければ finalSurvey は出さない）

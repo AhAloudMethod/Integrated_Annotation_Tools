@@ -532,7 +532,26 @@ const BAD = makeFolder('exp_bad', {
   check('渡すと、再生位置を動画の最初（0 秒）に戻す', rr.t === 0, JSON.stringify(rr.t));
   check('選んだ録画と区間を meta.experiment.record と進行に残す（完了扱いにはしない）', !!rr.rec && rr.rec.file === 'take.mp4' && rr.rec.size > 0 && Math.abs(rr.rec.end - 10.5) < 0.02
     && rr.prog.rec[0].file === 'take.mp4' && !(rr.prog.done || {})[0], JSON.stringify(rr));
+  // 開始の前なら、実験者が評価区間を合わせ直せる（前に合わせた区間から始める）
+  await p.click('#expRealign');
+  await p.waitForFunction(() => AH._.expState() === 'align');
+  const ra = await p.evaluate(() => ({ s0: AH.binStart(0), end: AH._.rangeEnd(), log: AH.S.log.some(l => l.type === 'exp_realign'), txt: document.getElementById('expAlign').textContent }));
+  check('開始の覆いの「評価区間を合わせ直す」で区間合わせに戻り、前に合わせた区間（2〜10.5 秒）から始め、操作ログに残す', (await alignShown()) && Math.abs(ra.s0 - 2) < 0.02 && Math.abs(ra.end - 10.5) < 0.02 && ra.log, JSON.stringify(ra));
+  await seek(8); await p.click('#expRecEnd'); await p.click('#expRecGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  const rb = await p.evaluate(() => ({ end: AH._.rangeEnd(), rec: AH.S.meta.experiment.record.end, prog: JSON.parse(localStorage.getItem('ahann_exp:rectest:R01')).rec[0].end }));
+  check('合わせ直して渡すと、新しい区間を当てて meta.experiment.record と進行を書き換える', Math.abs(rb.end - 8) < 0.02 && Math.abs(rb.rec - 8) < 0.02 && Math.abs(rb.prog - 8) < 0.02, JSON.stringify(rb));
+  await p.click('#expRealign'); await p.waitForFunction(() => AH._.expState() === 'align');
+  await seek(10.5); await p.click('#expRecEnd'); await p.click('#expRecGo');
+  await p.waitForFunction(() => AH._.expState() === 'ready');
+  // 「別ウィンドウ」ボタン（setup.json の videoWindow）は、実験者が準備する間だけ出し、参加者の評価中は隠す
+  await p.evaluate(() => document.body.classList.add('expVwin'));
+  const vwReady = await vis('#vwinBtn');
   await p.click('#expStart');
+  const vwRun = await vis('#vwinBtn');
+  check('「別ウィンドウ」ボタンは開始の前は出し、評価中は隠す', vwReady && !vwRun, JSON.stringify({ vwReady, vwRun }));
+  check('評価中は「評価区間を合わせ直す」を出さない', !(await vis('#expRealign')));
+  await p.evaluate(() => document.body.classList.remove('expVwin'));
   await p.keyboard.press('Space'); await p.waitForTimeout(500); await p.keyboard.press('Space'); await p.waitForTimeout(200);
   // 途中で止まった（再読み込み）→ フォルダを開き直すと、同じ録画を選び直させる
   await p.reload(); await p.waitForTimeout(300);
