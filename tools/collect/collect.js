@@ -153,6 +153,15 @@ function planCollect(expDir, cfg) {
     else { const d = new Date(p.start); d.setHours(0, 0, 0, 0); p.from = d.getTime(); }
     prev = p.to;
   }
+  // fromFirstRecording：時間帯の始まりを，その参加者の zip が参照する最も早い録画にし，参加者が来る前のテストプレイを集めない．
+  // 参照する録画が無ければ（録画を撮らない実験など）時間帯は変えない
+  if (cfg.fromFirstRecording) for (const p of targets) {
+    const first = p.zips.flatMap(t => refsOf(t).flatMap(ref => find(ref).map(c => ({ c, ref }))))
+      .reduce((a, b) => (!a || b.c.time < a.c.time ? b : a), null);
+    if (!first || first.c.time <= p.from) continue;
+    p.from = first.c.time;
+    if (first.ref.role !== '基準音声') warnings.push(`${p.pid}：最初の録画「${first.c.name}」が基準音声ではありません．それより前のログと録画は集めていません．基準音声を録り忘れたなら，練習のプレイのログを確かめてください`);
+  }
 
   const owner = new Map(); // 移す録画 → 参加者 ID
   const people = targets.map(p => {
@@ -225,13 +234,13 @@ function planCollect(expDir, cfg) {
     return { pid: p.pid, from: p.from, to: p.to, moves };
   });
 
-  // 時間帯の外のもの（最後の人の後・最初の人の前）は移さず，数だけ出す
+  // 時間帯の外のもの（最後の人の後・各参加者の時間帯より前）は移さず，数だけ出す
   const left = { outside: 0, before: 0 };
   if (people.length) {
-    const first = people[0].from, last = people[people.length - 1].to;
+    const last = people[people.length - 1].to, inAny = t => people.some(p => p.from < t && t <= p.to);
     const times = recs.filter(r => !referenced.has(r.file)).map(r => r.time).concat(logItems.map(i => i.time));
     left.outside = times.filter(t => t > last).length;
-    left.before = times.filter(t => t <= first).length;
+    left.before = times.filter(t => t <= last && !inAny(t)).length;
   }
 
   // 移し先に同じ名前があれば止める（Windows は大文字小文字を区別しない）
@@ -362,7 +371,7 @@ function printPlan(plan) {
     console.log(`\n■ ${p.pid}（時間帯 ${fmt(p.from)} 〜 ${fmt(p.to)}）  zip ${n('zip')} 個，${n('tlx') ? `NASA-TLX ${n('tlx')} 個，` : ''}録画 ${n('recording')} 個，ログ ${n('log')} 個`);
     for (const m of p.moves) console.log(`  [${KIND[m.kind]}] ${m.src}\n      → ${m.dst}`);
   }
-  if (plan.people.length) console.log(`\n時間帯の外なので残すもの：最後の参加者の後 ${plan.left.outside} 個，最初の参加者の前 ${plan.left.before} 個`);
+  if (plan.people.length) console.log(`\n時間帯の外なので残すもの：最後の参加者の後 ${plan.left.outside} 個，参加者の時間帯より前 ${plan.left.before} 個`);
   const ws = plan.warnings.filter(w => w !== '集める対象の参加者がいません');
   if (ws.length) console.log('');
   for (const w of ws) console.log(`警告：${w}`);

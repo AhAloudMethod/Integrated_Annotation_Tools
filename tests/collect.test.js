@@ -649,6 +649,63 @@ function makeFile(file, size, mtime) {
   check('logs の name が無ければ形を案内して止める', m.includes('logs'), m);
 }
 
+// ---------- fromFirstRecording：参加者が来る前のテストプレイを集めない ----------
+{
+  const { planCollect } = require('../tools/collect/collect');
+  const T = (h, m) => new Date(2026, 10, 12, h, m).getTime();
+  const iso = t => new Date(t).toISOString();
+  // withBase：練習の評価が最初の基準音声を参照するか（false なら録り忘れ）
+  const setup = (name, cfgExtra, withBase = true) => {
+    const d = fresh(name), exp = path.join(d, 'exp'), dl = path.join(d, 'dl'), rec = path.join(d, 'rec'), logs = path.join(d, 'logs');
+    fs.mkdirSync(path.join(exp, 'ツール'), { recursive: true }); fs.mkdirSync(dl);
+    fs.writeFileSync(path.join(exp, 'experiment.json'), JSON.stringify({ name: 'exp3', participants: { P01: [{ mode: 'custom' }, { mode: 'custom' }] } }));
+    fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify({ zips: dl, recordings: rec, logs: [{ name: 'game', path: logs, include: '*/PlayLogs/*' }], ...cfgExtra }));
+    const f = {
+      testRec: makeFile(path.join(rec, 'test.mkv'), 10, T(9, 0)),       // 参加者が来る前のテストプレイの録画
+      testLog: makeFile(path.join(logs, 'fish', 'PlayLogs', 'test', 'a.csv'), 1, T(9, 0)),
+      base: makeFile(path.join(rec, 'base.mkv'), 11, T(9, 30)),          // 最初の基準音声
+      pracLog1: makeFile(path.join(logs, 'fish', 'PlayLogs', 'p1', 'a.csv'), 1, T(9, 33)),
+      pracLog2: makeFile(path.join(logs, 'fish', 'PlayLogs', 'p2', 'a.csv'), 1, T(9, 37)),
+      prac: makeFile(path.join(rec, 'prac.mkv'), 12, T(9, 38)),          // 最後の練習プレイ（評価の練習に使う）
+      base2: makeFile(path.join(rec, 'base2.mkv'), 13, T(9, 52)),
+      mainLog: makeFile(path.join(logs, 'fish', 'PlayLogs', 'm1', 'a.csv'), 1, T(9, 55)),
+      main: makeFile(path.join(rec, 'main.mkv'), 14, T(9, 56)),
+    };
+    const r = (file, size, t) => ({ file, size, last_modified: t });
+    const pr = r('prac.mkv', 12, T(9, 38));
+    if (withBase) Object.assign(pr, { ref_video: 'base.mkv', ref_video_size: 11, ref_video_last_modified: T(9, 30) });
+    else fs.unlinkSync(f.base);
+    makeTrialZip(dl, { pid: 'P01', trial: 0, practice: true, condition: 'fish', start: iso(T(9, 40)), end: iso(T(9, 50)), record: pr });
+    makeTrialZip(dl, { pid: 'P01', trial: 1, condition: 'fish', start: iso(T(9, 58)), end: iso(T(10, 5)),
+      record: { ...r('main.mkv', 14, T(9, 56)), ref_video: 'base2.mkv', ref_video_size: 13, ref_video_last_modified: T(9, 52) } });
+    return { exp, f };
+  };
+  const moved = (plan, file) => plan.people.some(p => p.moves.some(m => path.resolve(m.src) === path.resolve(file)));
+  const logDir = file => path.dirname(file);
+
+  let s = setup('最初の録画から', { fromFirstRecording: true });
+  let plan = planCollect(s.exp, loadConfig(s.exp));
+  check('最初の録画から：止める理由が無い', plan.errors.length === 0, JSON.stringify(plan.errors));
+  check('最初の録画から：最初の基準音声より前のテストプレイのログと録画は集めない', !moved(plan, logDir(s.f.testLog)) && !moved(plan, s.f.testRec));
+  check('最初の録画から：練習と本番のプレイのログは集める', moved(plan, logDir(s.f.pracLog1)) && moved(plan, logDir(s.f.pracLog2)) && moved(plan, logDir(s.f.mainLog)));
+  check('最初の録画から：時間帯の始まりは最初の基準音声', plan.people[0].from === T(9, 30), new Date(plan.people[0].from).toLocaleString());
+  check('最初の録画から：外したものは残すものの数に入れる', plan.left.before === 2, JSON.stringify(plan.left));
+  check('最初の録画から：基準音声から始まれば警告しない', !plan.warnings.some(w => w.includes('基準音声')), JSON.stringify(plan.warnings));
+
+  s = setup('最初の録画から-基準音声なし', { fromFirstRecording: true }, false);
+  plan = planCollect(s.exp, loadConfig(s.exp));
+  check('最初の録画から：最初の録画が基準音声でなければ警告する', plan.people[0].from === T(9, 38) && plan.warnings.some(w => w.includes('P01') && w.includes('基準音声')), JSON.stringify(plan.warnings));
+
+  s = setup('最初の録画から-設定なし', {});
+  plan = planCollect(s.exp, loadConfig(s.exp));
+  check('設定が無ければ今までどおり，その日の 0 時からのテストプレイも集める', moved(plan, logDir(s.f.testLog)) && moved(plan, s.f.testRec) && plan.left.before === 0, JSON.stringify(plan.left));
+
+  const e = fresh('最初の録画から-設定の形'); fs.mkdirSync(path.join(e, 'ツール'));
+  fs.writeFileSync(path.join(e, 'ツール', '設定.json'), JSON.stringify({ fromFirstRecording: 'yes' }));
+  let m = ''; try { loadConfig(e); } catch (err) { m = err.message; }
+  check('fromFirstRecording が true か false でなければ止める', m.includes('fromFirstRecording'), m);
+}
+
 // ---------- Drive にあげる（upload.js） ----------
 {
   const { loadDrive, findRclone } = require('../tools/collect/upload');
