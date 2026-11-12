@@ -642,5 +642,56 @@ function makeFile(file, size, mtime) {
   check('logs の name が無ければ形を案内して止める', m.includes('logs'), m);
 }
 
+// ---------- Drive にあげる（upload.js） ----------
+{
+  const { loadDrive, findRclone } = require('../tools/collect/upload');
+  const UP = path.join(__dirname, '..', 'tools', 'collect', 'upload.js');
+  const e = fresh('Drive'), exp = path.join(e, 'exp'), data = path.join(exp, 'データ'), out = path.join(e, 'あげ先');
+  fs.mkdirSync(path.join(exp, 'ツール'), { recursive: true });
+  const setDrive = drive => fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify(drive === undefined ? { zips: 'x' } : { zips: 'x', drive }));
+  const err = f => { try { f(); return ''; } catch (x) { return x.message; } };
+  setDrive(undefined);
+  check('Drive：設定に drive が無ければ null', loadDrive(exp) === null);
+  setDrive('gdrive:実験/データ');
+  check('Drive：リモート名とフォルダを読む', loadDrive(exp) === 'gdrive:実験/データ');
+  setDrive('C:/データ');
+  check('Drive：1 文字のリモート名（ドライブ名と紛れる）は止める', err(() => loadDrive(exp)).includes('drive'));
+  setDrive('データ');
+  check('Drive：リモート名が無ければ止める', err(() => loadDrive(exp)).includes('drive'));
+
+  // 本物の rclone で，環境変数で作ったローカルのリモート（uptest:）へあげる．rclone が無ければ飛ばす
+  const env = { ...process.env, RCLONE_CONFIG_UPTEST_TYPE: 'local' };
+  const run = (...a) => require('child_process').spawnSync(process.execPath, [UP, exp, '--yes', ...a], { encoding: 'utf8', env });
+  setDrive(undefined);
+  let r = run('--auto');
+  check('Drive：--auto なら drive が無くても止めずに終わる', r.status === 0 && r.stdout.includes('drive'), r.stdout + r.stderr);
+  r = run();
+  check('Drive：--auto でなければ drive が無いと止める', r.status === 1, r.stdout + r.stderr);
+  if (!findRclone()) console.log('skip Drive：rclone が無いので，あげる検査を飛ばします');
+  else {
+    setDrive(`uptest:${out.replace(/\\/g, '/')}`);
+    r = run();
+    check('Drive：データ/ が無ければ，あげるものが無いとして止めずに終わる', r.status === 0 && !fs.existsSync(out), r.stdout + r.stderr);
+    fs.mkdirSync(path.join(data, 'P01', 'recordings'), { recursive: true });
+    fs.writeFileSync(path.join(data, 'P01', 'recordings', '本番.mkv'), Buffer.alloc(3000, 7));
+    fs.writeFileSync(path.join(data, '.collect-state.json'), '{"people":[]}');
+    fs.writeFileSync(path.join(data, '.collect-state.json.tmp'), 'x');
+    fs.writeFileSync(path.join(data, '.collect.lock'), 'x');
+    r = run();
+    check('Drive：.collect.lock があれば，あげずに止める', r.status === 1 && !fs.existsSync(out) && r.stdout.includes('.collect.lock'), r.stdout + r.stderr);
+    fs.unlinkSync(path.join(data, '.collect.lock'));
+    r = run('--dry-run');
+    check('Drive：--dry-run なら何もあげない', r.status === 0 && !fs.existsSync(path.join(out, 'P01')), r.stdout + r.stderr);
+    r = run();
+    check('Drive：データ/ をあげて照合する', r.status === 0 && fs.readFileSync(path.join(out, 'P01', 'recordings', '本番.mkv')).equals(Buffer.alloc(3000, 7))
+      && fs.existsSync(path.join(out, '.collect-state.json')), r.stdout + r.stderr);
+    check('Drive：書きかけ（*.tmp）はあげない', !fs.existsSync(path.join(out, '.collect-state.json.tmp')));
+    fs.unlinkSync(path.join(data, '.collect-state.json'));
+    fs.writeFileSync(path.join(data, 'P01', '追加.csv'), 'a');
+    r = run();
+    check('Drive：手元で消したものも Drive からは消さず，足したものだけあげる', r.status === 0 && fs.existsSync(path.join(out, '.collect-state.json')) && fs.existsSync(path.join(out, 'P01', '追加.csv')), r.stdout + r.stderr);
+  }
+}
+
 console.log('ERRORS:', failed ? `${failed} 件` : 'none');
 process.exitCode = failed ? 1 : 0;
