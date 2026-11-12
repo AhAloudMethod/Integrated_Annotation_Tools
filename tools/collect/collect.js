@@ -388,10 +388,11 @@ function lineReader() {
   };
 }
 
-// node collect.js <実験フォルダ> [--yes]．--yes なら確認も最後の Enter も待たない
+// node collect.js <実験フォルダ> [--yes] [--no-pause]．--yes なら確認も最後の Enter も待たない．
+// --no-pause なら最後の Enter だけを待たない（1_結果を集める.bat が続けて upload.js を呼ぶ）
 async function main(argv) {
-  const yes = argv.includes('--yes');
-  const expDir = path.resolve(argv.filter(a => a !== '--yes')[0] || path.join(__dirname, '..'));
+  const yes = argv.includes('--yes'), pause = !yes && !argv.includes('--no-pause');
+  const expDir = path.resolve(argv.filter(a => !a.startsWith('--'))[0] || path.join(__dirname, '..'));
   const input = yes ? null : lineReader();
   try {
     console.log(`実験フォルダ：${expDir}`);
@@ -417,7 +418,8 @@ async function main(argv) {
     console.log(`\n思わぬ失敗で止まりました：${e && e.message ? e.message : e}`);
     process.exitCode = 1;
   }
-  if (input) { await input.ask('\nEnter で閉じる'); input.close(); }
+  if (pause) await input.ask('\nEnter で閉じる');
+  if (input) input.close();
 }
 
 if (require.main === module) main(process.argv.slice(2));

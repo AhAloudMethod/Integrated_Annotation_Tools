@@ -408,7 +408,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
         <li><strong>フォルダの検査</strong>：「設定」→「実験フォルダを開く」で実験フォルダを選び、参加者を選ぶ画面に誤りや「確かめてください」の警告が出ないかを確かめる。警告の意味が分からなければ Claude に聞く。</li>
         <li><strong>リハーサル</strong>：試しの参加者 ID で 1 人分を通し、zip がダウンロード先に入ることを確かめる。試しの記録は、参加者を選ぶ画面の「この参加者の記録をブラウザから消す」で消しておく。</li>
         <li><strong>機器</strong>：録画のソフト（発声者側）、ヘッドホンやスピーカーの音量、画面の明るさを本番の状態にしておく。</li>
-        <li><strong>回収ツール</strong>：<a href="collect-tools.zip" download>collect-tools.zip</a> をダウンロードし、実験フォルダの中で展開する（<code>ツール</code> フォルダができる）。<code>ツール\0_最初に1回_Node.jsを入れる.bat</code> をダブルクリックして Node.js を入れる。<code>ツール\設定.json</code> に、zip のダウンロード先（<code>zips</code>）、録画の保存先（<code>recordings</code>）、ゲームなどのログの置き場（<code>logs</code>）を書く。ダウンロード先を実験フォルダの <code>results</code> に変えたなら、<code>zips</code> は <code>"results"</code> でよい。</li>
+        <li><strong>回収ツール</strong>：<a href="collect-tools.zip" download>collect-tools.zip</a> をダウンロードし、実験フォルダの中で展開する（<code>ツール</code> フォルダができる）。<code>ツール\0_最初に1回_Node.jsを入れる.bat</code> をダブルクリックして Node.js を入れる。<code>ツール\設定.json</code> に、zip のダウンロード先（<code>zips</code>）、録画の保存先（<code>recordings</code>）、ゲームなどのログの置き場（<code>logs</code>）を書く。ダウンロード先を実験フォルダの <code>results</code> に変えたなら、<code>zips</code> は <code>"results"</code> でよい。集めた結果を Google Drive にもあげるなら、rclone を入れて <code>rclone config</code> でリモートを作り、<code>drive</code> にあげ先を書く（例：<code>"gdrive:実験名/データ"</code>）。<code>ツール\3_Driveにあげる.bat --dry-run</code> をコマンドプロンプトで実行すると、何もあげずにあげ先へつながるかを試せる。</li>
       </ol>
 
       <div class="info"><span class="lbl">補足</span><p>フォルダを選ぶ画面では、フォルダの中のファイルが表示されないが、そのフォルダを選べば読み込める。エクスプローラーからフォルダをボタンへドラッグ＆ドロップしても開ける。</p></div>
@@ -487,7 +487,7 @@ try { var t = localStorage.getItem('manual-theme'); if (t === 'light' || t === '
 
       <ol>
         <li>ダウンロード先に、試行の数だけ zip があることを確かめる。やり直した試行には、前の zip と <code>_redo</code> の付いた zip の両方がある。どちらも消さずに保存する。</li>
-        <li><code>ツール\1_結果を集める.bat</code> をダブルクリックする。参加者ごとに何をどこへ移すかの一覧が出るので、確かめて <code>y</code> と Enter を押す。zip・録画・ログが <code>データ\参加者ID</code> に移り、録画には「本番」「基準音声」「評価の練習」の名前が付く。毎回でなくてもよい（集め忘れた参加者は次に押したときに集まる）。</li>
+        <li><code>ツール\1_結果を集める.bat</code> をダブルクリックする。参加者ごとに何をどこへ移すかの一覧が出るので、確かめて <code>y</code> と Enter を押す。zip・録画・ログが <code>データ\参加者ID</code> に移り、録画には「本番」「基準音声」「評価の練習」の名前が付く。毎回でなくてもよい（集め忘れた参加者は次に押したときに集まる）。<code>設定.json</code> に <code>drive</code> を書いたなら、集め終えた後に続けて <code>データ</code> を録画ごと Drive にあげ、中身が合うかを確かめる。あげるのに失敗したときは、ネットワークを確かめて <code>3_Driveにあげる.bat</code> を押す（あげ終わったファイルは飛ばす）。</li>
         <li>Ctrl+Shift+E で実験モードを抜ける。もう一度「実験フォルダを開く」で開き、参加者を選んで「この参加者の記録をブラウザから消す」を押す。zip、進行、途中の自動保存がブラウザから消える。</li>
       </ol>
 

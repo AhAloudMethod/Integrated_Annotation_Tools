@@ -553,8 +553,12 @@ function makeFile(file, size, mtime) {
 {
   const SRC = path.join(__dirname, '..', 'tools', 'collect'), ZIP = path.join(__dirname, '..', 'collect-tools.zip');
   const bats = fs.readdirSync(SRC).filter(n => n.endsWith('.bat'));
-  check('bat は 3 つで，番号順の名前', bats.sort().join() === '0_最初に1回_Node.jsを入れる.bat,1_結果を集める.bat,2_全員終わったら_表にまとめる.bat', bats.join());
+  check('bat は 4 つで，番号順の名前', bats.sort().join() === '0_最初に1回_Node.jsを入れる.bat,1_結果を集める.bat,2_全員終わったら_表にまとめる.bat,3_Driveにあげる.bat', bats.join());
+  const bat1 = fs.readFileSync(path.join(SRC, '1_結果を集める.bat'), 'latin1');
+  check('集める bat は，集め終えたら --auto で Drive にあげ，失敗したらあげずに止まる', /collect\.js" "%~dp0\.\." --no-pause\r\nif errorlevel 1 \(\r\n  pause\r\n  exit \/b 1\r\n\)\r\nnode "%~dp0upload\.js" "%~dp0\.\." --auto/.test(bat1), bat1);
+  check('Drive にあげる bat は upload.js に引数をそのまま渡す', /node "%~dp0upload\.js" "%~dp0\.\." %\*/.test(fs.readFileSync(path.join(SRC, '3_Driveにあげる.bat'), 'latin1')));
   check('bat の中身は ASCII だけ', bats.every(n => fs.readFileSync(path.join(SRC, n)).every(b => b < 0x80)));
+  check('bat は Node.js の有無を同じ形で確かめる', bats.slice(1).every(n => fs.readFileSync(path.join(SRC, n), 'latin1').includes('where node >nul 2>nul\r\n')));
   check('bat の改行は CRLF', bats.every(n => { const t = fs.readFileSync(path.join(SRC, n), 'latin1'); return t.includes('\r\n') && !/[^\r]\n/.test(t); }));
   check('bat は自分の 1 つ上を実験フォルダとして渡す', /node "%~dp0collect\.js" "%~dp0\.\."/.test(fs.readFileSync(path.join(SRC, '1_結果を集める.bat'), 'latin1'))
     && /node "%~dp0aggregate\.js" "%~dp0\.\."/.test(fs.readFileSync(path.join(SRC, '2_全員終わったら_表にまとめる.bat'), 'latin1')));
@@ -579,6 +583,9 @@ function makeFile(file, size, mtime) {
   const run = js => require('child_process').spawnSync(process.execPath, [path.join(exp, 'ツール', js), exp, '--yes'], { encoding: 'utf8' });
   const c = run('collect.js'), a = run('aggregate.js');
   check('ツール/ に置いた一式で集めて表にまとめられる', c.status === 0 && a.status === 0 && fs.existsSync(path.join(exp, 'データ', 'P01', 'annotator')) && fs.existsSync(path.join(exp, 'データ', '全員分', 'bins.csv')), c.stdout + c.stderr + a.stdout + a.stderr);
+  // --no-pause は確認を残して最後の Enter だけを省く（bat が続けて upload.js を呼ぶため）
+  const np = require('child_process').spawnSync(process.execPath, [path.join(exp, 'ツール', 'collect.js'), exp, '--no-pause'], { encoding: 'utf8', input: '' });
+  check('collect.js に --no-pause を付けると最後の Enter を待たない', np.status === 0 && np.stdout.includes('集める対象の参加者がいません') && !np.stdout.includes('Enter で閉じる'), np.stdout + np.stderr);
 }
 
 // ---------- NASA-TLX の結果（<ID>_t<試行>_tlx.csv）も集めてまとめる ----------
