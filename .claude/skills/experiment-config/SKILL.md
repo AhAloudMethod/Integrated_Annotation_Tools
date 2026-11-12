@@ -167,6 +167,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
    - 結果を CSV などで保存する版を実験フォルダに置いてあるか（デフォルトでは `annotator/tlx/nasatlx-ja.html`）を確認する．あれば，手順 2 で確かめた実験フォルダの絶対パスから `file:///` の URL を作り，参加者・試行・条件を URL の後ろで渡す（受け取る名前はその HTML に合わせる）．
      `{ "url": "file:///<実験フォルダの絶対パス>/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}", "label": "NASA-TLX" }`
    - パスにスペースや日本語が入っていてもそのまま書いてよい（ブラウザが開くときに変換する）．
+   - 同梱の `nasatlx-ja.html` は，既定では一対比較（15 回）まで行う通常の NASA-TLX になる．Raw TLX（6 尺度の評定だけ）にするなら URL に `&raw=1` を足す．どちらにするかは聞き取りで確かめる．CSV の `variant` 列に `weighted` か `raw` が入り，`raw_tlx` 列（6 尺度の単純平均）はどちらでも入る．
 
 ## 条件名の振り方
 

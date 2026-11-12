@@ -5,6 +5,9 @@
    - URL の ?pid=…&trial=…&cond=…&mode=…&video=…&name=… を受け取り，画面の上と結果に入れる
    - 一対比較で選んだ要因を記録する
    - 最後に結果を CSV（UTF-8）で自動で保存する（ファイル名は <pid>_t<試行2桁>_tlx.csv）．保存し直すボタンも出す
+  2026-11-12 に次を書き足した．
+   - URL に raw=1 を付けると Raw TLX にする（6 尺度の評定だけで終え，一対比較を行わない）
+   - CSV の最後に variant（weighted か raw）と raw_tlx（6 尺度の評定の単純平均）を足す．Raw TLX では tally・weight・overall・pairs を空にする
 -->
 <html>
 
@@ -84,6 +87,7 @@ var info = { pid: params.get('pid') || '', trial: params.get('trial') || '', con
              mode: params.get('mode') || '', video: params.get('video') || '', name: params.get('name') || '' };
 var start_iso = new Date().toISOString();
 var pair_log = [];   // [{ a, b, chosen }]（添字は scale の番号）
+var raw_mode = /^(1|true|yes)$/i.test(params.get('raw') || '');   // Raw TLX：評定だけで終える
 for (var i = 0; i < NUM_SCALES; i++)
 	results_tally[i] = 0;
 
@@ -189,6 +193,14 @@ function buttonPart1()
 		}
 	}
 
+	// 書き足し：Raw TLX なら一対比較をせずに結果へ進む
+	if (raw_mode)
+	{
+		document.getElementById('div_part1').style.display = 'none';
+		showResults();
+		return true;
+	}
+
 	// Bye bye part 1, hello part 2
 	document.getElementById('div_part1').style.display = 'none'; 
 	document.getElementById('div_part2').style.display = ''; 
@@ -259,10 +271,29 @@ function calcResults()
 	}
 }
 
+// 書き足し：6 尺度の評定の単純平均（Raw TLX）
+function rawTlx()
+{
+	var sum = 0;
+	for (var i = 0; i < NUM_SCALES; i++)
+		sum += results_rating[i];
+	return sum / NUM_SCALES;
+}
+
 // Output the table of results
 function getResultsHTML()
 {
 	var result = "";
+
+	// 書き足し：Raw TLX は評定と平均だけを出す
+	if (raw_mode)
+	{
+		result += "<table><tr><td></td><td>評価</td></tr>";
+		for (var i = 0; i < NUM_SCALES; i++)
+			result += "<tr><td>" + scale[i] + "</td><td>" + results_rating[i] + "</td></tr>";
+		result += "</table><br/>Raw TLX（平均） = " + (+rawTlx().toFixed(4)) + "<br/>";
+		return result;
+	}
 
 	result += "<table><tr><td></td><td>評価</td><td>計</td><td>重み</td></tr>";
 	for (var i = 0; i < NUM_SCALES; i++)
@@ -304,10 +335,12 @@ function saveResults()
 {
 	var head = ['pid', 'trial', 'condition', 'mode', 'video', 'name', 'start_iso', 'end_iso'], row = [info.pid, info.trial, info.condition, info.mode, info.video, info.name, start_iso, new Date().toISOString()];
 	for (var i = 0; i < NUM_SCALES; i++) { head.push(KEYS[i] + '_rating'); row.push(results_rating[i]); }
-	for (var i = 0; i < NUM_SCALES; i++) { head.push(KEYS[i] + '_tally'); row.push(results_tally[i]); }
-	for (var i = 0; i < NUM_SCALES; i++) { head.push(KEYS[i] + '_weight'); row.push(+results_weight[i].toFixed(4)); }
-	head.push('overall', 'pairs');
-	row.push(+results_overall.toFixed(4), pair_log.map(function (p) { return KEYS[p.a] + '/' + KEYS[p.b] + '>' + KEYS[p.chosen]; }).join(' '));
+	for (var i = 0; i < NUM_SCALES; i++) { head.push(KEYS[i] + '_tally'); row.push(raw_mode ? '' : results_tally[i]); }
+	for (var i = 0; i < NUM_SCALES; i++) { head.push(KEYS[i] + '_weight'); row.push(raw_mode ? '' : +results_weight[i].toFixed(4)); }
+	head.push('overall', 'pairs', 'variant', 'raw_tlx');
+	row.push(raw_mode ? '' : +results_overall.toFixed(4),
+	         raw_mode ? '' : pair_log.map(function (p) { return KEYS[p.a] + '/' + KEYS[p.b] + '>' + KEYS[p.chosen]; }).join(' '),
+	         raw_mode ? 'raw' : 'weighted', +rawTlx().toFixed(4));
 	var text = '﻿' + head.map(csvCell).join(',') + '\n' + row.map(csvCell).join(',') + '\n';
 	var t = info.trial ? '_t' + ('0' + info.trial).slice(-2) : '';
 	var fname = (info.pid || 'noid') + t + '_tlx.csv';
@@ -319,6 +352,14 @@ function saveResults()
 	if (el) el.textContent = '結果を保存しました（' + fname + '）。この画面を閉じて、アノテーションツールの画面に戻ってください。';
 }
 
+// 書き足し：結果を出して保存する（通常は一対比較の後，Raw TLX は評定の後）
+function showResults()
+{
+	document.getElementById('div_part4').style.display = '';
+	document.getElementById('div_part4').innerHTML = getResultsHTML() + '<p id="saved"></p><input type="button" value="結果をもう一度保存する" onClick="saveResults()">';
+	saveResults();
+}
+
 // Move to the next pair
 function nextPair()
 {
@@ -326,10 +367,8 @@ function nextPair()
 	if (pair_num >= 15)
 	{
 		document.getElementById('div_part3').style.display = 'none'; 
-		document.getElementById('div_part4').style.display = '';
 		calcResults();
-		document.getElementById('div_part4').innerHTML = getResultsHTML() + '<p id="saved"></p><input type="button" value="結果をもう一度保存する" onClick="saveResults()">';
-		saveResults();
+		showResults();
 	}
 	else
 	{
