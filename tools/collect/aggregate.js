@@ -33,6 +33,33 @@ function adopt(trials, skipped) {
   return out.sort((a, b) => a.pid.localeCompare(b.pid) || a.trial - b.trial);
 }
 
+// NASA-TLX の結果（データ/<参加者>/tlx/*.csv．1 ファイル 1 行）を読む．同じ試行が 2 つ以上あれば end_iso の最も遅いものを採り，
+// 同じ時刻なら名前の短い元のファイルを採る（「結果をもう一度保存する」で増えた「 (1)」など）
+const TLX = 'tlx.csv';
+function readTlx(dataDir, people, skipped) {
+  const out = [];
+  for (const p of people) {
+    const dir = path.join(dataDir, p, 'tlx');
+    if (!fs.existsSync(dir)) continue;
+    const byTrial = new Map();
+    for (const f of fs.readdirSync(dir).filter(n => /\.csv$/i.test(n)).sort()) {
+      let rows;
+      try { rows = csvParse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (_e) { skipped.push(`${p}/tlx/${f}（読めません）`); continue; }
+      const head = rows[0] || [], row = rows[1];
+      if (!row || !head.includes('trial')) { skipped.push(`${p}/tlx/${f}（NASA-TLX の結果の形ではありません）`); continue; }
+      const get = c => row[head.indexOf(c)] || '';
+      const cand = { name: f, end: Date.parse(get('end_iso')) || 0, table: { prefix: { participant: p }, rows } };
+      const k = get('trial'), cur = byTrial.get(k);
+      if (!cur) { byTrial.set(k, cand); continue; }
+      const keep = cand.end !== cur.end ? (cand.end > cur.end ? cand : cur) : (cand.name.length < cur.name.length ? cand : cur);
+      skipped.push(`${p}/tlx/${(keep === cand ? cur : cand).name}（同じ試行の NASA-TLX の重複か，答え直す前のもの）`);
+      byTrial.set(k, keep);
+    }
+    out.push(...[...byTrial.entries()].sort((a, b) => Number(a[0]) - Number(b[0])).map(([, v]) => v.table));
+  }
+  return out;
+}
+
 // 表を和集合の列でつなぐ．tables：[{ prefix: { 列: 値 }, rows: string[][]（先頭が見出し） }]
 function stack(tables, keys) {
   const cols = [];
@@ -72,6 +99,7 @@ function aggregate(expDir) {
   const lastByPid = new Map();
   for (const t of adopted) if (t.csvs.some(c => c.suffix === SUMMARY)) lastByPid.set(t.pid, lastByPid.has(t.pid) && endOf(lastByPid.get(t.pid)) > endOf(t) ? lastByPid.get(t.pid) : t);
   const summaries = [...lastByPid.values()].map(t => ({ prefix: { participant: t.pid }, rows: csvParse(t.csvs.find(c => c.suffix === SUMMARY).text) }));
+  const tlx = readTlx(dataDir, people, skipped);
 
   try { fs.rmSync(outDir, { recursive: true, force: true }); } catch (e) {
     throw new Error(`データ/全員分/ を作り直せません（${e.code || e.message}）．Excel などで開いている表を閉じてから，もう一度押してください`);
@@ -82,6 +110,7 @@ function aggregate(expDir) {
     const file = path.join(outDir, suf); fs.writeFileSync(file, csvWrite(stack(tables, KEYS))); written.push(file);
   }
   if (summaries.length) { const file = path.join(outDir, SUMMARY); fs.writeFileSync(file, csvWrite(stack(summaries, ['participant']))); written.push(file); }
+  if (tlx.length) { const file = path.join(outDir, TLX); fs.writeFileSync(file, csvWrite(stack(tlx, ['participant']))); written.push(file); }
   return { written: written.sort(), skipped, adopted: adopted.length };
 }
 
@@ -92,7 +121,7 @@ async function main() {
     const r = aggregate(path.resolve(expDir));
     console.log(`${r.adopted} 試行の結果を，種類ごとに 1 つの表にまとめました（データ/全員分/）．`);
     for (const f of r.written) console.log(`  ${path.basename(f)}`);
-    if (r.skipped.length) { console.log('まとめに使わなかった zip：'); for (const s of r.skipped) console.log(`  ${s}`); }
+    if (r.skipped.length) { console.log('まとめに使わなかったファイル：'); for (const s of r.skipped) console.log(`  ${s}`); }
     if (!r.adopted) console.log('まとめる結果がありません．先に 1_結果を集める.bat で結果を集めてください．');
   } catch (e) {
     console.log(`まとめられませんでした：${e.message}`);

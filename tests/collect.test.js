@@ -581,6 +581,53 @@ function makeFile(file, size, mtime) {
   check('ツール/ に置いた一式で集めて表にまとめられる', c.status === 0 && a.status === 0 && fs.existsSync(path.join(exp, 'データ', 'P01', 'annotator')) && fs.existsSync(path.join(exp, 'データ', '全員分', 'bins.csv')), c.stdout + c.stderr + a.stdout + a.stderr);
 }
 
+// ---------- NASA-TLX の結果（<ID>_t<試行>_tlx.csv）も集めてまとめる ----------
+{
+  const { planCollect, runCollect } = require('../tools/collect/collect');
+  const { aggregate } = require('../tools/collect/aggregate');
+  const T = (h, m) => new Date(2026, 10, 9, h, m).getTime();
+  const iso = t => new Date(t).toISOString();
+  const d = fresh('NASA-TLX'), exp = path.join(d, 'exp'), dl = path.join(d, 'dl');
+  fs.mkdirSync(path.join(exp, 'ツール'), { recursive: true }); fs.mkdirSync(dl);
+  const two = [{ mode: 'excel', video: 'a.mp4' }, { mode: 'panas', video: 'b.mp4' }];
+  fs.writeFileSync(path.join(exp, 'experiment.json'), JSON.stringify({ name: 'exp3', participants: { A01: two, A02: two, B01: two } }));
+  fs.writeFileSync(path.join(exp, 'ツール', '設定.json'), JSON.stringify({ zips: '../dl', recordings: '../rec', recordingExts: [] }));
+  // NASA-TLX の CSV（1 行）．name は実験名．mtime は答えた時刻
+  const tlx = (name, o) => {
+    const f = path.join(dl, name);
+    fs.writeFileSync(f, '﻿pid,trial,condition,name,end_iso,mental_rating,variant,raw_tlx\n' + `${o.pid},${o.trial},${o.cond || 'Excel'},${o.exp == null ? 'exp3' : o.exp},${iso(o.end)},${o.mental || 50},raw,${o.raw || 40}\n`);
+    fs.utimesSync(f, new Date(o.end), new Date(o.end));
+    return f;
+  };
+  for (const [pid, h] of [['A01', 10], ['A02', 11]]) {
+    makeTrialZip(dl, { pid, exp: 'exp3', trial: 0, condition: 'Excel', method: 'excel', video: 'a.mp4', start: iso(T(h, 0)), end: iso(T(h, 10)) });
+    makeTrialZip(dl, { pid, exp: 'exp3', trial: 1, condition: 'PANAS', method: 'panas', video: 'b.mp4', start: iso(T(h, 12)), end: iso(T(h, 40)) });
+  }
+  const a1 = tlx('A01_t01_tlx.csv', { pid: 'A01', trial: 1, end: T(10, 12) });
+  const a1last = tlx('A01_t02_tlx.csv', { pid: 'A01', trial: 2, cond: 'PANAS', end: T(11, 2) });   // 最後の試行の後に答えるので，時間帯では次の人に入ってしまう
+  const other = tlx('A01_t03_tlx.csv', { pid: 'A01', trial: 3, exp: 'other', end: T(10, 50) });
+  tlx('A02_t01_tlx.csv', { pid: 'A02', trial: 1, end: T(11, 11), raw: 30 });
+  const dup = tlx('A02_t01_tlx (1).csv', { pid: 'A02', trial: 1, end: T(11, 11), raw: 30 });
+  const nozip = tlx('B01_t01_tlx.csv', { pid: 'B01', trial: 1, end: T(11, 50) });
+  const plan = planCollect(exp, loadConfig(exp));
+  const mv = plan.people.flatMap(p => p.moves.map(m => ({ ...m, pid: p.pid })));
+  const at = src => mv.find(m => path.resolve(m.src) === path.resolve(src));
+  check('NASA-TLX：止める理由が無い', plan.errors.length === 0, JSON.stringify(plan.errors));
+  check('NASA-TLX：名前の ID で振り分け，tlx/ へ移す', at(a1) && at(a1).pid === 'A01' && /データ[\\/]A01[\\/]tlx[\\/]A01_t01_tlx\.csv$/.test(at(a1).dst) && at(a1).kind === 'tlx', JSON.stringify(at(a1)));
+  check('NASA-TLX：最後の試行の後に答えたものも，その人に入る', at(a1last) && at(a1last).pid === 'A01');
+  check('NASA-TLX：「 (1)」の重複も移す', at(dup) && at(dup).pid === 'A02');
+  check('NASA-TLX：name 列が別の実験なら移さない', !at(other));
+  check('NASA-TLX：zip の無い参加者のものは移さない', !at(nozip));
+  const r = runCollect(exp, plan);
+  check('NASA-TLX：集める', r.failed === null && fs.existsSync(path.join(exp, 'データ', 'A01', 'tlx', 'A01_t02_tlx.csv')) && !fs.existsSync(a1last), JSON.stringify(r));
+  const a = aggregate(exp), rows = csvParse(fs.readFileSync(path.join(exp, 'データ', '全員分', 'tlx.csv'), 'utf8'));
+  check('NASA-TLX：全員分/tlx.csv に 1 試行 1 行でまとめる', rows[0][0] === 'participant' && rows.length === 4 && rows.filter(x => x[0] === 'A02').length === 1 && rows.slice(1).map(x => `${x[0]}:${x[rows[0].indexOf('trial')]}`).join() === 'A01:1,A01:2,A02:1', JSON.stringify(rows));
+  check('NASA-TLX：重複は除いて一覧に出す', a.skipped.some(s => s.includes('A02_t01_tlx (1).csv')), JSON.stringify(a.skipped));
+  tlx('A01_t04_tlx.csv', { pid: 'A01', trial: 4, end: T(12, 0) });
+  const later = planCollect(exp, loadConfig(exp));
+  check('NASA-TLX：集め済みの人の結果が後から残っていれば警告して移さない', later.warnings.some(w => w.includes('A01') && w.includes('NASA-TLX') && w.includes('A01_t04_tlx.csv')) && !later.people.length, JSON.stringify(later.warnings));
+}
+
 // ---------- 全体レビューの後に足した検査 ----------
 {
   const R = path.join(__dirname, '..');

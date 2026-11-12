@@ -2,7 +2,7 @@
 // planCollect は計画を作るだけで，ファイルは何も変えない．録画と試行の紐づけは推測せず，確かめられなければ止める
 const fs = require('fs');
 const path = require('path');
-const { readTrialZip, loadConfig, matchGlob, csvWrite } = require('./lib');
+const { readTrialZip, loadConfig, matchGlob, csvParse, csvWrite } = require('./lib');
 
 const pad = n => String(n).padStart(2, '0');
 const safe = s => String(s).replace(/[\\/:*?"<>|]/g, '_');
@@ -13,6 +13,8 @@ const uniq = a => [...new Set(a)];
 const stripBom = s => (s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s);
 // ブラウザが重複のダウンロードに付ける「 (1)」を除いた名前
 const baseName = n => n.replace(/ \(\d+\)(?=\.zip$)/i, '');
+// NASA-TLX の結果の名前：<ID>_t<試行2桁>_tlx.csv（「 (1)」付きの重複も含む）
+const TLX_RE = /^(.+)_t\d+_tlx(?: \(\d+\))?\.csv$/i;
 
 // フォルダ直下のファイル．フォルダが無ければ空
 function listFiles(dir) {
@@ -93,6 +95,18 @@ function planCollect(expDir, cfg) {
   zips
     .sort((a, b) => baseName(a.name).localeCompare(baseName(b.name)) || a.name.length - b.name.length || a.name.localeCompare(b.name));
 
+  // NASA-TLX（tlx/nasatlx-ja.html）が zip と同じダウンロード先に保存する結果．ID はファイル名から取る．
+  // 答えるのは試行を終えた後なので，時間帯ではなく名前で振り分ける．name 列（実験名）が入っていて違えば別の実験のものとして除く
+  const tlx = [];
+  for (const f of listFiles(cfg.zips)) {
+    const m = TLX_RE.exec(path.basename(f));
+    if (!m) continue;
+    let exp = '';
+    try { const rows = csvParse(fs.readFileSync(f, 'utf8')); const i = (rows[0] || []).indexOf('name'); exp = i >= 0 && rows[1] ? rows[1][i] || '' : ''; } catch (_e) { /* 読めなくても名前で振り分ける */ }
+    if (exp && exp !== ex.name) continue;
+    tlx.push({ file: f, pid: m[1] });
+  }
+
   // 録画のフォルダ直下の録画
   const recs = listFiles(cfg.recordings).filter(f => cfg.recordingExts.includes(path.extname(f).toLowerCase()))
     .map(f => { const st = fs.statSync(f); return { file: f, name: path.basename(f), size: st.size, time: Math.floor(st.mtimeMs) }; });
@@ -120,6 +134,11 @@ function planCollect(expDir, cfg) {
   }
   targets.sort((a, b) => a.start - b.start);
   if (!targets.length) warnings.push('集める対象の参加者がいません');
+  // 集め済みの人の NASA-TLX の結果が後から残っていれば，移さずに知らせる
+  for (const pid of uniq(tlx.filter(x => done.has(x.pid)).map(x => x.pid))) {
+    const found = tlx.filter(x => x.pid === pid).map(x => path.basename(x.file));
+    warnings.push(`${pid} は集め済みですが，NASA-TLX の結果が ${found.length} 個見つかりました（${found.join('，')}）．移していません．手で データ/${pid}/tlx/ へ移し，files.csv に書き足してください`);
+  }
 
   // 時間帯：始まりは 1 つ前の参加者の終わり．記録が何も無ければ最初の start の日の 0 時
   let prev = donePeople.length ? Math.max(...donePeople.map(p => p.to)) : null, prevDone = prev != null;
@@ -140,6 +159,7 @@ function planCollect(expDir, cfg) {
     const dst = (...a) => path.join(dataDir, p.pid, ...a);
     const moves = [];
     for (const t of p.zips) moves.push({ src: t.file, dst: dst('annotator', t.name), kind: 'zip', role: 'annotator', zip: '' });
+    for (const x of tlx) if (x.pid === p.pid) moves.push({ src: x.file, dst: dst('tlx', path.basename(x.file)), kind: 'tlx', role: 'NASA-TLX', zip: '' });
 
     // 試行ごとに採る zip：完了したもののうち最後のやり直し．完了したものが無ければ _partial のうち最後のやり直し
     const byTrial = new Map();
@@ -225,7 +245,7 @@ function planCollect(expDir, cfg) {
   return { people, left, warnings: uniq(warnings), errors: uniq(errors) };
 }
 
-const KIND = { zip: 'zip', recording: '録画', log: 'ログ' };
+const KIND = { zip: 'zip', tlx: 'NASA-TLX', recording: '録画', log: 'ログ' };
 
 const exists = why => `移し先にすでに同じ名前があります（${why}）．上書きしないので止めました`;
 
@@ -339,7 +359,7 @@ function runCollect(expDir, plan, { copy = (s, d) => fs.copyFileSync(s, d, fs.co
 function printPlan(plan) {
   for (const p of plan.people) {
     const n = k => p.moves.filter(m => m.kind === k).length;
-    console.log(`\n■ ${p.pid}（時間帯 ${fmt(p.from)} 〜 ${fmt(p.to)}）  zip ${n('zip')} 個，録画 ${n('recording')} 個，ログ ${n('log')} 個`);
+    console.log(`\n■ ${p.pid}（時間帯 ${fmt(p.from)} 〜 ${fmt(p.to)}）  zip ${n('zip')} 個，${n('tlx') ? `NASA-TLX ${n('tlx')} 個，` : ''}録画 ${n('recording')} 個，ログ ${n('log')} 個`);
     for (const m of p.moves) console.log(`  [${KIND[m.kind]}] ${m.src}\n      → ${m.dst}`);
   }
   if (plan.people.length) console.log(`\n時間帯の外なので残すもの：最後の参加者の後 ${plan.left.outside} 個，最初の参加者の前 ${plan.left.before} 個`);
