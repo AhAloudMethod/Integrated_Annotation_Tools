@@ -201,8 +201,12 @@ const BAD = makeFolder('exp_bad', {
   await p.evaluate(() => { window.__pads.length = 0; }); await p.waitForTimeout(100);
 
   // 開始 → 再生 → 停止 → 完了
+  const timerPre = await vis('#expTimer');
   await p.click('#expStart');
   check('開始で覆いが消え、完了ボタンが出る', (await state()) === 'running' && !(await vis('#expCover')) && (await vis('#expDoneBtn')));
+  await p.waitForTimeout(1300);
+  const timer = await p.evaluate(() => { const e = document.getElementById('expTimer'), h = document.querySelector('header').getBoundingClientRect(), r = e.getBoundingClientRect(); return { text: e.textContent, left: r.left - h.left }; });
+  check('左上に「開始」からの経過時間を出す（開始前は出さない）', !timerPre && await vis('#expTimer') && timer.text === '0:01' && timer.left < 20, JSON.stringify(timer));
   await p.keyboard.press('Space'); await p.waitForTimeout(1000); await p.keyboard.press('Space'); await p.waitForTimeout(200);
   const tb = await p.locator('#tl').boundingBox();
   await p.mouse.click(tb.x + tb.width * 0.5, tb.y + tb.height * 0.3, { button: 'right' }); await p.waitForTimeout(100);

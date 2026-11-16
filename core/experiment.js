@@ -486,6 +486,7 @@
     $('expAlign').hidden = st !== 'align';
     $('expInfo').hidden = false; $('expInfo').textContent = progText();
     $('expDoneBtn').hidden = st !== 'running';
+    $('expTimer').hidden = st !== 'running'; tickTimer();
     const head = `<p class="expProg">${esc(progText())}</p>`;
     if (st === 'loading') cover(head + '<p>読み込んでいます…</p>');
     else if (st === 'error') cover(head + `<h2>この試行を始められません</h2>${errList([`${vidName(X.trials[X.i])}：${msg}`])}<p>実験者の方へ：setup.json（動画ごとの評価区間）を直してから、${_.mod('Ctrl')}+Shift+E で抜けて実験フォルダを開き直してください。</p>`);
@@ -542,6 +543,14 @@
     const list = tpl => !tpl ? [] : (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
     return [...list(t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey), ...(final ? list(X.cfg.finalSurvey) : [])];
   }
+  // 経過時間：操作ログの最後の task_start から。途中で抜けて再開した試行は、操作ログの経過時間と同じく続きから数える（要約の task_ms と合う）
+  function tickTimer() {
+    if (!X || X.state !== 'running') return;
+    let w0 = null; for (let k = S.log.length - 1; k >= 0; k--) if (S.log[k].type === 'task_start') { w0 = S.log[k].wall_ms; break; }
+    const sec = w0 == null ? 0 : Math.max(0, Math.floor((_.wall() - w0) / 1000));
+    $('expTimer').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  }
+  setInterval(tickTimer, 250);
   function start() {
     if (!X || X.state !== 'ready') return;
     S.meta.experiment.start_iso = new Date().toISOString();
