@@ -24,6 +24,7 @@
     { key: 'refAudio', label: '「基準音声」ボタンを出す', type: 'check', def: true, exp: true },
     { key: 'voicedBtn', label: '声のある区間をマークする「発声」ボタン（H キー）を出す', type: 'check', def: true, exp: true },
     { key: 'videoWindow', label: '「別ウィンドウ」ボタンを出す', type: 'check', def: true, exp: true },
+    { key: 'timer', label: '評価中に「開始」からの経過時間を出す', type: 'check', def: true, exp: true },
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true, adv: true },
   ];
   const DEF = Object.fromEntries(SETTINGS.map(s => [s.key, s.def]));

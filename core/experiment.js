@@ -281,6 +281,7 @@
     document.body.classList.toggle('expVoicedBtn', !!s.voicedBtn);
     document.body.classList.toggle('expVoice', !!s.voice);
     document.body.classList.toggle('expVwin', !!s.videoWindow);
+    document.body.classList.toggle('expTimerOn', !!s.timer);
   }
   // 評価区間を当てる。動画の長さに収まらなければ誤りの文を返す（黙って切り詰めない。フレームの端数 0.02 秒は許す）
   // 参加者が自分で区切る試行（Excel の cuts: "self"）は、区切りの無い 1 区間（開始〜終了）から始める。

@@ -42,7 +42,7 @@ const GOOD = makeFolder('exp_good', {
     participants: {
       P01: [
         { mode: 'emujoy', video: 'practice.mp4', practice: true, options: { face: false }, condition: '練習用' },
-        { mode: 'excel', video: 'a.mp4', settings: { review: true } },
+        { mode: 'excel', video: 'a.mp4', settings: { review: true, timer: false } },
       ],
       P02: [{ mode: 'sam', video: 'a.mp4' }, { mode: 'excel', video: './sub/b.mp4', range: { start: 0, end: 5 } }],
       P03: [{ mode: 'sam', video: 'c.mp4' }],
@@ -131,7 +131,7 @@ const BAD = makeFolder('exp_bad', {
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(await text('setup.json'));
   check('setup.json に欄の値と動画ごとの評価区間（長さつき）を書く', su.settings.voice === true && su.settings.axes === 'va' && su.settings.review === false && su.videos['a.mp4'].start === 2 && su.videos['a.mp4'].end === 10 && su.videos['a.mp4'].bin === 1
-    && Math.abs(su.videos['a.mp4'].duration - 12) < 0.1 && Object.keys(su.settings).length === 18, JSON.stringify(su));
+    && Math.abs(su.videos['a.mp4'].duration - 12) < 0.1 && Object.keys(su.settings).length === 19, JSON.stringify(su));
   check('書き出し直しても、setup.json の ref と、覚えていない動画の区間を残す', su.videos['a.mp4'].ref === 1.5 && su.videos['practice.mp4'].end === 12 && su.videos['c.mp4'].end === 20, JSON.stringify(su.videos));
   await p.click('#esClose');
 
@@ -240,6 +240,7 @@ const BAD = makeFolder('exp_bad', {
   const info2 = await p.evaluate(() => [document.getElementById('expInfo').textContent, document.querySelector('.expProg').textContent]);
   await p.click('#expStart');
   check('視聴を許した試行では視聴ボタンが出る', await vis('#reviewBtn'));
+  check('settings の timer を false にした試行では経過時間を出さない', !(await vis('#expTimer')));
   check('条件名（全体の conditions）を進行の表示と開始の覆いに出す', info2[0] === '2 / 2　条件B' && info2[1] === '2 / 2　条件B', JSON.stringify(info2));
   await p.click('#expDoneBtn');
   await p.waitForFunction(() => AH._.expState() === 'finished');

@@ -87,6 +87,7 @@ README・`core/`・`collect-tools.zip` などは，リポジトリの中で使�
   | `videoSize` | `55` | 25〜80 |
   | `padJoy`，`padSlider`，`padSquare` | `true` | 真偽 |
   | `review`，`refAudio`，`voicedBtn`，`videoWindow` | `true` | 真偽（視聴，基準音声，発声，別ウィンドウのボタンを出すか） |
+  | `timer` | `true` | 真偽（評価中に「開始」からの経過時間を出すか） |
   | `voice` | `false` | 真偽（音声入力のボタンを出すか） |
 
   評価区間の変更（区切りの編集など）は，実験モードでは設定に関係なくできない．ただし Excel（専用とカスタム）で `options` の `cuts` を `"self"` にした試行では，参加者が区切りを編集できる．
