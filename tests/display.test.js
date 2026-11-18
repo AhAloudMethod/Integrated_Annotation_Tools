@@ -81,7 +81,27 @@ const JOY = 'Test Joystick (Vendor: 1234 Product: 0001)';
     await p.close();
   }
 
-  { const p = await ctx.newPage(); await p.goto(URL); await p.evaluate(() => { localStorage.removeItem('ahann_grid'); localStorage.removeItem('ahann_pad_square'); }); await p.close(); }
+  // ---- 配色：設定で選ぶと画面とグラフの色が変わり、読み込み直しても残る。「OS に合わせる」で OS の設定に戻る
+  {
+    const p = await open('emujoy');
+    await p.emulateMedia({ colorScheme: 'light' });
+    const bg = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const graph = () => p.$eval('#panel canvas.plane', c => c.toDataURL());
+    const pick = async v => { await p.click('#setBtn'); await p.selectOption('#theme', v); await p.click('#setBtn'); await p.waitForTimeout(100); };
+    const b0 = await bg(), g0 = await graph();
+    await pick('dark');
+    const b1 = await bg(), g1 = await graph();
+    check('配色でダークを選ぶと画面と入力面がダークになる', b1 === 'rgb(22, 27, 32)' && b1 !== b0 && g1 !== g0, b1);
+    await p.reload(); await p.waitForTimeout(100);
+    check('選んだ配色は読み込み直しても残る', await bg() === 'rgb(22, 27, 32)' && await p.$eval('#theme', e => e.value) === 'dark');
+    await p.emulateMedia({ colorScheme: 'dark' }); await pick('light');
+    check('OS がダークでもライトを選べばライトになる', await bg() === b0);
+    await pick('auto');
+    check('「OS に合わせる」なら OS の設定（ダーク）に従い、保存を消す', await bg() === 'rgb(22, 27, 32)' && await p.evaluate(() => localStorage.getItem('ahann_theme')) === null);
+    await p.close();
+  }
+
+  { const p = await ctx.newPage(); await p.goto(URL); await p.evaluate(() => { localStorage.removeItem('ahann_grid'); localStorage.removeItem('ahann_pad_square'); localStorage.removeItem('ahann_theme'); }); await p.close(); }
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();

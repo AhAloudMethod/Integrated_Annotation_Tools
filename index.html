@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>あアラウド 統合アノテーションツール</title>
 <link rel="stylesheet" href="style.css">
+<script>/* 設定で選んだ配色（ライト・ダーク）を描画の前に当てて、ちらつきを防ぐ */
+try { var t = localStorage.getItem('ahann_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body data-side="normal">
 <header>
@@ -63,6 +65,7 @@
       <div class="setTabs" role="tablist"><button id="setTabBasic" type="button" role="tab" class="on" aria-selected="true">基本</button><button id="setTabAdv" type="button" role="tab" aria-selected="false">高度な設定</button></div>
       <div id="setBasic" class="setBasic">
         <div class="refTitle">表示</div>
+        <label title="画面の配色。「OS に合わせる」なら Windows・ブラウザの設定に従う">配色 <select id="theme"><option value="auto">OS に合わせる</option><option value="light">ライト</option><option value="dark">ダーク</option></select></label>
         <label class="chk"><input id="graphEdit" type="checkbox" checked> グラフをなぞって値を編集する</label>
         <label class="chk" title="平面・円・スライダー・レバーにグリッド線を引く"><input id="gridShow" type="checkbox"> グリッド線を表示する</label>
         <label class="chk"><input id="f0Show" type="checkbox" checked> 音声の F0（声の高さ）を表示する</label>

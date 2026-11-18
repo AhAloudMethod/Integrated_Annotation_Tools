@@ -10,11 +10,16 @@
   --axv:var(--val); --axa:var(--aro);   /* 横軸・縦軸の色。PANA では入れ替える（ポジティブ＝暖色，ネガティブ＝寒色） */
 }
 html[data-axes="pana"]{--axv:var(--aro); --axa:var(--val)}
+/* ダーク表示：OS の設定に従う。設定の「配色」で選んだ表示（html の data-theme）を優先する */
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
+  :root:not([data-theme="light"]){ color-scheme:dark; --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
     --val:#4FB3C6; --aro:#E0A64A; --f0:#B39DDB; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E;
     --fig:#eeeeee; }   /* 眩しいので少し暗く。*/
 }
+:root[data-theme="dark"]{ color-scheme:dark; --bg:#161B20; --panel:#20272E; --ink:#E6EBEF; --muted:#9AA6B2; --line:#34404B;
+  --val:#4FB3C6; --aro:#E0A64A; --f0:#B39DDB; --head:#E6EBEF; --grid:#2A333C; --pen:#FF7A6B; --hit:#4CC47E;
+  --fig:#eeeeee; }
+:root[data-theme="light"]{ color-scheme:light }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
   font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-size:15px;line-height:1.5}
