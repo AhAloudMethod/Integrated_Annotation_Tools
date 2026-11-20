@@ -808,7 +808,7 @@ exp2/
 | 再生 | `play`，`pause`，`seek`（detail は移動前の時刻），`ended`，`rate`，`fps`（フレームレートの推定・手入力） |
 | 評価区間 | `range`，`range_cut`（区切りを置いた・動かした・消した） |
 | 入力 | `input`／`input_same`（テンキーなど），`click`（一時停止中のクリック），`delete`，`stroke`（detail は区間，サンプル数，終わった理由），`arm`／`disarm` |
-| 区間の値 | `cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`，`cell_focus`，`memo` |
+| 区間の値 | `cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（detail の末尾の `prev=` は直す前の値．空欄は `-`，2 軸まとめて変えたときは `5/3` の形），`cell_focus`／`cell_blur`（セルを選んだ・離れた），`memo` |
 | 相対の変化 | `rank`（AffectRank） |
 | グラフ | `graph_edit`，`graph_draw`／`graph_cells` |
 | 取り消し | `undo`，`redo`（やり直し），`reset`（入力をリセットした） |

@@ -261,6 +261,7 @@
             if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(ss);   // 移った先の区間（固定の列は飛ばす）
           });
           inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; lastAx = ax; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
+          inp.addEventListener('blur', () => AH.addLog('cell_blur', { axis: ax, detail: 'bin ' + s }));   // 選んだが入れずに離れた場合を区別する
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
           inp.addEventListener('mouseup', e => { if (inp.selectionStart === inp.selectionEnd) { e.preventDefault(); inp.select(); } });
           td.appendChild(inp); tr.appendChild(td);

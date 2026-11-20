@@ -22,8 +22,9 @@
     const c = S.data.cells[axis];
     if (c[s] === 'curve') return false;   // 区間内で変化の変化の区間（core/curve.js）はセルの値で上書きしない（音声入力・数字キーなど）
     if ((c[s] ?? null) === (val ?? null)) return false;   // 未入力（undefined）と空欄（null）は同じ扱い
+    const prev = c[s] ?? '-';   // 直す前の値（修正回数の集計に使う。空欄は -）
     pushUndo(); c[s] = val;
-    addLog('cell_' + how, { axis, value: val ?? '', detail: 'bin ' + s + ' (' + secLabel(s) + ')' });
+    addLog('cell_' + how, { axis, value: val ?? '', detail: 'bin ' + s + ' (' + secLabel(s) + ') prev=' + prev });
     _.refresh(); return true;
   }
   function setCells(s, vals, how = 'input') {   // 複数軸をまとめて1回の取り消し単位で
@@ -32,9 +33,10 @@
     const c = S.data.cells;
     vals = Object.fromEntries(Object.entries(vals).filter(([ax]) => c[ax][s] !== 'curve'));   // 変化の区間の軸は変えない
     if (Object.entries(vals).every(([ax, v]) => (c[ax][s] ?? null) === (v ?? null))) return false;
+    const prev = Object.keys(vals).map(ax => c[ax][s] ?? '-').join('/');
     pushUndo();
     for (const [ax, v] of Object.entries(vals)) c[ax][s] = v;
-    addLog('cell_' + how, { axis: Object.keys(vals).join(''), value: Object.values(vals).join('/'), detail: 'bin ' + s + ' (' + secLabel(s) + ')' });
+    addLog('cell_' + how, { axis: Object.keys(vals).join(''), value: Object.values(vals).join('/'), detail: 'bin ' + s + ' (' + secLabel(s) + ') prev=' + prev });
     _.refresh(); return true;
   }
 
