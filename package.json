@@ -12,7 +12,8 @@
     "exp-check": "node tools/exp-check.js",
     "voiced-why": "node tools/voiced-why.js",
     "build-collect": "node tools/build-collect.js",
-    "build-skill-zips": "node tools/build-skill-zips.js"
+    "build-skill-zips": "node tools/build-skill-zips.js",
+    "alpha": "node tools/alpha/alpha.js"
   },
   "devDependencies": {
     "playwright-core": "^1.63.0"
