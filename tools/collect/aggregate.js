@@ -21,7 +21,7 @@ function adopt(trials, skipped) {
   const byTrial = new Map();
   for (const t of trials) {
     if (t.partial) { skipped.push(`${t.name}（途中で抜けた試行）`); continue; }
-    const k = `${t.pid}\u0000${t.trial}`;
+    const k = `${t.exp}\u0000${t.pid}\u0000${t.trial}`;   // 実験名が違えば別の試行
     byTrial.set(k, [...(byTrial.get(k) || []), t]);
   }
   const out = [];
@@ -135,4 +135,4 @@ async function main() {
 
 if (require.main === module) main();
 
-module.exports = { aggregate };
+module.exports = { aggregate, adopt };

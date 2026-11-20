@@ -17,3 +17,7 @@
 .fseventsd
 .DocumentRevisions-V100
 .TemporaryItems
+
+# 参加者のデータ（行動指標の集計を誤ってリポジトリの中で走らせたときの備え）
+/tools/collect/*.zip
+データ/

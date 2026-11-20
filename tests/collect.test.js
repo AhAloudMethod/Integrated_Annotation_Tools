@@ -553,10 +553,11 @@ function makeFile(file, size, mtime) {
 {
   const SRC = path.join(__dirname, '..', 'tools', 'collect'), ZIP = path.join(__dirname, '..', 'collect-tools.zip');
   const bats = fs.readdirSync(SRC).filter(n => n.endsWith('.bat'));
-  check('bat は 4 つで，番号順の名前', bats.sort().join() === '0_最初に1回_Node.jsを入れる.bat,1_結果を集める.bat,2_全員終わったら_表にまとめる.bat,3_Driveにあげる.bat', bats.join());
+  check('bat は 5 つで，番号順の名前', bats.sort().join() === '0_最初に1回_Node.jsを入れる.bat,1_結果を集める.bat,2_全員終わったら_表にまとめる.bat,3_行動指標を出す.bat,4_Driveにあげる.bat', bats.join());
+  check('行動指標の bat は metrics.js に引数をそのまま渡す', /node "%~dp0metrics\.js" "%~dp0\.\." %\*/.test(fs.readFileSync(path.join(SRC, '3_行動指標を出す.bat'), 'latin1')));
   const bat1 = fs.readFileSync(path.join(SRC, '1_結果を集める.bat'), 'latin1');
   check('集める bat は，集め終えたら --auto で Drive にあげ，失敗したらあげずに止まる', /collect\.js" "%~dp0\.\." --no-pause\r\nif errorlevel 1 \(\r\n  pause\r\n  exit \/b 1\r\n\)\r\nnode "%~dp0upload\.js" "%~dp0\.\." --auto/.test(bat1), bat1);
-  check('Drive にあげる bat は upload.js に引数をそのまま渡す', /node "%~dp0upload\.js" "%~dp0\.\." %\*/.test(fs.readFileSync(path.join(SRC, '3_Driveにあげる.bat'), 'latin1')));
+  check('Drive にあげる bat は upload.js に引数をそのまま渡す', /node "%~dp0upload\.js" "%~dp0\.\." %\*/.test(fs.readFileSync(path.join(SRC, '4_Driveにあげる.bat'), 'latin1')));
   check('bat の中身は ASCII だけ', bats.every(n => fs.readFileSync(path.join(SRC, n)).every(b => b < 0x80)));
   check('bat は Node.js の有無を同じ形で確かめる', bats.slice(1).every(n => fs.readFileSync(path.join(SRC, n), 'latin1').includes('where node >nul 2>nul\r\n')));
   check('bat の改行は CRLF', bats.every(n => { const t = fs.readFileSync(path.join(SRC, n), 'latin1'); return t.includes('\r\n') && !/[^\r]\n/.test(t); }));

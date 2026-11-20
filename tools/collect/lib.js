@@ -69,6 +69,9 @@ function readTrialZip(file) {
       refLastModified: num(r.ref_video_last_modified),
     } : null,
     csvs: entries.filter(e => /\.csv$/i.test(e.name)).map(e => ({ suffix: e.name.slice(e.name.lastIndexOf('_') + 1), text: e.data.toString('utf8') })),
+    meta: m,   // 行動指標の集計（metrics.js）が使う
+    log: Array.isArray(s.log) ? s.log : [],
+    data: s.data || null,
   };
 }
 
