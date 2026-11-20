@@ -184,6 +184,10 @@
   function xlTable(under, axes = ['v', 'a'], real = false, curve = false) {
     const { grid, follow } = xlWrap(under);
     let sig = '', lastAx = axes[0];   // lastAx：最後に入れていたセルの行（セルの外で数字を押したときの入れ先）
+    // セルへの移り方（cell_focus の via=）：click（押した）・key（Enter・Tab・矢印）・digit（セルの外の数字キー）・rebuild（表の作り直し）・other。
+    // フォーカスを移す直前に入れ、focus の記録で読んで消す
+    let via = null;
+    const focusBy = (inp, how) => { via = how; inp.focus(); via = null; };
     const isCv = (ax, s) => curve && S.data.cells[ax][s] === 'curve';
     const sigNow = () => AH.rangeSig() + (curve ? '|' + axes.map(ax => [...Array(AH.nSec()).keys()].map(s => (isCv(ax, s) ? 1 : 0)).join('')).join('|') : '');
     const bad = (inp, ax, s) => { inp.value = S.data.cells[ax][s] ?? ''; inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 400); };
@@ -256,11 +260,12 @@
               nx = grid.querySelector(`input[data-ax="${axes[rr]}"][data-s="${ss}"]`);
               if (nx && AH.novoiceLocked(ss)) nx = null;
             }
-            if (nx) { nx.focus(); nx.select(); }
+            if (nx) { focusBy(nx, 'key'); nx.select(); }
             // 聴いてから入力：聴いた区間の最後の行で Enter を押して次の列へ移ったら、次の区間を聴く
             if (nx && e.key === 'Enter' && ss > s && AH._.listenUsable() && AH._.listenWaiting() && AH.curSec() === s) AH._.listenPlayBin(ss);   // 移った先の区間（固定の列は飛ばす）
           });
-          inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; lastAx = ax; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s }); });
+          inp.addEventListener('focus', () => { lastCell = { s, t: video.currentTime }; lastAx = ax; AH.addLog('cell_focus', { axis: ax, detail: 'bin ' + s + ' via=' + (via || 'other') }); via = null; });
+          inp.addEventListener('pointerdown', () => { if (document.activeElement !== inp) via = 'click'; });   // focus は pointerdown の後に起きる
           inp.addEventListener('blur', () => AH.addLog('cell_blur', { axis: ax, detail: 'bin ' + s }));   // 選んだが入れずに離れた場合を区別する
           // クリックでも中身を選ぶ。選ばないと、入っているセルは maxlength で打ち直せない（矢印・Enter の移動は select() で選ぶ）
           inp.addEventListener('mouseup', e => { if (inp.selectionStart === inp.selectionEnd) { e.preventDefault(); inp.select(); } });
@@ -270,7 +275,7 @@
       });
       grid.appendChild(tb);
       const back = keep && grid.querySelector(`input[data-ax="${keep.ax}"][data-s="${keep.s}"]`);
-      if (back) { back.value = S.data.cells[keep.ax][+keep.s] ?? ''; back.focus(); back.select(); }
+      if (back) { back.value = S.data.cells[keep.ax][+keep.s] ?? ''; focusBy(back, 'rebuild'); back.select(); }
     }
     const update = () => {
       if (!S.meta.duration) return;
@@ -295,7 +300,7 @@
       const s = AH.inputSec(); if (s == null) return true;   // 評価区間の外（案内を出す）
       const inp = grid.querySelector(`input[data-ax="${lastAx}"][data-s="${s}"]`);
       if (!inp || inp.readOnly) return true;   // 変化の区間・発声なしの固定の列
-      inp.focus(); inp.value = m[1]; inp.dispatchEvent(new Event('input'));
+      focusBy(inp, 'digit'); inp.value = m[1]; inp.dispatchEvent(new Event('input'));
       return true;
     };
     return update;

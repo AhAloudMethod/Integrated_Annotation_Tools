@@ -48,6 +48,31 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 2b. セルへの移り方（cell_focus の via=）
+  {
+    const p = await open();
+    const via = async () => (await logs(p, 'cell_focus')).map(e => e.detail);
+    await p.click('input[data-ax=v][data-s="1"]'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
+    check('クリックで選ぶと via=click、Enter で移ると via=key', JSON.stringify(await via()) === JSON.stringify(['bin 1 via=click', 'bin 1 via=key']), JSON.stringify(await via()));
+    await p.click('input[data-ax=v][data-s="2"]');
+    await p.evaluate(() => AH._.addCut(AH.binStart(2) + 0.3)); await p.waitForTimeout(150);
+    check('表を作り直してフォーカスを戻すと via=rebuild', (await via()).pop() === 'bin 2 via=rebuild', JSON.stringify(await via()));
+    await p.close();
+  }
+  {
+    // セルの外の数字キーは Excel 方式（modes/excel.js）だけ
+    const p = await ctx.newPage();
+    p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.dismiss());
+    await p.goto(URL); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('ahann_tl', '1'); localStorage.setItem('ahann_f0', '0'); }); await p.reload();
+    await p.selectOption('#mode', 'excel');
+    await p.setInputFiles('#file', VID); await p.waitForFunction(() => AH.S.meta.duration > 0); await p.waitForTimeout(150);
+    await p.evaluate(() => AH.seekTo(AH.binStart(2) + 0.001)); await p.waitForTimeout(120);
+    await p.keyboard.press('Digit5'); await p.waitForTimeout(80);
+    const v = (await logs(p, 'cell_focus')).map(e => e.detail);
+    check('セルの外で数字キーを押して移ると via=digit', v.pop() === 'bin 2 via=digit', JSON.stringify(v));
+    await p.close();
+  }
+
   // グラフの座標：時刻 t・値 v（lane は v か a）の画面上の位置（tests/curve.test.js と同じ計算）
   const graph = async p => {
     const g = await p.evaluate(() => { const c = document.getElementById('tl'), r = c.getBoundingClientRect(); return { x: r.left, y: r.top, w: c.clientWidth, h: c.clientHeight, D: AH.S.meta.duration }; });
