@@ -72,14 +72,15 @@
     return m;
   }
   // 区間 s・軸 ax を形の曲線で描き換え（base の系列から）、形の記録と書き込みの記録（_strokes）に残す。取り消しの記録は呼び出し側
-  function put(base, ax, s, from, to, shape, reason, source = 'template') {
+  // wall0：書き始めの時刻（グラフのドラッグなら押した時刻。ボタンで変えたときは無く、書いた時刻にする）
+  function put(base, ax, s, from, to, shape, reason, source = 'template', wall0 = wall()) {
     const m = samples(s, from, to, shape); if (!m.size) return false;
     S.data.points[ax] = _.rewriteFrames(base.points[ax], m);
     const b0 = binStart(s), b1 = _.binEnd(s);
     trim(ax, b0, b1);
     if (SHAPES[shape]) (S.data.shapes || (S.data.shapes = [])).push({ axis: ax, t0: +b0.toFixed(4), t1: +b1.toFixed(4), shape });
     const fs = [...m.keys()];
-    S.data.strokes.push({ id: S.data.strokes.length, source, axes: ax, shape, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: reason, wall_ms_end: wall(),
+    S.data.strokes.push({ id: S.data.strokes.length, source, axes: ax, shape, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: reason, wall_ms_start: wall0, wall_ms_end: wall(),
       samples: fs.map(f => [+(f / FPS).toFixed(4), ax === 'v' ? m.get(f) : '', ax === 'a' ? m.get(f) : '']) });
     return true;
   }
@@ -89,7 +90,7 @@
   function down(axis, t, v) {
     const s = secOf(t);
     if (s < 0 || !isCurve(axis, s) || _.M.curveTool() !== 'template') return false;   // 変化の区間でなければ、普通のグラフでの編集（セルの値）
-    drag = { axis, s, before: snapshot(), from: q(v), to: q(v) };
+    drag = { axis, s, before: snapshot(), from: q(v), to: q(v), wall0: wall() };
     preview(); return true;
   }
   function preview() {
@@ -100,7 +101,7 @@
     const d = drag; drag = null; if (!d) return;
     const shape = _.M.curveShape();
     S.data.points[d.axis] = d.before.points[d.axis].map(p => ({ ...p }));   // 予覧を捨ててから、記録つきで描き換える
-    if (put(d.before, d.axis, d.s, d.from, d.to, shape, 'template')) {
+    if (put(d.before, d.axis, d.s, d.from, d.to, shape, 'template', 'template', d.wall0)) {
       pushUndo(d.before);
       addLog('graph_curve', { axis: d.axis, value: `${d.from}->${d.to}`, detail: `bin ${d.s} ${shape}` });
     }

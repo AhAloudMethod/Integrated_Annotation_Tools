@@ -34,7 +34,7 @@
   function startStroke(t0 = vt()) {
     if (_.reviewing()) return;   // 視聴の間は書き込まない
     const axes = _.M.writeAxes(); if (!axes.length) return;
-    _.stroke = { before: snapshot(), axes, t0, lastT: t0, raw: [], pad: {} };
+    _.stroke = { before: snapshot(), axes, t0, lastT: t0, raw: [], pad: {}, w0: wall() };
     strokeSample();
   }
   // 区間 (tEnd, restoreT) の古い点を掃除し、restoreT に上書き前の値へ戻す点を置く
@@ -60,7 +60,7 @@
     if (s.raw.length) {
       // source：input（マウス・キー）／gamepad（ジョイスティック・スライダーの値を1つでも含む）。gamepad のときは pad に役割ごとの機器名 { joy, slider }
       const pad = Object.keys(s.pad).length ? { pad: s.pad } : {};
-      S.data.strokes.push({ id: S.data.strokes.length, source: pad.pad ? 'gamepad' : 'input', ...pad, axes: s.axes.join(''), t_start: s.t0, t_end: tEnd, end_reason: reason, after: afterWrite, wall_ms_end: wall(), samples: s.raw });
+      S.data.strokes.push({ id: S.data.strokes.length, source: pad.pad ? 'gamepad' : 'input', ...pad, axes: s.axes.join(''), t_start: s.t0, t_end: tEnd, end_reason: reason, after: afterWrite, wall_ms_start: s.w0, wall_ms_end: wall(), samples: s.raw });
       pushUndo(s.before);
       addLog('stroke', { axis: s.axes.join(''), detail: `${s.t0.toFixed(4)}-${tEnd.toFixed(4)} n=${s.raw.length} end=${reason}` });
     }

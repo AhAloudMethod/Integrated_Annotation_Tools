@@ -243,13 +243,14 @@
     if (y >= r.height - RULER || !graphEditable() || (Gd.f0Lane && y >= Gd.f0Lane.top)) { seeking = true; _.seekTo(geom().tOf(e.clientX - r.left)); return; }
     endStroke('graph');
     const G = geom(), axis = y < (G.lanes[0].y1 + G.lanes[1].y0) / 2 ? 'v' : 'a';
+    addLog('graph_down', { axis, detail: 't=' + G.tOf(e.clientX - r.left).toFixed(4) });   // 値を入れるために押した時刻（入力にかかった時間の集計に使う）
     // 区間内で変化のテンプレート（core/curve.js）：押した区間に、押した高さから離した高さへの曲線を入れる
     const LA = G.lanes.find(l => l.ax === axis);
     const tP = G.tOf(e.clientX - r.left);
     if (_.curveOn() && _.M.curveSelect) { const s = binAt(tP); if (s >= 0 && s < nSec()) _.M.curveSelect(s); }   // 押した区間をパネルのボタンの対象にする
     if (_.curveDown(axis, tP, LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
     // series：系列を描く（連続の方式と、区間内で変化で変化の区間を押したとき）。それ以外の区間方式はセルの値を置く
-    edit = { axis, before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set(), series: model() === 'series' || _.curveSeriesAt(axis, tP) };
+    edit = { axis, wall0: wall(), before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set(), series: model() === 'series' || _.curveSeriesAt(axis, tP) };
     editAt(e);
   });
   tl.addEventListener('pointermove', e => {
@@ -286,11 +287,15 @@
       if (e.series) {
         pushUndo(e.before);
         const fs = [...e.samples.keys()].sort((a, b) => a - b);
-        S.data.strokes.push({ id: S.data.strokes.length, source: 'graph', axes: e.axis, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: 'graph', wall_ms_end: wall(),
+        S.data.strokes.push({ id: S.data.strokes.length, source: 'graph', axes: e.axis, t_start: fs[0] / FPS, t_end: fs[fs.length - 1] / FPS, end_reason: 'graph', wall_ms_start: e.wall0, wall_ms_end: wall(),
           samples: fs.map(f => [+(f / FPS).toFixed(4), e.axis === 'v' ? e.samples.get(f) : '', e.axis === 'a' ? e.samples.get(f) : '']) });
         addLog('graph_draw', { axis: e.axis, detail: `${(fs[0] / FPS).toFixed(3)}-${(fs[fs.length - 1] / FPS).toFixed(3)}` });
         _.curveTrim(e.axis, fs[0] / FPS, (fs[fs.length - 1] + 1) / FPS);   // 描き直した範囲は形の記録から外す（区間内で変化）
-      } else addLog('graph_cells', { axis: e.axis, detail: 'bins ' + [...e.bins].sort((a, b) => a - b).join(' ') });
+      } else {
+        // value は区間の順の新しい値、detail の末尾は直す前の値（空欄は -）
+        const bs = [...e.bins].sort((a, b) => a - b), cv = c => (c ?? '-');
+        addLog('graph_cells', { axis: e.axis, value: bs.map(s => cv(S.data.cells[e.axis][s])).join(' '), detail: 'bins ' + bs.join(' ') + ' prev ' + bs.map(s => cv(e.before.cells[e.axis][s])).join(' ') });
+      }
     }
     refresh();
   };

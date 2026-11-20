@@ -810,7 +810,7 @@ exp2/
 | 入力 | `input`／`input_same`（テンキーなど），`click`（一時停止中のクリック），`delete`，`stroke`（detail は区間，サンプル数，終わった理由），`arm`／`disarm` |
 | 区間の値 | `cell_input`／`cell_clear`／`cell_grid`／`cell_sam`／`cell_custom`（detail の末尾の `prev=` は直す前の値．空欄は `-`，2 軸まとめて変えたときは `5/3` の形），`cell_focus`／`cell_blur`（セルを選んだ・離れた），`memo` |
 | 相対の変化 | `rank`（AffectRank） |
-| グラフ | `graph_edit`，`graph_draw`／`graph_cells` |
+| グラフ | `graph_edit`，`graph_down`（値を入れるために押した．detail は押した位置の時刻 `t=`），`graph_draw`／`graph_cells`（value は区間の順の新しい値，detail の末尾の `prev` は直す前の値．空欄は `-`） |
 | 取り消し | `undo`，`redo`（やり直し），`reset`（入力をリセットした） |
 | 設定 | `option`，`grid_display`（グリッド線），`pad_square`（スティックを四角に広げる） |
 | 聴いてから入力と視聴 | `listen_mode`（設定），`listen_pause`（区間の終わりで止まった．detail は区間），`listen_record`／`listen_record_end`（区間を再生し直して記録した始めと終わり），`listen_replay`（R でもう一度聴いた），`listen_next`（区間方式で次の区間を聴いた），`review`（視聴の on／off） |
@@ -820,7 +820,7 @@ exp2/
 
 - `meta`：参加者 ID，動画名，長さ，開始時刻，ツールの版（`ah-annotator-v0.5`），方式，方式の設定，評価区間，色の設定（`colors`），聴いてから入力で評価したか（`listen`：`on`），ゲームパッド（`gamepads`）を持つ．実験モードでは `experiment` も持つ（「実験モード」の節）．
   - `gamepads` の中身は，`use`（使うか），`device`（選んだ機器か auto），`joystick`・`slider`（書き出した時点で使っている機器名），`connected`（つながっている機器），`used`（書き込みに使った機器 `{ role: joy|slider, id }`）である．
-- `data`：変化点（`points`），書き込み（`strokes`．機器で入れたものは `source: 'gamepad'` と `pad` を持つ），区間の値（`cells`），相対の変化（`events`），メモを持つ．
+- `data`：変化点（`points`），書き込み（`strokes`．機器で入れたものは `source: 'gamepad'` と `pad` を持つ．`wall_ms_start`・`wall_ms_end` は書き始めと書き終わりの経過ミリ秒），区間の値（`cells`），相対の変化（`events`），メモを持つ．
 - `log`：`_events.csv` と同じ内容である．
 
 自動保存は，localStorage のキー `ahann4:<方式id>:<参加者ID>:<動画名>` に `{ meta, data, log, undo（直近 10 回分） }` を入れる．「動画の大きさ」の設定は `ahann_vidsize` に入れる．
