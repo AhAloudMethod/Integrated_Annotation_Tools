@@ -23,15 +23,16 @@ annotator の評価から，分析者間の一致度を Krippendorff の α で�
 
 ### 1. 実験フォルダを確かめる
 
-利用者に実験フォルダの場所を聞く（会話に出ていれば聞かない）．`データ/全員分/bins.csv` が無ければ，回収ツールの `2_全員終わったら_表にまとめる.bat` を先に実行するよう伝えて止める．
+利用者に実験フォルダの場所を聞く（会話に出ていれば聞かない）．`データ/<参加者>/annotator/` に zip が無ければ，回収ツールの `1_結果を集める.bat` を先に実行するよう伝えて止める．スクリプトは参加者ごとの zip を直接読むので，`2_全員終わったら_表にまとめる.bat` は要らない．
 
 ### 2. 設計を読む
 
 次を読み，下の表の項目を読み取る．
 
 - `experiment.json`：`participants` の試行（`mode`，`video`，`condition`，`practice`），`conditions`
-- `データ/全員分/bins.csv`：実際に揃ったデータ（`participant`，`condition`，`method`，`video`，`practice` の列）．`experiment.json` と食い違えば，データの方を正とし，食い違いを伝える
-- `experiment.json` が無ければ `bins.csv` だけから読み取り，読み取った設計を利用者に見せて確かめる
+- `データ/<参加者>/annotator/*.zip`：実際に揃ったデータ．zip の中の `*_session.json` の `meta.experiment`（`name`，`participant`，`trial`，`condition`，`practice`）と `meta.mode`・`meta.video_file` を読む．zip の一覧と中身は `node -e` で `tools/collect/lib.js` の `readTrialZip` を使って読める．`experiment.json` と食い違えば，データの方を正とし，食い違いを伝える
+- `experiment.json` が無ければ zip だけから読み取り，読み取った設計を利用者に見せて確かめる
+- 実験名（`meta.experiment.name`）が 2 つ以上あれば，出力は `データ/一致度/<実験名>/` に分かれる
 
 | 読み取ること | 使い道 |
 |---|---|
@@ -41,6 +42,7 @@ annotator の評価から，分析者間の一致度を Krippendorff の α で�
 | 条件×動画ごとの分析者の人数 | 人数の偏りの注意 |
 | 分析者が全条件を評価したか（参加者内）か，一部だけか（参加者間） | 比べ方の注意 |
 | 対象外の方式が混ざっているか | 先に伝える |
+| 同じ動画を 2 人以上が評価しているか | 各自が別の動画を評価する設計（発声者が自分の録画を回顧評価するなど）では α を出せない．その場合は回さずにそう伝え，同じ動画を複数の分析者に評価してもらう設計が要ることを説明する |
 
 条件名（`condition`）が空の試行は，方式（`method`）が条件名になる．
 
@@ -66,7 +68,7 @@ annotator の評価から，分析者間の一致度を Krippendorff の α で�
 npm run alpha -- <実験フォルダ> --by condition,video --scale interval --boot 1000 --block 5 --seed 1
 ```
 
-出力は `<実験フォルダ>/データ/一致度/` の `alpha.csv`，`settings.txt`，`problems.txt` である．毎回作り直す．`alpha.csv` の列：`by`，`condition`，`video`（`by=condition` では空），`axis`，`scale`，`alpha`，`ci_low`・`ci_high`（95% 区間．出さなければ空），`n_raters`，`n_units`（値が 2 人分以上あるフレームの数），`n_values`，`n_clusters`（再標本化の塊の数），`n_boot`．
+出力は `<実験フォルダ>/データ/一致度/<実験名>/` の `alpha.csv`，`settings.txt`，`problems.txt` である．毎回作り直す．`alpha.csv` の列：`by`，`condition`，`video`（`by=condition` では空），`axis`，`scale`，`alpha`，`ci_low`・`ci_high`（95% 区間．出さなければ空），`n_raters`，`n_units`（値が 2 人分以上あるフレームの数），`n_values`，`n_clusters`（再標本化の塊の数），`n_boot`．
 
 ### 5. 結果を返す
 

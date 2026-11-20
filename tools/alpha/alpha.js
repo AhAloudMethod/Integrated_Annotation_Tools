@@ -1,11 +1,13 @@
 // 分析者間の一致度（Krippendorff の α）を，時間連続の評価として出す．
 // node tools/alpha/alpha.js <実験フォルダ> [--by condition,video] [--scale interval] [--boot 1000] [--block 5] [--seed 1]
-// 読む：<実験フォルダ>/データ/全員分/ の 60hz.csv・bins.csv・changepoints.csv（回収ツールの「表にまとめる」が作る）
-// 出す：<実験フォルダ>/データ/一致度/ の alpha.csv・settings.txt・problems.txt（毎回作り直す）
+// 読む：<実験フォルダ>/データ/<参加者>/annotator/*.zip（回収ツールが集めたもの）の 60hz.csv・bins.csv・changepoints.csv．
+//   試行の採り方（途中で抜けた試行・やり直す前・重複を除く）は回収ツールの表へのまとめ（aggregate.js の adopt）と同じ
+// 出す：<実験フォルダ>/データ/一致度/<実験名>/ の alpha.csv・settings.txt・problems.txt（毎回作り直す）
 // 単位は動画の 1 フレーム（1/60 秒），評定者は分析者（participant）．設計は docs/superpowers/specs/2026-11-20-alpha-agreement-design.md
 const fs = require('fs');
 const path = require('path');
-const { csvParse, csvWrite } = require('../collect/lib');
+const { readTrialZip, csvParse, csvWrite } = require('../collect/lib');
+const { adopt } = require('../collect/aggregate');
 const A = require('../../core/alpha');
 
 const FPS = 60;
@@ -34,18 +36,41 @@ function parseArgs(argv) {
   return { expDir: rest[0], opts: o };
 }
 
-// 表を読み，試行（participant + trial）ごとの行に分ける
-function readTable(file) {
-  if (!fs.existsSync(file)) return null;
-  const rows = csvParse(fs.readFileSync(file, 'utf8')).filter(r => !(r.length === 1 && r[0] === ''));
-  const head = rows[0] || [], byTrial = new Map();
-  for (const r of rows.slice(1)) {
-    const rec = {}; head.forEach((c, i) => { rec[c] = r[i] ?? ''; });
-    const k = `${rec.participant}\u0000${rec.trial}`;
-    if (!byTrial.has(k)) byTrial.set(k, []);
-    byTrial.get(k).push(rec);
+const SKIP_DIRS = new Set(['全員分', '行動指標', '一致度']);
+
+// 参加者ごとの zip を読み，実験名ごとに，CSV の種類（bins・60hz・changepoints）ごとの表 { head, byTrial } にする．
+// byTrial のキーは participant + trial（1 始まり），値は行（列名 → 値）の配列．行には KEYS の列も入れる
+function loadZips(expDir) {
+  const dataDir = path.join(expDir, 'データ'), unread = [], byExp = new Map();
+  const people = fs.existsSync(dataDir) ? fs.readdirSync(dataDir, { withFileTypes: true }).filter(d => d.isDirectory() && !SKIP_DIRS.has(d.name)).map(d => d.name) : [];
+  for (const p of people) {
+    const zdir = path.join(dataDir, p, 'annotator');
+    if (!fs.existsSync(zdir)) continue;
+    for (const f of fs.readdirSync(zdir).filter(n => /\.zip$/i.test(n)).sort()) {
+      const t = readTrialZip(path.join(zdir, f));
+      if (!t) { unread.push(`${p}/annotator/${f}：実験モードの zip として読めないので使いませんでした`); continue; }
+      const k = t.exp || '名前なし';
+      byExp.set(k, [...(byExp.get(k) || []), t]);
+    }
   }
-  return { head, byTrial };
+  const out = new Map();
+  for (const [name, all] of byExp) {
+    const skipped = [], trials = adopt(all, skipped);
+    const tables = { bins: { head: [], byTrial: new Map() }, '60hz': { head: [], byTrial: new Map() }, changepoints: { head: [], byTrial: new Map() } };
+    for (const t of trials) {
+      const keys = { participant: t.pid, trial: String(t.trial + 1), practice: t.practice ? '1' : '0', condition: t.condition, method: t.method, video: t.video, redo: String(t.redo) };
+      for (const [kind, tb] of Object.entries(tables)) {
+        const c = t.csvs.find(x => x.suffix === `${kind}.csv`);
+        if (!c) continue;
+        const rows = csvParse(c.text).filter(r => !(r.length === 1 && r[0] === ''));
+        const head = rows[0] || [];
+        for (const h of head) if (!tb.head.includes(h)) tb.head.push(h);
+        tb.byTrial.set(`${t.pid}\u0000${keys.trial}`, rows.slice(1).map(r => { const rec = { ...keys }; head.forEach((h, i) => { rec[h] = r[i] ?? ''; }); return rec; }));
+      }
+    }
+    out.set(name, { tables, skipped: skipped.map(s => `${s}：使いませんでした`) });
+  }
+  return { byExp: out, unread };
 }
 
 const num = s => (s === '' || s == null ? null : (Number.isFinite(+s) ? +s : null));
@@ -99,13 +124,18 @@ function trialFrames(binRecs, hzRecs, cpRecs, binHead, hzHead) {
   return { axes: out, notes };
 }
 
+// 実験名ごとに α を出す．戻り値は実験名ごとの { name, rows, problems, outDir }
 function run(expDir, opts) {
-  const all = path.join(expDir, 'データ', '全員分'), outDir = path.join(expDir, 'データ', '一致度');
-  const bins = readTable(path.join(all, 'bins.csv'));
-  if (!bins) throw new Error('データ/全員分/bins.csv がありません．先に回収ツールの「2_全員終わったら_表にまとめる.bat」を実行してください');
-  const hz = readTable(path.join(all, '60hz.csv')), cp = readTable(path.join(all, 'changepoints.csv'));
-  const problems = [];
+  const { byExp, unread } = loadZips(expDir);
+  if (!byExp.size) throw new Error('データ/<参加者>/annotator/ に実験モードの zip がありません．先に回収ツールの「1_結果を集める.bat」で結果を集めてください');
+  const outRoot = path.join(expDir, 'データ', '一致度');
+  try { fs.rmSync(outRoot, { recursive: true, force: true }); } catch (e) {
+    throw new Error(`データ/一致度/ を作り直せません（${e.code || e.message}）．Excel などで開いている表を閉じてから，もう一度実行してください`);
+  }
+  return [...byExp].map(([name, { tables, skipped }]) => ({ name, ...runOne(tables, [...unread, ...skipped], path.join(outRoot, name), opts) }));
+}
 
+function runOne({ bins, '60hz': hz, changepoints: cp }, problems, outDir, opts) {
   // 採る試行：練習を除き，同じ分析者・条件・動画が 2 回あれば後の試行
   const chosen = new Map();
   for (const [k, recs] of bins.byTrial) {
@@ -146,6 +176,7 @@ function run(expDir, opts) {
     const clusters = all.filter(c => c.units > 0);   // 対になる値の無い塊（動画・数秒）は数えない
     const st = A.merge(clusters), a = A.fromStats(st);
     if (raters.size < 2) problems.push(`条件「${cond}」${video ? `・動画 ${video}` : ''}・${ax}：分析者が ${raters.size} 人なので α を出せません`);
+    else if (!st.units) problems.push(`条件「${cond}」${video ? `・動画 ${video}` : ''}・${ax}：同じ動画の同じ時刻を 2 人以上が評価したところが無いので α を出せません（分析者がそれぞれ別の動画を評価した設計など）`);
     let ci = null;
     if (opts.boot > 0 && Number.isFinite(a)) {
       if (by === 'condition' && clusters.length < 5) problems.push(`条件「${cond}」・${ax}：動画が ${clusters.length} 本（5 本未満）なので，条件ごとの信頼区間は出していません`);
@@ -177,9 +208,6 @@ function run(expDir, opts) {
   }
   if (!conds.length) problems.push('α を出せる試行がありません');
 
-  try { fs.rmSync(outDir, { recursive: true, force: true }); } catch (e) {
-    throw new Error(`データ/一致度/ を作り直せません（${e.code || e.message}）．Excel などで開いている表を閉じてから，もう一度実行してください`);
-  }
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'alpha.csv'), csvWrite(rows));
   fs.writeFileSync(path.join(outDir, 'settings.txt'), [
@@ -197,13 +225,14 @@ function run(expDir, opts) {
 if (require.main === module) {
   try {
     const { expDir, opts } = parseArgs(process.argv.slice(2));
-    const r = run(path.resolve(expDir), opts);
-    console.log(`α を ${r.rows} 行出しました（${r.outDir}）．`);
-    if (r.problems.length) { console.log('確かめること（problems.txt）：'); for (const p of r.problems) console.log(`  ${p}`); }
+    for (const r of run(path.resolve(expDir), opts)) {
+      console.log(`実験「${r.name}」：α を ${r.rows} 行出しました（${r.outDir}）．`);
+      if (r.problems.length) { console.log('確かめること（problems.txt）：'); for (const p of r.problems) console.log(`  ${p}`); }
+    }
   } catch (e) {
     console.log(`α を出せませんでした：${e.message}`);
     process.exitCode = 1;
   }
 }
 
-module.exports = { parseArgs, run, trialFrames };
+module.exports = { parseArgs, run, loadZips, trialFrames };

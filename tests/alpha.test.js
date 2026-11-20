@@ -1,11 +1,12 @@
 // 一致度（Krippendorff の α）：core/alpha.js の計算と，tools/alpha/alpha.js の表の読み方
-// ブラウザを使わない．ダミーの「データ/全員分/」を tests/out/一致度テスト/ に作って確かめる
+// ブラウザを使わない．ダミーの参加者ごとの zip（データ/<参加者>/annotator/）を tests/out/一致度テスト/ に作って確かめる
 const fs = require('fs');
 const path = require('path');
 const { OUT } = require('./_env');
 const A = require('../core/alpha');
 const { run, parseArgs } = require('../tools/alpha/alpha');
 const { csvWrite, csvParse } = require('../tools/collect/lib');
+const { makeZip } = require('../core/zip');
 
 let failed = 0;
 const check = (name, ok, info = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${info ? ' ' + info : ''}`); if (!ok) failed++; };
@@ -49,8 +50,6 @@ check('分からない尺度は止める', threw);
 // ---------- 表の読み方 ----------
 const ROOT = path.join(OUT, '一致度テスト');
 fs.rmSync(ROOT, { recursive: true, force: true });
-const ALL = path.join(ROOT, 'データ', '全員分');
-fs.mkdirSync(ALL, { recursive: true });
 const KEYS = ['participant', 'trial', 'practice', 'condition', 'method', 'video', 'redo'];
 const key = (p, trial, cond, method, video, practice = '0') => [p, String(trial), practice, cond, method, video, '0'];
 
@@ -73,7 +72,7 @@ for (const [p, mid] of [['P1', 0], ['P2', 5]]) {
   binRow(k, 0, 0, 1, { valence: '3', arousal: '2' }); binRow(k, 1, 1, 2, { valence: String(mid), arousal: String(mid) }); binRow(k, 2, 2, 3, { valence: '7', arousal: '8' });
 }
 // 練習（除く），PANAS（除く），変化ボタン（除く），同じ分析者・条件・動画の 2 回目（後を採る）
-binRow(key('P1', 0, 'excel', 'excel', 'v1.mp4', '1'), 0, 0, 3, { valence: '9', arousal: '9' });
+binRow(key('P1', 9, 'excel', 'excel', 'v1.mp4', '1'), 0, 0, 3, { valence: '9', arousal: '9' });
 binRow(key('P1', 3, 'panas', 'panas', 'v1.mp4'), 0, 0, 3, { valence: '5', arousal: '5' });
 binRow(key('P1', 4, 'button', 'custom', 'v1.mp4'), 0, 0, 3, { n_changes: '2' });
 binRow(key('P2', 5, 'button', 'custom', 'v1.mp4'), 0, 0, 3, { n_changes: '1' });
@@ -83,12 +82,37 @@ binRow(key('P3', 7, 'excel', 'excel', 'v1.mp4'), 1, 1, 2, { valence: '0', arousa
 binRow(key('P3', 7, 'excel', 'excel', 'v1.mp4'), 2, 2, 3, { valence: '7', arousal: '8' });
 // 条件名の無い試行（condition が空）は方式を条件とする
 for (const p of ['P1', 'P2']) binRow(key(p, 8, '', 'sam', 'v1.mp4'), 0, 0, 1, { valence: p === 'P1' ? '4' : '6', arousal: '5' });
-fs.writeFileSync(path.join(ALL, '60hz.csv'), csvWrite(hz));
-fs.writeFileSync(path.join(ALL, 'changepoints.csv'), csvWrite(cps));
-fs.writeFileSync(path.join(ALL, 'bins.csv'), csvWrite(bins));
+// 別の実験名の試行（一致度/<実験名>/ に分けて出す）
+binRow(key('P1', 10, 'excel', 'excel', 'v2.mp4'), 0, 0, 1, { valence: '4', arousal: '4' });
+binRow(key('P2', 10, 'excel', 'excel', 'v2.mp4'), 0, 0, 1, { valence: '6', arousal: '4' });
+const EXP_OF = trial => (trial === '10' ? 'expB' : 'expA');
 
-const r = run(ROOT, { by: ['condition', 'video'], scale: 'interval', boot: 100, block: 0.25, seed: 1 });
-const out = csvParse(fs.readFileSync(path.join(ROOT, 'データ', '一致度', 'alpha.csv'), 'utf8')).filter(x => x.length > 1);
+// 試行ごとに zip へ書く（KEYS の列は外し，_session.json の meta.experiment に入れる）
+const trialsOut = new Map();
+for (const [suffix, table] of [['bins', bins], ['60hz', hz], ['changepoints', cps]]) {
+  const head = table[0].slice(KEYS.length);
+  for (const r of table.slice(1)) {
+    const k = r.slice(0, KEYS.length), id = k[0] + '_' + k[1];
+    if (!trialsOut.has(id)) trialsOut.set(id, { k, csv: {} });
+    const t = trialsOut.get(id);
+    (t.csv[suffix] = t.csv[suffix] || [head]).push(r.slice(KEYS.length));
+  }
+}
+for (const { k, csv } of trialsOut.values()) {
+  const [pid, trial, practice, condition, method, video] = k;
+  const base = pid + '_t' + trial.padStart(2, '0') + '_' + method;
+  const session = { meta: { mode: method, video_file: video, experiment: { name: EXP_OF(trial), participant: pid, trial: Number(trial) - 1, practice: practice === '1', condition, end_iso: '2026-11-20T00:00:00Z' } }, log: [], data: {} };
+  const files = [{ name: base + '_session.json', data: JSON.stringify(session) }, ...Object.entries(csv).map(([sfx, rows]) => ({ name: base + '_' + sfx + '.csv', data: csvWrite(rows) }))];
+  const dir = path.join(ROOT, 'データ', pid, 'annotator');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, base + '.zip'), makeZip(files));
+}
+fs.mkdirSync(path.join(ROOT, 'データ', '一致度', '古い'), { recursive: true });   // 前回の出力は作り直す
+
+const results = run(ROOT, { by: ['condition', 'video'], scale: 'interval', boot: 100, block: 0.25, seed: 1 });
+check('実験名ごとに分けて出す', results.map(x => x.name).sort().join(',') === 'expA,expB' && !fs.existsSync(path.join(ROOT, 'データ', '一致度', '古い')), results.map(x => x.name).join(','));
+const OUTA = path.join(ROOT, 'データ', '一致度', 'expA');
+const out = csvParse(fs.readFileSync(path.join(OUTA, 'alpha.csv'), 'utf8')).filter(x => x.length > 1);
 const H = out[0], rec = out.slice(1).map(x => Object.fromEntries(H.map((c, i) => [c, x[i]])));
 const find = (by, cond, ax) => rec.find(x => x.by === by && x.condition === cond && x.axis === ax);
 const sv = find('condition', 'slider', 'valence'), sa = find('condition', 'slider', 'arousal');
@@ -106,14 +130,15 @@ check('動画ごと：塊でブートストラップする', vv && vv.n_clusters
 const sam = find('condition', 'sam', 'valence');
 check('条件名が空なら方式を条件にする', sam && sam.n_units === '60' && sam.n_raters === '2', sam && sam.n_units);
 check('除いた方式は出さない', !rec.some(x => x.condition === 'panas' || x.condition === 'button'));
-const prob = fs.readFileSync(path.join(ROOT, 'データ', '一致度', 'problems.txt'), 'utf8');
+const prob = fs.readFileSync(path.join(OUTA, 'problems.txt'), 'utf8');
 check('problems：PANAS', /panas）：項目ごとの回答の方式なので除きました/.test(prob));
 check('problems：変化の時点を押す方式', /custom）：変化の時点を押す方式．除きました/.test(prob));
 check('problems：2 回評価', /P3 は条件「excel」・動画 v1\.mp4 を 2 回評価しています．後の試行 7 を採り/.test(prob));
 check('problems：信頼区間を出さない理由', /動画が 1 本（5 本未満）/.test(prob));
-check('settings.txt がある', fs.existsSync(path.join(ROOT, 'データ', '一致度', 'settings.txt')));
-check('全員分が無ければ止める', (() => { try { run(path.join(ROOT, '無い'), parseArgs(['x']).opts); return false; } catch (e) { return /bins\.csv がありません/.test(e.message); } })());
-console.log(`problems: ${r.problems.length} 件`);
+check('settings.txt がある', fs.existsSync(path.join(OUTA, 'settings.txt')));
+const outB = csvParse(fs.readFileSync(path.join(ROOT, 'データ', '一致度', 'expB', 'alpha.csv'), 'utf8')).filter(x => x.length > 1);
+check('別の実験の試行は混ぜない', outB.length > 1 && !rec.some(x => x.video === 'v2.mp4'));
+check('zip が無ければ止める', (() => { try { run(path.join(ROOT, '無い'), parseArgs(['x']).opts); return false; } catch (e) { return /zip がありません/.test(e.message); } })());
 
 console.log(failed ? `${failed} 件 FAIL` : 'errors: none');
 process.exitCode = failed ? 1 : 0;
