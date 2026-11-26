@@ -237,12 +237,12 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const p = await open();
     await p.click('input[data-ax=v][data-s="2"]'); await p.keyboard.type('6'); await p.evaluate(() => document.activeElement.blur());
     await at(p, 2.5); await p.click('.curveBox .mark'); await p.waitForTimeout(150);
-    const z0 = await p.evaluate(() => { const r = document.getElementById('curveZoom').getBoundingClientRect(), c = document.querySelector('#curveZoom canvas'); return { st: AH._.curveZoomState(), w: r.width, ch: c.clientHeight, tl: document.getElementById('tl').clientHeight, axes: [...document.querySelectorAll('#curveZoom .czAxes button')].map(b => b.textContent).join(), tools: [...document.querySelectorAll('#curveZoom .czTools button')].map(b => b.textContent).join() }; });
-    check('なぞって評価するで拡大の入力欄が開き、区間を 1 軸だけ評価グラフより大きく出す（評価グラフの高さは変えない）',
-      z0.st && z0.st.s === 2 && z0.st.ax === 'v' && z0.ch > 600 && z0.tl < 260 && /快度/.test(z0.axes) && /描く/.test(z0.tools) && /発声なし/.test(z0.tools), JSON.stringify(z0));
+    const z0 = await p.evaluate(() => { const r = document.getElementById('curveZoom').getBoundingClientRect(), t = document.querySelector('.tl').getBoundingClientRect(), v = document.getElementById('stage').getBoundingClientRect(), c = document.querySelector('#curveZoom canvas'); return { st: AH._.curveZoomState(), inTl: r.top >= t.top - 1 && r.bottom <= t.bottom + 1, below: r.top >= v.bottom, ch: c.clientHeight, lane: (document.getElementById('tl').clientHeight - 28 - 56) / 2, axes: [...document.querySelectorAll('#curveZoom .czAxes button')].map(b => b.textContent).join(), tools: [...document.querySelectorAll('#curveZoom .czTools button')].map(b => b.textContent).join() }; });
+    check('なぞって評価するで拡大の入力欄が開き、評価グラフの欄に重ねて区間を 1 軸だけ欄の上下いっぱいに出す（動画は隠さない）',
+      z0.st && z0.st.s === 2 && z0.st.ax === 'v' && z0.inTl && z0.below && z0.ch > z0.lane * 2.5 && /快度/.test(z0.axes) && /描く/.test(z0.tools) && /発声なし/.test(z0.tools), JSON.stringify(z0));
     // 描く：キャンバスの左端から右端まで、上（9）から下（1）へなぞる
     const box = await p.evaluate(() => { const r = document.querySelector('#curveZoom canvas').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
-    const pt = (u, v) => [box.x + 56 + u * (box.w - 76), box.y + 18 + (9 - v) / 8 * (box.h - 48)];
+    const pt = (u, v) => [box.x + 44 + u * (box.w - 56), box.y + 8 + (9 - v) / 8 * (box.h - 30)];
     await drag(p, pt(0, 8), pt(1, 2), 20);
     const c1 = (await cells(p, 'v'))[2], ca = (await cells(p, 'a'))[2];
     check('拡大の入力欄でなぞると区間の中を描き（「描」）、ほかの軸は変えない', /^~8→2描$/.test(c1) && ca === '~5', JSON.stringify({ c1, ca }));

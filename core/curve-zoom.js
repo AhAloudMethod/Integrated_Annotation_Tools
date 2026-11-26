@@ -1,10 +1,10 @@
-// 区間内で変化（core/curve.js）の拡大の入力欄：変化の区間を 1 つ、1 軸だけ画面いっぱいに出して、なぞって入れる。
+// 区間内で変化（core/curve.js）の拡大の入力欄：変化の区間を 1 つ、1 軸だけ評価グラフの欄の上下いっぱいに出して、なぞって入れる（動画は隠さない）。
 // 評価グラフの欄は低いので、区間の中の細かい動きを入れやすくするためのもの。入れ方（描く・テンプレート）は評価グラフと同じ。
 // 開く：「なぞって評価する」で変化の区間にしたとき、パネルの「拡大」（F キー）。閉じる：「閉じる」・Esc
 (() => {
   const _ = AH._;
   const { FPS, S, video, binStart, nSec, r2, clamp, snapshot, pushUndo, addLog, wall, css } = _;
-  const PAD_L = 56, PAD_R = 20, PAD_T = 18, PAD_B = 30;
+  const PAD_L = 44, PAD_R = 12, PAD_T = 8, PAD_B = 22;
   let root = null, cv = null, g = null, head = null, axBtns = null, proxies = null;
   let z = null;   // 開いている間：{ s（区間）, ax（軸） }
   let edit = null, playTo = null;
@@ -27,7 +27,7 @@
     root = document.createElement('div'); root.id = 'curveZoom'; root.hidden = true;
     root.innerHTML = '<div class="czBar"><span class="czHead"></span><span class="czAxes"></span><span class="czTools"></span><span class="czFill"></span>'
       + '<button type="button" class="czPlay">区間を再生</button><button type="button" class="czClose">閉じる <kbd>Esc</kbd></button></div><canvas></canvas>';
-    document.body.appendChild(root);
+    document.querySelector('.tl').appendChild(root);   // 評価グラフの欄に重ねる
     cv = root.querySelector('canvas'); head = root.querySelector('.czHead'); axBtns = root.querySelector('.czAxes'); proxies = root.querySelector('.czTools');
     root.querySelector('.czClose').addEventListener('click', () => close());
     root.querySelector('.czPlay').addEventListener('click', e => { e.currentTarget.blur(); playSec(); });
@@ -138,7 +138,7 @@
     for (const b of axBtns.children) b.classList.toggle('on', b.dataset.ax === ax);
     for (const b of proxies.children) b.classList.toggle('on', b._src.classList.contains('on'));
     g.clearRect(0, 0, w, h);
-    g.font = '13px system-ui, sans-serif';
+    g.font = '11px system-ui, sans-serif';
     // 発声の区間（core/voiced.js）
     if (_.voicedShown()) {
       g.fillStyle = css('--f0'); g.globalAlpha = 0.13;
@@ -149,15 +149,15 @@
     for (let k = 1; k <= 9; k++) {
       g.strokeStyle = css('--line'); g.lineWidth = k === 5 ? 1.5 : 1; g.setLineDash(k === 5 ? [] : [3, 4]);
       g.beginPath(); g.moveTo(PAD_L, yOf(k)); g.lineTo(w - PAD_R, yOf(k)); g.stroke();
-      g.fillStyle = css('--muted'); g.textAlign = 'right'; g.fillText(String(k), PAD_L - 8, yOf(k) + 4);
+      g.fillStyle = css('--muted'); g.textAlign = 'right'; g.fillText(String(k), PAD_L - 6, yOf(k) + 4);
     }
     g.setLineDash([]); g.textAlign = 'left';
-    g.fillText(L.hi, 4, y0 + 4); g.fillText(L.lo, 4, y1 + 4);
+    g.fillText(L.hi, 2, y0 + 8); g.fillText(L.lo, 2, y1);
     g.strokeStyle = css('--line'); g.strokeRect(PAD_L, y0, w - PAD_L - PAD_R, y1 - y0);
     // 時刻の目盛り
     const step = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5].find(st => st * (w - PAD_L - PAD_R) / (b1 - b0 || 1) >= 70) || 5;
     g.fillStyle = css('--muted'); g.textAlign = 'center';
-    for (let k = Math.ceil(b0 / step - 1e-9); k * step <= b1 + 1e-9; k++) g.fillText((k * step).toFixed(step < 1 ? 2 : 0) + 's', xOf(k * step), h - 10);
+    for (let k = Math.ceil(b0 / step - 1e-9); k * step <= b1 + 1e-9; k++) g.fillText((k * step).toFixed(step < 1 ? 2 : 0) + 's', xOf(k * step), h - 6);
     g.textAlign = 'left';
     // 値の線（0 は発声なしの灰色の帯）
     if (_.curveIsCurve(ax, z.s)) {
