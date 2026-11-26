@@ -252,7 +252,11 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const c2 = [(await cells(p, 'v'))[2], (await cells(p, 'a'))[2]];
     check('軸を覚醒度に切り替え、テンプレートでは押した高さ→離した高さの曲線を入れる', /^~8→2描$/.test(c2[0]) && /^~3→7直$/.test(c2[1]), JSON.stringify(c2));
     await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
-    check('拡大の入力欄の書き込みも Ctrl+Z で戻る', (await cells(p, 'a'))[2] === '~5', (await cells(p, 'a'))[2]);
+    const u1 = (await cells(p, 'a'))[2];
+    await p.keyboard.press('Control+y'); await p.waitForTimeout(100);
+    const r1 = (await cells(p, 'a'))[2];
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('拡大の入力欄の書き込みも Ctrl+Z で戻り、Ctrl+Y でやり直せる（開いたまま）', u1 === '~5' && /^~3→7直$/.test(r1) && (await cells(p, 'a'))[2] === '~5' && await p.evaluate(() => !!AH._.curveZoomState()), JSON.stringify({ u1, r1 }));
     await p.keyboard.press('Escape'); await p.waitForTimeout(100);
     const closed = await p.evaluate(() => !AH._.curveZoomState() && document.getElementById('curveZoom').hidden);
     await at(p, 2.5); await p.keyboard.press('f'); await p.waitForTimeout(100);
