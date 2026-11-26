@@ -140,14 +140,14 @@
   }
 
   // ---------- 変化の区間にする・一定に戻す（パネルのボタン） ----------
-  // 変化にすると、最初はセルの値のまま一定の線にする（値が入っていなければ初期値の 5 にし、入れた区間とはしない）
+  // 変化にすると、最初はセルの値のまま一定の線にする（値が入っていなければ初期値の 5 を入れる）。形の記録は置かない（const）
   function mark(s, axes) {
     if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), done = [];
     for (const ax of axes) {
       const v = S.data.cells[ax][s]; if (v === CURVE) continue;
-      if (typeof v === 'number') put(S.data, ax, s, v, v, 'none', 'mark', 'cell');   // 形の記録は置かない（const）
-      else { const iv = _.M.init[ax]; S.data.points[ax] = _.rewriteFrames(S.data.points[ax], samples(s, iv, iv, 'line')); trim(ax, binStart(s), _.binEnd(s)); }
+      const iv = typeof v === 'number' ? v : _.M.init[ax];
+      put(S.data, ax, s, iv, iv, 'none', 'mark', 'cell');
       S.data.cells[ax][s] = CURVE; done.push(ax);
     }
     if (!done.length) return false;

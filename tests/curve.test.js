@@ -76,7 +76,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const g = await graph(p);
     await drag(p, g('v', 3.5, 7), g('v', 3.6, 3));
     const c1 = (await cells(p, 'v'))[3], m1 = await p.evaluate(() => AH.valueAt('v', 3.5));
-    check('空の区間を変化にすると空欄のまま。テンプレートは押した高さ→離した高さの直線を入れる（両方のときは入れ方の切り替えを出す）', e0 === '~' && tools.join() === '描く,テンプレート' && /^~[67]→[34]直$/.test(c1) && m1 > 4.5 && m1 < 5.5, JSON.stringify({ e0, tools, c1, m1 }));
+    check('空の区間を変化にすると初期値の 5 の一定の線が入る（~5）。テンプレートは押した高さ→離した高さの直線を入れる（両方のときは入れ方の切り替えを出す）', e0 === '~5' && tools.join() === '描く,テンプレート' && /^~[67]→[34]直$/.test(c1) && m1 > 4.5 && m1 < 5.5, JSON.stringify({ e0, tools, c1, m1 }));
     await drag(p, g('v', 5.5, 7), g('v', 5.5, 3));
     check('テンプレートでも普通の区間を押すとセルの値になる', /^[34]$/.test((await cells(p, 'v'))[5]), (await cells(p, 'v'))[5]);
     await at(p, 3.2);
@@ -128,8 +128,8 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const t1 = { tool: await p.evaluate(() => AH.mode.curveTool()), c: (await cells(p, 'v'))[2] };
     await p.keyboard.press('d'); await p.waitForTimeout(100);
     const d1 = await p.evaluate(() => AH.mode.curveTool());
-    check('T でテンプレート（セルの区間を変化の区間にし、セルに文字は入らない）、D で描く。ボタンの右下にキーを出す',
-      keys === '描く=D,テンプレート=T,直線=Q,前半で変化=W,後半で変化=E' && t1.tool === 'template' && t1.c === '~' && d1 === 'draw', JSON.stringify({ keys, t1, d1 }));
+    check('T でテンプレート（セルの区間を変化の区間にして初期値 5 を入れ、セルに文字は入らない）、D で描く。ボタンの右下にキーを出す',
+      keys === '描く=D,テンプレート=T,直線=Q,前半で変化=W,後半で変化=E' && t1.tool === 'template' && t1.c === '~5' && d1 === 'draw', JSON.stringify({ keys, t1, d1 }));
     await p.keyboard.press('t');
     const g = await graph(p);
     await drag(p, g('v', 2.2, 3), g('v', 2.8, 7));
@@ -152,7 +152,7 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await at(p, 1.5); await p.click('.curveBox .tool:text("テンプレート")'); await p.waitForTimeout(100);
     await p.click('.curveBox .tool:text("描く")'); await p.waitForTimeout(100);
     const d1 = await cells(p, 'v');
-    check('描く・テンプレートを押すと、対象の区間（普通のセル）を変化の区間にする。変化の区間で押しても普通のセルに戻さない', d1[1] === '~' && await p.$eval('.curveBox .mark', b => b.classList.contains('on')), JSON.stringify(d1.slice(0, 3)));
+    check('描く・テンプレートを押すと、対象の区間（普通のセル）を変化の区間にする。変化の区間で押しても普通のセルに戻さない', d1[1] === '~5' && await p.$eval('.curveBox .mark', b => b.classList.contains('on')), JSON.stringify(d1.slice(0, 3)));
     await p.click('input[data-ax=v][data-s="4"]'); await p.keyboard.type('6');
     await p.click('.curveBox .tool:text("テンプレート")'); await p.waitForTimeout(100);
     check('直前にクリックしたセルの区間で押すと、そのセルの値の一定の線で変化の区間にする', (await cells(p, 'v'))[4] === '~6', (await cells(p, 'v'))[4]);
@@ -185,11 +185,15 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // ---- 4. 入れ方の設定：描くだけなら切り替えを出さない。区間内で変化を使わなければ今までの Excel
   {
     const p = await open({ curveInput: 'draw' });
-    const d = await p.evaluate(() => ({ tools: document.querySelectorAll('.curveBox .tool').length, tool: AH.mode.curveTool() }));
+    const d = await p.evaluate(() => ({ tools: document.querySelectorAll('.curveBox .tool').length, shapes: document.querySelectorAll('.curveBox .shape').length, tool: AH.mode.curveTool(), tlH: document.getElementById('tl').clientHeight }));
+    await at(p, 1.5); await p.keyboard.press('w'); await p.waitForTimeout(100);
+    const wk = (await cells(p, 'v'))[1];
     await p.close();
     const q = await open({ curve: 'off' });
     const off = await q.evaluate(() => ({ box: !!document.querySelector('.curveBox'), curve: AH.mode.curve, sels: [...document.querySelectorAll('.cfgGrid > span')].map(x => x.textContent).join() }));
-    check('描くだけでは切り替えを出さない。使わないなら区間内で変化の欄を出さず、設定の欄には「区間内で変化」だけ出る', d.tools === 0 && d.tool === 'draw' && !off.box && !off.curve && /区間内で変化/.test(off.sels) && !/入れ方/.test(off.sels), JSON.stringify({ d, off }));
+    const offH = await q.evaluate(() => document.getElementById('tl').clientHeight);
+    check('描くだけでは切り替えも形のボタンも出さず、形のキー（W）も効かない。使わないなら区間内で変化の欄を出さず、設定の欄には「区間内で変化」だけ出る', d.tools === 0 && d.shapes === 0 && wk === '' && d.tool === 'draw' && !off.box && !off.curve && /区間内で変化/.test(off.sels) && !/入れ方/.test(off.sels), JSON.stringify({ d, wk, off }));
+    check('区間内で変化を使うときは評価グラフを高くする', d.tlH >= 260 && d.tlH > offH, JSON.stringify({ on: d.tlH, off: offH }));
     await q.close();
   }
 
@@ -216,16 +220,16 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.evaluate(() => {
       AH._.setRange({ start: 0, bin: 1, count: 4, target: 4, edges: null });
       AH.setCells(0, { v: 7, a: 3 });
-      AH._.curveMark(1, ['v', 'a']); AH._.curveDown('v', 1.5, 2); AH._.curveMove(8); AH._.curveUp();   // 区間 1：快度 2→8 の直線、覚醒度は空
+      AH._.curveMark(1, ['v', 'a']); AH._.curveDown('v', 1.5, 2); AH._.curveMove(8); AH._.curveUp();   // 区間 1：快度 2→8 の直線、覚醒度は初期値 5
       AH._.curveMark(2, ['v', 'a']); AH._.curveNoVoice(2, ['v', 'a']);                                    // 区間 2：発声なし
     });
     const f = await p.evaluate(() => Object.fromEntries(AH._.buildFiles().map(x => [x.name.replace(/^.*?_custom/, ''), x.text])));
     const bins = f['_bins.csv'].trim().split(String.fromCharCode(10)).map(r => r.split(','));
     const hz = f['_60hz.csv'].trim().split(String.fromCharCode(10)).map(r => r.split(','));
-    check('_bins.csv：軸ごとに from・to・mean・shape（普通のセルは const、直線 2→8 の平均は 5、入れていない区間は空欄、発声なしは 0）',
+    check('_bins.csv：軸ごとに from・to・mean・shape（普通のセルは const、直線 2→8 の平均は 5、変化にしただけの区間は初期値 5 の const、入れていない区間は空欄、発声なしは 0）',
       bins[0].join() === 'bin,label,t_start,t_end,valence_from,valence_to,valence_mean,valence_shape,arousal_from,arousal_to,arousal_mean,arousal_shape'
-      && bins[1].slice(4).join() === '7,7,7.000,const,3,3,3.000,const' && bins[2].slice(4).join() === '2,8,5.000,line,5,5,5.000,' && bins[3].slice(4).join() === '0,0,0,0,0,0,0,0' && bins[4].slice(4).join() === ',,,,,,,', JSON.stringify(bins));
-    check('_60hz.csv：普通のセルはその値、変化の区間は系列の値、入れていない区間と評価区間の外は空欄', hz[31].slice(2).join() === '7,3' && hz[61][2] === '2' && hz[61][3] === '' && hz[211].slice(2).join() === ',' && hz[301].slice(2).join() === ',', JSON.stringify([hz[31], hz[61], hz[211], hz[301]]));
+      && bins[1].slice(4).join() === '7,7,7.000,const,3,3,3.000,const' && bins[2].slice(4).join() === '2,8,5.000,line,5,5,5.000,const' && bins[3].slice(4).join() === '0,0,0,0,0,0,0,0' && bins[4].slice(4).join() === ',,,,,,,', JSON.stringify(bins));
+    check('_60hz.csv：普通のセルはその値、変化の区間は系列の値（変化にしただけなら 5）、入れていない区間と評価区間の外は空欄', hz[31].slice(2).join() === '7,3' && hz[61][2] === '2' && hz[61][3] === '5' && hz[211].slice(2).join() === ',' && hz[301].slice(2).join() === ',', JSON.stringify([hz[31], hz[61], hz[211], hz[301]]));
     await p.close();
   }
 

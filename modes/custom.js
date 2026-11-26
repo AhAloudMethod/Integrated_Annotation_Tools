@@ -84,10 +84,12 @@
       for (const [k, l] of [['draw', '描く'], ['template', 'テンプレート']]) tools.appendChild(btn(l, 'tool', () => { curveToolSel = k; AH.addLog('option', { detail: 'curveTool=' + k }); const s = tgt(); if (!isCv(s)) AH.curveMark(s, act()); })).dataset.k = k;
       box.appendChild(tools);
     }
+    // 形のボタンはテンプレートを使えるときだけ出す（描くだけなら出さない）。「描く」のときに形を押したら「テンプレート」に切り替える（両方使えるとき）
     const shapes = h('div', { class: 'curveShapes' });
-    // 「描く」のときに形を押したら「テンプレート」に切り替える（両方使えるとき）
-    for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; if (o().curveInput === 'both' && curveToolSel !== 'template') { curveToolSel = 'template'; AH.addLog('option', { detail: 'curveTool=template' }); } AH.curveReshape(tgt(), k, act()); })).dataset.k = k;
-    box.appendChild(shapes);
+    if (o().curveInput !== 'draw') {
+      for (const [k, l] of CURVE_SHAPES) shapes.appendChild(btn(l, 'shape', () => { curveShapeSel = k; if (o().curveInput === 'both' && curveToolSel !== 'template') { curveToolSel = 'template'; AH.addLog('option', { detail: 'curveTool=template' }); } AH.curveReshape(tgt(), k, act()); })).dataset.k = k;
+      box.appendChild(shapes);
+    }
     curveKeyBtns = {};
     for (const b of box.querySelectorAll('.tool, .shape')) {
       const k = CURVE_KEYS[b.dataset.k];
@@ -331,7 +333,7 @@
     isInteger: () => o().values === 'int',
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
-      if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、そのセルをクリックしてから「なぞって評価する」を押し、評価グラフで入れます（もう一度押すと、区間の平均を丸めた値の普通のセルに戻ります）。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。' : ''}形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。「発声なし」で区間を 0 にします（もう一度押すと空欄に戻ります）。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
+      if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、そのセルをクリックしてから「なぞって評価する」を押し、評価グラフで入れます（もう一度押すと、区間の平均を丸めた値の普通のセルに戻ります）。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。' : ''}「発声なし」で区間を 0 にします（もう一度押すと空欄に戻ります）。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。数字を 2 つ続けて打つと小数で確定します：5、3 → 5.3）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : o().cuts === 'sec1' ? '区切りは評価区間の開始から 1 秒ごとで、編集できません。' : '区切りは事前に設定したもので、編集できません。'}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
