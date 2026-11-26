@@ -1,13 +1,13 @@
 // 区間内で変化（core/curve.js）の拡大の入力欄：変化の区間を 1 つ、1 軸だけ評価グラフの欄の上下いっぱいに出して、なぞって入れる（動画は隠さない）。
 // 評価グラフの欄は低いので、区間の中の細かい動きを入れやすくするためのもの。入れ方（描く・テンプレート）は評価グラフと同じ。
-// 開く：「なぞって評価する」で変化の区間にしたとき、パネルの「拡大」（F キー）。閉じる：「閉じる」・Esc
+// 開く：「なぞって評価する」で変化の区間にしたとき、パネルの「拡大」（F キー）。閉じる：「閉じる」・Esc。R・「区間を再生」で区間を始めから終わりまで再生する
 (() => {
   const _ = AH._;
   const { FPS, S, video, binStart, nSec, r2, clamp, snapshot, pushUndo, addLog, wall, css } = _;
   const PAD_L = 44, PAD_R = 12, PAD_T = 8, PAD_B = 22;
   let root = null, cv = null, g = null, head = null, axBtns = null, proxies = null;
   let z = null;   // 開いている間：{ s（区間）, ax（軸） }
-  let edit = null, playTo = null;
+  let edit = null;
   let lastAx = 'v';
   const axes = () => (_.M && _.M.curveAxes ? _.M.curveAxes() : ['v', 'a']);
   const span = () => { const b0 = binStart(z.s), b1 = Math.min(_.binEnd(z.s), S.meta.duration || 0); return [b0, b1]; };
@@ -26,7 +26,7 @@
   function build() {
     root = document.createElement('div'); root.id = 'curveZoom'; root.hidden = true;
     root.innerHTML = '<div class="czBar"><span class="czHead"></span><span class="czAxes"></span><span class="czTools"></span><span class="czFill"></span>'
-      + '<button type="button" class="czPlay">区間を再生</button><button type="button" class="czClose">閉じる <kbd>Esc</kbd></button></div><canvas></canvas>';
+      + '<button type="button" class="czPlay" title="区間を始めから終わりまで再生する（R キー）">区間を再生 <kbd>R</kbd></button><button type="button" class="czClose">閉じる <kbd>Esc</kbd></button></div><canvas></canvas>';
     document.querySelector('.tl').appendChild(root);   // 評価グラフの欄に重ねる
     cv = root.querySelector('canvas'); head = root.querySelector('.czHead'); axBtns = root.querySelector('.czAxes'); proxies = root.querySelector('.czTools');
     root.querySelector('.czClose').addEventListener('click', () => close());
@@ -35,10 +35,11 @@
     cv.addEventListener('pointermove', move);
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
     window.addEventListener('resize', () => { if (z) { g = _.fitCanvas(cv); draw(); } });
-    // Esc で閉じる（ほかのキーは今までどおり。D・T・Q・W・E の入れ方と形のキーも効く）
+    // Esc で閉じ、R でこの区間を再生する（ほかのキーは今までどおり。D・T・Q・W・E の入れ方と形のキーも効く）
     document.addEventListener('keydown', e => {
       if (!z) return;
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !_.reviewing()) { e.preventDefault(); e.stopPropagation(); playSec(); }
     }, true);
   }
 
@@ -79,15 +80,12 @@
     if (!z) return;
     if (edit || _.curveDragging()) up();
     addLog('curve_zoom', { axis: z.ax, value: 'close', detail: 'bin ' + z.s });
-    if (playTo != null) { playTo = null; video.pause(); }
     z = null; root.hidden = true; document.body.classList.remove('czOpen');
     _.refresh();
   }
-  // 区間を始めから終わりまで再生し、終わりで止めて区間の始めに戻す（対象の区間のままにする）
+  // 区間を始めから終わりまで再生して止める（Excel のセルに入れている間の R と同じ。core/listen.js）。止まる位置は区間の中なので、対象の区間のまま
   function playSec() {
-    if (!z) return;
-    const [b0, b1] = span();
-    playTo = b1; _.seekTo(b0 + 0.001); video.play();
+    if (z) _.listenPlaySec(z.s);
   }
 
   // ---------- なぞる ----------
@@ -131,7 +129,6 @@
   function draw() {
     if (!z) return;
     if (!axes().some(a => _.curveIsCurve(a, z.s)) || z.s >= nSec()) { close(); return; }   // 一定に戻した・区切りが消えたなど
-    if (playTo != null && (video.paused || video.currentTime >= playTo - 1 / FPS)) { const b0 = binStart(z.s); playTo = null; video.pause(); _.seekTo(b0 + 0.001); target(); }
     if (!g) return;
     const G = geom(), { w, h, b0, b1, y0, y1, xOf, yOf } = G, ax = z.ax, L = _.ax(ax), col = css(ax === 'v' ? '--axv' : '--axa');
     head.textContent = '対象：' + _.secLabel(z.s) + '　' + L.name + (_.curveIsCurve(ax, z.s) ? '' : '（この軸は普通のセル）');

@@ -257,6 +257,11 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const r1 = (await cells(p, 'a'))[2];
     await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
     check('拡大の入力欄の書き込みも Ctrl+Z で戻り、Ctrl+Y でやり直せる（開いたまま）', u1 === '~5' && /^~3→7直$/.test(r1) && (await cells(p, 'a'))[2] === '~5' && await p.evaluate(() => !!AH._.curveZoomState()), JSON.stringify({ u1, r1 }));
+    // R：拡大している区間を始めから終わりまで再生して止める（再生位置が別の区間でも）
+    await at(p, 6.5); await p.keyboard.press('r');
+    const played = await p.waitForFunction(() => AH.video.paused && AH.curSec() === 2 && AH.video.currentTime > 2.9, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    const rl = await p.evaluate(() => AH.S.log.some(l => l.type === 'listen_replay' && /sec=2/.test(l.detail)));
+    check('拡大の入力欄では R で拡大している区間を再生し、区間の終わりで止まる', played && rl, JSON.stringify({ played, rl }));
     await p.keyboard.press('Escape'); await p.waitForTimeout(100);
     const closed = await p.evaluate(() => !AH._.curveZoomState() && document.getElementById('curveZoom').hidden);
     await at(p, 2.5); await p.keyboard.press('f'); await p.waitForTimeout(100);
