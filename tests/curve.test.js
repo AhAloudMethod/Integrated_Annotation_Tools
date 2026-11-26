@@ -32,7 +32,8 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   }), ax);
   const drag = async (p, a, b, steps = 12) => { await p.mouse.move(...a); await p.mouse.down(); await p.mouse.move(...b, { steps }); await p.mouse.up(); await p.waitForTimeout(150); };
   const at = (p, t) => p.evaluate(t => AH.seekTo(t), t).then(() => p.waitForTimeout(120));
-  const mark = async (p, t) => { await at(p, t); await p.click('.curveBox .mark'); await p.waitForTimeout(100); };
+  // なぞって評価する。開いた拡大の入力欄（core/curve-zoom.js）は閉じて、評価グラフで入れる
+  const mark = async (p, t) => { await at(p, t); await p.click('.curveBox .mark'); await p.waitForTimeout(100); await p.evaluate(() => AH._.curveZoomClose()); };
 
   // ---- 1. 普通のセルは今までの Excel。変化にした区間だけ表示だけのセルになり、グラフで描くのはその区間の中だけ
   {
@@ -185,15 +186,13 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
   // ---- 4. 入れ方の設定：描くだけなら切り替えを出さない。区間内で変化を使わなければ今までの Excel
   {
     const p = await open({ curveInput: 'draw' });
-    const d = await p.evaluate(() => ({ tools: document.querySelectorAll('.curveBox .tool').length, shapes: document.querySelectorAll('.curveBox .shape').length, tool: AH.mode.curveTool(), tlH: document.getElementById('tl').clientHeight }));
+    const d = await p.evaluate(() => ({ tools: document.querySelectorAll('.curveBox .tool').length, shapes: document.querySelectorAll('.curveBox .shape').length, tool: AH.mode.curveTool() }));
     await at(p, 1.5); await p.keyboard.press('w'); await p.waitForTimeout(100);
     const wk = (await cells(p, 'v'))[1];
     await p.close();
     const q = await open({ curve: 'off' });
     const off = await q.evaluate(() => ({ box: !!document.querySelector('.curveBox'), curve: AH.mode.curve, sels: [...document.querySelectorAll('.cfgGrid > span')].map(x => x.textContent).join() }));
-    const offH = await q.evaluate(() => document.getElementById('tl').clientHeight);
     check('描くだけでは切り替えも形のボタンも出さず、形のキー（W）も効かない。使わないなら区間内で変化の欄を出さず、設定の欄には「区間内で変化」だけ出る', d.tools === 0 && d.shapes === 0 && wk === '' && d.tool === 'draw' && !off.box && !off.curve && /区間内で変化/.test(off.sels) && !/入れ方/.test(off.sels), JSON.stringify({ d, wk, off }));
-    check('区間内で変化を使うときは評価グラフを高くする', d.tlH >= 260 && d.tlH > offH, JSON.stringify({ on: d.tlH, off: offH }));
     await q.close();
   }
 
@@ -230,6 +229,38 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
       bins[0].join() === 'bin,label,t_start,t_end,valence_from,valence_to,valence_mean,valence_shape,arousal_from,arousal_to,arousal_mean,arousal_shape'
       && bins[1].slice(4).join() === '7,7,7.000,const,3,3,3.000,const' && bins[2].slice(4).join() === '2,8,5.000,line,5,5,5.000,const' && bins[3].slice(4).join() === '0,0,0,0,0,0,0,0' && bins[4].slice(4).join() === ',,,,,,,', JSON.stringify(bins));
     check('_60hz.csv：普通のセルはその値、変化の区間は系列の値（変化にしただけなら 5）、入れていない区間と評価区間の外は空欄', hz[31].slice(2).join() === '7,3' && hz[61][2] === '2' && hz[61][3] === '5' && hz[211].slice(2).join() === ',' && hz[301].slice(2).join() === ',', JSON.stringify([hz[31], hz[61], hz[211], hz[301]]));
+    await p.close();
+  }
+
+  // ---- 7. 拡大の入力欄（core/curve-zoom.js）：なぞって評価するで開き、1 軸を画面いっぱいに出してなぞる。描く・テンプレート・軸の切り替え・Esc
+  {
+    const p = await open();
+    await p.click('input[data-ax=v][data-s="2"]'); await p.keyboard.type('6'); await p.evaluate(() => document.activeElement.blur());
+    await at(p, 2.5); await p.click('.curveBox .mark'); await p.waitForTimeout(150);
+    const z0 = await p.evaluate(() => { const r = document.getElementById('curveZoom').getBoundingClientRect(), c = document.querySelector('#curveZoom canvas'); return { st: AH._.curveZoomState(), w: r.width, ch: c.clientHeight, tl: document.getElementById('tl').clientHeight, axes: [...document.querySelectorAll('#curveZoom .czAxes button')].map(b => b.textContent).join(), tools: [...document.querySelectorAll('#curveZoom .czTools button')].map(b => b.textContent).join() }; });
+    check('なぞって評価するで拡大の入力欄が開き、区間を 1 軸だけ評価グラフより大きく出す（評価グラフの高さは変えない）',
+      z0.st && z0.st.s === 2 && z0.st.ax === 'v' && z0.ch > 600 && z0.tl < 260 && /快度/.test(z0.axes) && /描く/.test(z0.tools) && /発声なし/.test(z0.tools), JSON.stringify(z0));
+    // 描く：キャンバスの左端から右端まで、上（9）から下（1）へなぞる
+    const box = await p.evaluate(() => { const r = document.querySelector('#curveZoom canvas').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    const pt = (u, v) => [box.x + 56 + u * (box.w - 76), box.y + 18 + (9 - v) / 8 * (box.h - 48)];
+    await drag(p, pt(0, 8), pt(1, 2), 20);
+    const c1 = (await cells(p, 'v'))[2], ca = (await cells(p, 'a'))[2];
+    check('拡大の入力欄でなぞると区間の中を描き（「描」）、ほかの軸は変えない', /^~8→2描$/.test(c1) && ca === '~5', JSON.stringify({ c1, ca }));
+    await p.click('#curveZoom .czAxes button:text("覚醒度")');
+    await p.click('#curveZoom .czTools button:text("テンプレート")');
+    await drag(p, pt(0.5, 3), pt(0.5, 7));
+    const c2 = [(await cells(p, 'v'))[2], (await cells(p, 'a'))[2]];
+    check('軸を覚醒度に切り替え、テンプレートでは押した高さ→離した高さの曲線を入れる', /^~8→2描$/.test(c2[0]) && /^~3→7直$/.test(c2[1]), JSON.stringify(c2));
+    await p.keyboard.press('Control+z'); await p.waitForTimeout(100);
+    check('拡大の入力欄の書き込みも Ctrl+Z で戻る', (await cells(p, 'a'))[2] === '~5', (await cells(p, 'a'))[2]);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+    const closed = await p.evaluate(() => !AH._.curveZoomState() && document.getElementById('curveZoom').hidden);
+    await at(p, 2.5); await p.keyboard.press('f'); await p.waitForTimeout(100);
+    const reopen = await p.evaluate(() => AH._.curveZoomState());
+    check('Esc で閉じ、F でまた開く（前の軸のまま）', closed && reopen && reopen.s === 2 && reopen.ax === 'a', JSON.stringify({ closed, reopen }));
+    await p.click('#curveZoom .czClose'); await p.waitForTimeout(100);
+    await at(p, 2.5); await p.click('.curveBox .mark'); await p.waitForTimeout(100);
+    check('一定に戻すときは開かない', await p.evaluate(() => !AH._.curveZoomState()));
     await p.close();
   }
 

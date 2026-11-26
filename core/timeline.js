@@ -349,6 +349,7 @@
       if (_.M.update) _.M.update(t);
     }
     drawTimeline();
+    if (_.curveZoomDraw) _.curveZoomDraw();   // 区間内で変化の拡大の入力欄（core/curve-zoom.js）
   }
 
   // C キー（core/keys.js と Excel のセル）：今表示しているフレームの始まりで区切る。右クリックで区切れるときだけ効く

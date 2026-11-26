@@ -12,7 +12,6 @@
     $('modeHelp').innerHTML = _.relabel(_.M.help || ''); _.localizeKeys($('modeHelp'));
     $('modeName').textContent = _.M.label;
     _.M.mount({ panel: $('panel'), overlay: $('overlay'), under: $('under') });
-    document.body.classList.toggle('curve', !!_.M.curve);   // 区間内で変化はグラフでなぞるので、評価グラフを高くする（style.css）
     _.resize();
   }
   function selectMode(id, keepOptions = false) {

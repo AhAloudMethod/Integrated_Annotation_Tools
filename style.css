@@ -111,11 +111,6 @@ body.pip main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto au
 /* 動画の欄が空くので、評価グラフを高くする（F0 の欄はその下に 56 px 足す） */
 body.pip #tl{height:clamp(160px,34vh,380px)}
 body.pip.f0 #tl{height:calc(clamp(160px,34vh,380px) + 56px)}
-/* 区間内で変化：グラフでなぞって入れるので，評価グラフを高くする */
-body.curve #tl{height:clamp(260px,40vh,440px)}
-body.curve.f0 #tl{height:calc(clamp(260px,40vh,440px) + 56px)}
-body.pip.curve #tl{height:clamp(260px,46vh,520px)}
-body.pip.curve.f0 #tl{height:calc(clamp(260px,46vh,520px) + 56px)}
 body.pip .stage{position:fixed;right:16px;bottom:16px;width:0;height:0;background:none;z-index:20}
 body.pip .stage video{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 body.pip .stage .empty{display:none}
@@ -312,6 +307,15 @@ table.xl.curve .tgt{outline:2px dashed var(--ink);outline-offset:-2px}
 /* 区間内で変化：入れ方と形のボタン */
 .curveBox .curveTools,.curveBox .curveShapes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .curveBox button.on{background:var(--val);border-color:var(--val);color:#fff}
+/* 区間内で変化の拡大の入力欄（core/curve-zoom.js）：変化の区間を 1 軸だけ画面いっぱいに出す */
+#curveZoom{position:fixed;inset:10px;z-index:60;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+#curveZoom[hidden]{display:none}
+#curveZoom .czBar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#curveZoom .czHead{font-weight:600;min-width:12em}
+#curveZoom .czAxes,#curveZoom .czTools{display:flex;gap:6px;flex-wrap:wrap}
+#curveZoom .czFill{flex:1}
+#curveZoom button.on{background:var(--val);border-color:var(--val);color:#fff}
+#curveZoom canvas{flex:1 1 auto;min-height:0;width:100%;display:block;cursor:crosshair;touch-action:none}
 table.xl td.cv{min-width:46px;height:28px;font-size:14px;cursor:pointer;white-space:nowrap;padding:0 4px;background:color-mix(in srgb,var(--f0) 10%,transparent)}
 table.xl td.cv small{font-size:10px;color:var(--muted);margin-left:2px}
 table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
