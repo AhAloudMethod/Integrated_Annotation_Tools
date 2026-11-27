@@ -170,7 +170,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 4. `finalSurvey` で使える置き換えは `{pid}` と `{name}` だけである（実験全体の 1 回なので，条件は無い）．
 5. もしNASA-TLX をアンケートに使うときは，結果の保存に気をつける．公開されている HTML 版の NASA-TLX には，結果を画面に出すだけでファイルに保存しないものがある．
    - 結果を CSV で保存する同梱の版（リポジトリの `tlx/nasatlx-ja.html`）を，GitHub Pages の URL で開く．参加者・試行・条件・実験名を URL の後ろで渡す．
-     `{ "url": "https://ahaloudmethod.github.io/Integrated_Annotation_Tools/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}&name={name}", "label": "NASA-TLX" }`
+     `{ "url": "https://ahaloudmethod.github.io/Ahnotation/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}&name={name}", "label": "NASA-TLX" }`
    - `file:///` で実験フォルダの中の HTML を開く書き方はしない．絶対パスが入るので，実験用 PC でフォルダの場所が変わると開けなくなるからである．
    - `name={name}` は省かない．回収ツールは，CSV の `name` 列が実験名と違う結果を集めないからである（README の「結果の回収」）．
    - 結果の CSV（`<ID>_t<試行2桁>_tlx.csv`）はブラウザのダウンロード先に保存され，回収ツールの `zips` から集まる．
