@@ -32,12 +32,18 @@ function deflateZip(name, text) {
 const DIR = out('spk_folder'), RES = out('spk_results');
 for (const d of [DIR, RES]) { fs.rmSync(d, { recursive: true, force: true }); fs.mkdirSync(d, { recursive: true }); }
 for (const v of ['take.mp4', 'take2.mp4', 'ref.mp4', 'a.mp4']) fs.copyFileSync(VID, path.join(DIR, v));
+// 回収で名前を変えた録画と基準音声の録画（末尾を足して、大きさをほかの動画と違えておく）
+fs.writeFileSync(path.join(DIR, 'P05_t02_本番.mp4'), Buffer.concat([fs.readFileSync(VID), Buffer.alloc(16)]));
+fs.writeFileSync(path.join(DIR, 'P05_t02_基準音声.mp4'), Buffer.concat([fs.readFileSync(VID), Buffer.alloc(32)]));
 fs.writeFileSync(path.join(DIR, 'setup.json'), JSON.stringify({ settings: { listen: false }, videos: { 'a.mp4': { start: 0, end: 12, bin: 1, novoice: [[2, 3]] } } }));
 const ZIP1 = path.join(RES, 'P01_t02_take_excel.zip'), ZIP2 = path.join(RES, 'P01_t03_take2_excel.zip'), ZIP3 = path.join(RES, 'P01_t04_lost_excel.zip'), JS = path.join(RES, 'P02_take_excel_session.json');
 fs.writeFileSync(ZIP1, makeZip([{ name: 'P01_take_excel_60hz.csv', data: 't\n' }, { name: 'P01_take_excel_session.json', data: bom(session('take.mp4', [1, 3.5, 6, 10.5], 'ref.mp4')) }]));
 fs.writeFileSync(ZIP2, deflateZip('P01_take2_excel_session.json', bom(session('take2.mp4', [0.5, 2, 9], null))));
 fs.writeFileSync(ZIP3, makeZip([{ name: 'P01_lost_excel_session.json', data: bom(session('lost.mp4', [0, 5], null)) }]));
 fs.writeFileSync(JS, bom(session('take.mp4', [2, 4, 8], null)));
+const ZIP4 = path.join(RES, 'P05_t02_renamed_custom.zip'), s4 = session('2026-11-24 17-58-56.mkv', [1.5, 4, 9], '2026-11-24 17-58-45.mkv');
+Object.assign(s4.meta.experiment.record, { size: SIZE + 16, ref_video_size: SIZE + 32 });
+fs.writeFileSync(ZIP4, makeZip([{ name: 'P05_renamed_custom_session.json', data: bom(s4) }]));
 
 (async () => {
   const browser = await chromium.launch({ executablePath: BROWSER, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -54,7 +60,7 @@ fs.writeFileSync(JS, bom(session('take.mp4', [2, 4, 8], null)));
   await p.click('#esTabAdv');
   await p.selectOption('#es_rate', '0.75');   // 取り込んで描き直しても、欄の値と開いていたタブを残す
   check('高度な設定の値を変えると、タブに「変更あり」と出す', await p.$eval('#esTabAdv', b => b.textContent) === '高度な設定（変更あり）');
-  await p.setInputFiles('#esSpkFile', [ZIP1, ZIP2, ZIP3]);
+  await p.setInputFiles('#esSpkFile', [ZIP1, ZIP2, ZIP3, ZIP4]);
   await p.waitForFunction(() => [...document.querySelectorAll('.expVids tr')].some(t => t.textContent.includes('発声者')));
   const rows = await p.$$eval('.expVids tr', trs => trs.map(t => t.textContent));
   const notes = await p.$$eval('#expCover .expMiss', ps => ps.map(x => x.textContent));
@@ -62,12 +68,15 @@ fs.writeFileSync(JS, bom(session('take.mp4', [2, 4, 8], null)));
   check('圧縮し直した zip（deflate）も読む', rows.some(r => r.startsWith('take2.mp4') && r.includes('0.5〜9 秒（自分で区切った 2 区間）')), JSON.stringify(rows));
   check('基準音声の録画は評価区間が要らない動画として出す', rows.some(r => r.startsWith('ref.mp4') && r.includes('基準音声の動画')), JSON.stringify(rows));
   check('フォルダに無い録画は案内を出す', notes.some(m => m.includes('lost.mp4') && m.includes('ありません')), JSON.stringify(notes));
+  check('名前を変えた録画には大きさで当て、案内を出す', rows.some(r => r.startsWith('P05_t02_本番.mp4') && r.includes('1.5〜9 秒')) && notes.some(m => m.includes('P05_t02_本番.mp4') && m.includes('大きさ')), JSON.stringify([rows, notes]));
   check('描き直しても欄の値と、開いていたタブを残す', await p.$eval('#es_rate', el => el.value) === '0.75' && await p.$eval('#esAdv', d => !d.hidden));
   await p.click('#esSave'); await p.waitForTimeout(300);
   const su = JSON.parse(fs.readFileSync(await downloads.find(d => d.suggestedFilename() === 'setup.json').path(), 'utf8').replace(/^﻿/, ''));
   const t = su.videos['take.mp4'];
   check('setup.json に区切り・列の表記・長さ・基準音声の録画を書く', !!t && JSON.stringify(t.edges) === '[1,3.5,6,10.5]' && t.label === 'countdown' && Math.abs(t.duration - 12) < 0.1 && t.refVideo === 'ref.mp4', JSON.stringify(t));
   check('取り込まなかった動画は setup.json の区間と novoice を残す', su.videos['a.mp4'] && su.videos['a.mp4'].end === 12 && JSON.stringify(su.videos['a.mp4'].novoice) === '[[2,3]]' && !su.videos['ref.mp4'], JSON.stringify(su.videos));
+  const rn = su.videos['P05_t02_本番.mp4'];
+  check('名前を変えた基準音声の録画も大きさで引いて refVideo にする', !!rn && rn.refVideo === 'P05_t02_基準音声.mp4' && JSON.stringify(rn.edges) === '[1.5,4,9]', JSON.stringify(rn));
   check('setup.json を検査に通る形で書く', su.settings.rate === 0.75 && JSON.stringify(su.videos['take2.mp4'].edges) === '[0.5,2,9]', JSON.stringify(su));
   await p.click('#esClose');
 

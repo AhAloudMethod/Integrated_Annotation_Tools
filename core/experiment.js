@@ -736,23 +736,31 @@
       });
     };
     // 発声者の結果を取り込む：録画のファイル名（同じ名前が 2 つ以上なら大きさも）でフォルダの動画を引き、評価区間を置き換える。
-    // 基準音声の録画を選んでいて、それがフォルダにあれば refVideo にする（ref は同じ基準音声の動画のときだけ残す）。
+    // 同じ名前が無ければ、大きさの同じ動画が 1 本だけのときにそれを当てる（回収で名前を変えた録画のため）。
+    // 基準音声の録画を選んでいて、それがフォルダにあれば refVideo にする（名前か大きさで引く。ref は同じ基準音声の動画のときだけ残す）。
     // 取り込んだ区間はブラウザにも覚え、通常の画面でその動画を開いたときと、書き出し直したときに同じ区間になる
     async function takeSpeaker(files) {
       notes = [];
       const vids = new Map(videos.map(v => [v.path, v]));
+      const base = p => p.split('/').pop();
+      // 大きさの同じものが 1 つだけなら返す（2 つ以上なら同じ録画か決められないので当てない）
+      const bySize = (list, size) => { const hit = size ? list.filter(x => x.size === size) : []; return hit.length === 1 ? hit[0].item : null; };
       for (const f of files) {
         let list;
         try { list = await _.readSpeaker(f); } catch (err) { notes.push('読めません：' + err.message); continue; }
         for (const sp of list) {
-          const named = rows.filter(r => r.path.split('/').pop() === sp.video), row = named.length > 1 && sp.size ? named.find(r => vids.get(r.path).file.size === sp.size) || named[0] : named[0];
+          const named = rows.filter(r => base(r.path) === sp.video);
+          const row = named.length > 1 && sp.size ? named.find(r => vids.get(r.path).file.size === sp.size) || named[0]
+            : named[0] || bySize(rows.map(r => ({ item: r, size: vids.get(r.path).file.size })), sp.size);
           const tag = [sp.pid, sp.trial ? `試行 ${sp.trial}` : ''].filter(Boolean).join(' ') || sp.src;
-          if (!row) { notes.push(`${tag} の録画「${sp.video}」がフォルダにありません（録画をこのフォルダに入れてから取り込んでください）`); continue; }
+          if (!row) { notes.push(`${tag} の録画「${sp.video}」がフォルダにありません（録画をこのフォルダに入れてから取り込んでください。名前を変えた録画は、experiment.json の試行に書くかフォルダ直下に置くと、大きさで引きます）`); continue; }
+          if (!named.length) notes.push(`${tag}：録画「${sp.video}」と大きさの同じ「${row.path}」に当てました`);
           const vf = vids.get(row.path).file;
           if (sp.size && vf.size !== sp.size) notes.push(`${tag}：「${row.path}」の大きさが発声者の録画と違います（取り込みました。同じ録画かを確かめてください）`);
           const end = sp.range.edges ? sp.range.edges[sp.range.edges.length - 1] : sp.range.target;
           if (row.dur && end > row.dur + 0.02) { notes.push(`${tag}：評価区間の終了（${end} 秒）が「${row.path}」の長さを超えるので取り込みません`); continue; }
-          const prev = row.entry || {}, refPath = sp.refVideo ? [...vids.keys()].find(p => p.split('/').pop() === sp.refVideo) : null;
+          const prev = row.entry || {}, refPath = !sp.refVideo ? null : [...vids.keys()].find(p => base(p) === sp.refVideo)
+            || bySize([...vids.values()].filter(v => v.path !== row.path).map(v => ({ item: v.path, size: v.file.size })), sp.refSize);
           if (sp.refVideo && !refPath) notes.push(`${tag}：基準音声の録画「${sp.refVideo}」がフォルダに無いので、refVideo は付けません`);
           const ref = refPath ? { refVideo: refPath, ...(prev.refVideo === refPath && typeof prev.ref === 'number' ? { ref: prev.ref } : {}) }
             : { ...(typeof prev.refVideo === 'string' ? { refVideo: prev.refVideo } : {}), ...(typeof prev.ref === 'number' ? { ref: prev.ref } : {}) };

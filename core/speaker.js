@@ -26,13 +26,13 @@
   }
   const parse = text => JSON.parse(text.replace(/^﻿/, ''));   // 書き出したファイルは BOM で始まる
 
-  // _session.json の中身 → { video, size, duration, range, refVideo, pid, trial, src }。range は評価区間の欄の形（S.meta.range）
+  // _session.json の中身 → { video, size, duration, range, refVideo, refSize, pid, trial, src }。range は評価区間の欄の形（S.meta.range）
   function fromSession(js, src) {
     const m = isObj(js) ? js.meta : null;
     if (!isObj(m) || !isObj(m.range)) throw new Error(`${src}：評価区間（meta.range）がありません`);
     const ex = isObj(m.experiment) ? m.experiment : {}, rec = isObj(ex.record) ? ex.record : {};
     return { video: rec.file || m.video_file || '', size: rec.size || null, duration: m.duration || rec.duration || null, range: m.range,
-      refVideo: rec.ref_video || null, pid: m.participant || '', trial: typeof ex.trial === 'number' ? ex.trial + 1 : null, src };
+      refVideo: rec.ref_video || null, refSize: rec.ref_video_size || null, pid: m.participant || '', trial: typeof ex.trial === 'number' ? ex.trial + 1 : null, src };
   }
   // 1 つのファイル（zip か _session.json）→ 結果の配列（zip の中の _session.json ごとに 1 つ）
   async function readSpeaker(file) {
