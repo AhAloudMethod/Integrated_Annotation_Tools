@@ -2,7 +2,7 @@
   "name": "ahnotation",
   "version": "0.5.0",
   "private": true,
-  "description": "あアラウド アノテーション試作ツール（index.html をブラウザで直接開いて使う。ビルド不要）",
+  "description": "Ahnotation：あアラウド 統合アノテーションツール（index.html をブラウザで直接開いて使う。ビルド不要）",
   "scripts": {
     "test": "node tests/run-all.js",
     "check": "node tests/check-syntax.js",

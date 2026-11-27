@@ -20,11 +20,12 @@ Claude Code を `ahnotation` フォルダで起動して頼むと，内容に合
 | skill | 頼み方の例 | すること |
 |---|---|---|
 | `ahnotation-guide` | 「ゲームパッドで評価するには？」「後輩向けの説明資料を作って」 | 使い方を画面の言葉で答える．初めての人向けの説明資料（HTML）も作る |
+| `experiment-prep` | 「実験の準備リストを作って」「何から準備すればいい？」 | 研究室の「実験前準備のガイドライン」に沿って，実験の前に要る準備を Todo リスト（HTML）にする |
 | `experiment-config` | 「実験の設定を作って」「参加者を足して」 | 実験モードの `experiment.json` を作る．順序のカウンターバランスを組み，検査で誤りが無くなるまで直す |
-| `experiment-script-analyst` | 「分析者側の実験説明を書いて」 | 分析者（動画を評価する人）に実験者が読み上げる台本を書く |
 | `experiment-script-speaker` | 「発声者側の実験説明を書いて」 | 発声者（「あ」の声で感情を表す人）に読み上げる台本を書く．収録と回顧評価を含む |
-| `krippendorff-alpha` | 「一致度を出して」「この実験ならどう分析すればいい？」 | 実験の設計を読んで α のまとめ方・尺度・信頼区間を勧め，参加者ごとの zip から分析者間の一致度（Krippendorff の α）を出して読み方と方法の節の下書きを返す |
+| `experiment-script-analyst` | 「分析者側の実験説明を書いて」 | 分析者（動画を評価する人）に実験者が読み上げる台本を書く |
 | `experiment-script-designer` | 「設計者側の実験説明を書いて」 | 設計者（プレイ動画を見てステージを直す人）に読み上げる台本を書く．思考発話を含む |
+| `krippendorff-alpha` | 「一致度を出して」「この実験ならどう分析すればいい？」 | 実験の設計を読んで α のまとめ方・尺度・信頼区間を勧め，参加者ごとの zip から分析者間の一致度（Krippendorff の α）を出して読み方と方法の節の下書きを返す |
 
 ウェブ版・デスクトップ版の Claude（claude.ai）で使うときは，[`.claude/skills/claude-web-zip/`](.claude/skills/claude-web-zip/) の zip を 1 つずつ Skill としてアップロードする．claude.ai ではこのリポジトリを読めないので，skill が読むものを zip に同梱してある．台本の skill と `ahnotation-guide` には共通のテンプレート（`experiment-script-common`）を，`ahnotation-guide`・`experiment-config`・`krippendorff-alpha` には README・`index.html`・`core/` などを `ahnotation/` として入れてある．
 
