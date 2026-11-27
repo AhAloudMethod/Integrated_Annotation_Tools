@@ -182,6 +182,12 @@
   let edit = null, seeking = false;
   // 区間内で変化（core/curve.js）はグラフだけで入れるので、設定に関わらずいつも編集できる
   const graphEditable = () => ($('graphEdit').checked || _.curveOn()) && model() !== 'events' && !(_.M && _.M.derivedCells) && !!video.src && !_.reviewing();   // derivedCells：区間の値を回答から作る方式（PANAS）は、グラフで値を置けない（押すとシークになる）
+  // 設定を切って区間内で変化だけで編集できるとき、押した所が変化の区間か（カーソルの形に使う。押したときの判定は pointerdown）
+  const curveHere = (x, y) => {
+    if ($('graphEdit').checked || model() === 'series') return true;
+    const G = geom(), axis = y < (G.lanes[0].y1 + G.lanes[1].y0) / 2 ? 'v' : 'a';
+    return _.curveSeriesAt(axis, G.tOf(x));
+  };
   // なぞった範囲の値を描き換え、その直後は編集前の値に戻す（core/series.js の rewriteFrames）。
   // フレームが続いている所ごとに描き換える（区間内で変化では、変化の区間のフレームだけを描くので、間が空くことがある）
   function editRebuild() {
@@ -241,13 +247,16 @@
     tl.setPointerCapture(e.pointerId);
     const Gd = geom();
     if (y >= r.height - RULER || !graphEditable() || (Gd.f0Lane && y >= Gd.f0Lane.top)) { seeking = true; _.seekTo(geom().tOf(e.clientX - r.left)); return; }
-    endStroke('graph');
     const G = geom(), axis = y < (G.lanes[0].y1 + G.lanes[1].y0) / 2 ? 'v' : 'a';
-    addLog('graph_down', { axis, detail: 't=' + G.tOf(e.clientX - r.left).toFixed(4) });   // 値を入れるために押した時刻（入力にかかった時間の集計に使う）
-    // 区間内で変化のテンプレート（core/curve.js）：押した区間に、押した高さから離した高さへの曲線を入れる
     const LA = G.lanes.find(l => l.ax === axis);
     const tP = G.tOf(e.clientX - r.left);
     if (_.curveOn() && _.M.curveSelect) { const s = binAt(tP); if (s >= 0 && s < nSec()) _.M.curveSelect(s); }   // 押した区間をパネルのボタンの対象にする
+    // 「グラフをなぞって値を編集する」が切ってあれば、区間内で変化でもグラフで入れるのは変化の区間だけにする。
+    // 普通の区間はほかの条件と同じくシークにし、普通のセルの値はセルに打って入れる
+    if (!$('graphEdit').checked && model() !== 'series' && !_.curveSeriesAt(axis, tP)) { seeking = true; _.seekTo(tP); return; }
+    endStroke('graph');
+    addLog('graph_down', { axis, detail: 't=' + tP.toFixed(4) });   // 値を入れるために押した時刻（入力にかかった時間の集計に使う）
+    // 区間内で変化のテンプレート（core/curve.js）：押した区間に、押した高さから離した高さへの曲線を入れる
     if (_.curveDown(axis, tP, LA.vOf(clamp(y, LA.y0, LA.y1)))) return;
     // series：系列を描く（連続の方式と、区間内で変化で変化の区間を押したとき）。それ以外の区間方式はセルの値を置く
     edit = { axis, wall0: wall(), before: snapshot(), samples: new Map(), lastF: null, lastV: null, changed: false, bins: new Set(), series: model() === 'series' || _.curveSeriesAt(axis, tP) };
@@ -265,7 +274,7 @@
     else if (S.meta.duration) {
       const r = tl.getBoundingClientRect();
       tl.style.cursor = cutsEditable() && cutHit(e.clientX - r.left) > 0 ? 'col-resize'
-        : (e.clientY - r.top >= r.height - RULER || !graphEditable()) ? 'pointer' : 'crosshair';
+        : (e.clientY - r.top >= r.height - RULER || !graphEditable() || !curveHere(e.clientX - r.left, e.clientY - r.top)) ? 'pointer' : 'crosshair';
     }
   });
   function cutUp() {

@@ -67,6 +67,25 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 1b. 「グラフをなぞって値を編集する」を切ったとき：グラフで入れるのは変化の区間だけ。普通の区間を押すとシーク
+  {
+    const p = await open();
+    await p.evaluate(() => { const c = document.getElementById('graphEdit'); if (c.checked) c.click(); });
+    await mark(p, 1.5);
+    const g = await graph(p);
+    const n0 = await p.evaluate(() => AH.S.log.filter(l => l.type === 'graph_down').length);
+    await drag(p, g('v', 3.5, 8), g('v', 3.5, 8), 1);   // 普通の区間を押す
+    const st = await p.evaluate(() => ({ c: AH.S.data.cells.v[3] ?? null, t: AH.video.currentTime, n: AH.S.log.filter(l => l.type === 'graph_down').length }));
+    check('設定を切ると、普通の区間をグラフで押してもセルの値を置かず、その時刻へシークする（graph_down も残さない）', st.c === null && Math.abs(st.t - 3.5) < 0.1 && st.n === n0, JSON.stringify(st));
+    await p.click('.curveBox .tool:text("テンプレート")').catch(() => {});
+    await drag(p, g('v', 5.5, 7), g('v', 5.5, 3));
+    check('設定を切ると、テンプレートでも普通の区間にはセルの値を置かない', await p.evaluate(() => AH.S.data.cells.v[5] == null));
+    await p.click('.curveBox .tool:text("描く")').catch(() => {});
+    await drag(p, g('v', 1.2, 8), g('v', 1.8, 8), 10);   // 変化の区間はなぞって描ける
+    check('設定を切っても、変化の区間はなぞって描ける', /描$/.test((await cells(p, 'v'))[1]) && await p.evaluate(() => AH.valueAt('v', 1.5) > 7), JSON.stringify((await cells(p, 'v')).slice(0, 3)));
+    await p.close();
+  }
+
   // ---- 2. 値が空の区間を変化にすると、入れていない区間（空欄）になる。テンプレート・形の変更・発声なし
   {
     const p = await open();
