@@ -41,10 +41,21 @@
     addLog('input_out_of_range', { detail: 't=' + t.toFixed(3) });
     return null;
   }
-  const fmtS = x => { const m = Math.floor(x / 60), s = x - m * 60; return m + ':' + (Number.isInteger(RG().bin) && !E() ? String(Math.round(s)).padStart(2, '0') : s.toFixed(1).padStart(4, '0')); };
-  // 列の表記：countdown＝動画内カウントダウンの残り（区間の数から逆算）、elapsed＝評価開始からの経過
-  const secLabel = s => (E() ? (RG().label === 'elapsed' ? fmtS(binStart(s) - binStart(0)) : fmtS(rangeEnd() - binEnd(s)))
-    : RG().label === 'elapsed' ? fmtS(s * RG().bin) : fmtS((nSec() - 1 - s) * RG().bin));
+  // 負の値（labelZero より後の列）は「-0:01」のように頭に - を付ける
+  const fmtS = x => {
+    if (x < -1e-6) return '-' + fmtS(-x);
+    x = Math.max(0, x);
+    const m = Math.floor(x / 60), s = x - m * 60; return m + ':' + (Number.isInteger(RG().bin) && !E() ? String(Math.round(s)).padStart(2, '0') : s.toFixed(1).padStart(4, '0'));
+  };
+  // 列の表記：countdown＝動画内カウントダウンの残り（区間の数から逆算）、elapsed＝評価開始からの経過。
+  // labelZero（秒）があれば、表記が 0 になる時刻をそこに置く（ゲームのタイマーに合わせるため。countdown はその時刻までの残り、elapsed はその時刻からの経過）
+  const zeroAt = () => (typeof RG().labelZero === 'number' ? RG().labelZero : null);
+  const secLabel = s => {
+    const z = zeroAt();
+    if (z != null) return RG().label === 'elapsed' ? fmtS(binStart(s) - z) : fmtS(z - binEnd(s));
+    return E() ? (RG().label === 'elapsed' ? fmtS(binStart(s) - binStart(0)) : fmtS(rangeEnd() - binEnd(s)))
+      : RG().label === 'elapsed' ? fmtS(s * RG().bin) : fmtS((nSec() - 1 - s) * RG().bin);
+  };
   const rangeSig = () => JSON.stringify(RG());
   // 評価区間は動画ごとに覚える（参加者ID・入力方式が違っても共通）。
   // ファイル名に加えてファイルの大きさ＋長さでも覚え、名前を変えた・移した動画でも復元する（名前が優先）
@@ -69,6 +80,7 @@
   function setRange(r) {
     S.meta.range = { ...RG(), ...r };
     if (r.edges === null) delete S.meta.range.edges;
+    if (r.labelZero === null) delete S.meta.range.labelZero;
     saveRange();
     addLog('range', { detail: JSON.stringify(S.meta.range) });
     syncRangeUI(); _.refresh();

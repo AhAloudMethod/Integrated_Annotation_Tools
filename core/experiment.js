@@ -286,24 +286,26 @@
   // 評価区間を当てる。動画の長さに収まらなければ誤りの文を返す（黙って切り詰めない。フレームの端数 0.02 秒は許す）
   // 参加者が自分で区切る試行（Excel の cuts: "self"）は、区切りの無い 1 区間（開始〜終了）から始める。
   // 1秒固定（cuts: "sec1"）の試行は、開始〜終了を 1 秒ごとに区切る（setup.json の区切りは使わない）
+  // labelZero（列の表記が 0 になる時刻）は setup.json にあればどの区切り方でも引き継ぎ、無ければ前の試行の値を消す
   function applyRange(r) {
-    const D = S.meta.duration, tol = 0.02, label = r.label || 'countdown';
+    const D = S.meta.duration, tol = 0.02, label = r.label || 'countdown', labelZero = typeof r.labelZero === 'number' ? r.labelZero : null;
+    const setRange = x => _.setRange({ ...x, labelZero });
     const self = !!(_.M && _.M.selfCuts && _.M.selfCuts()), sec1 = !!(_.M && _.M.cutsMode && _.M.cutsMode() === 'sec1');
     if (r.edges) {
       const e = r.edges, end = e[e.length - 1];
       if (end > D + tol) return `評価区間の終了（${end} 秒）が動画の長さ（${D.toFixed(3)} 秒）を超えています`;
       const edges = self ? [e[0], end] : e.slice(); edges[edges.length - 1] = Math.min(end, D);
-      if (sec1) { const s0 = edges[0], e1 = edges[edges.length - 1]; _.setRange({ edges: null, start: s0, bin: 1, label, target: e1, count: _.countFor(s0, Math.max(s0 + 1, e1), 1) }); return null; }
-      _.setRange({ edges, start: edges[0], target: edges[edges.length - 1], count: edges.length - 1, bin: r.bin || 1, label });
+      if (sec1) { const s0 = edges[0], e1 = edges[edges.length - 1]; setRange({ edges: null, start: s0, bin: 1, label, target: e1, count: _.countFor(s0, Math.max(s0 + 1, e1), 1) }); return null; }
+      setRange({ edges, start: edges[0], target: edges[edges.length - 1], count: edges.length - 1, bin: r.bin || 1, label });
       return null;
     }
     const start = r.start || 0, end = r.end != null ? r.end : D, bin = r.bin || 1;
     if (end > D + tol) return `評価区間の終了（${end} 秒）が動画の長さ（${D.toFixed(3)} 秒）を超えています`;
     if (start >= Math.min(end, D)) return `評価区間の開始（${start} 秒）が終了より後ろです`;
     const e = Math.min(end, D);
-    if (sec1) _.setRange({ edges: null, start, bin: 1, label, target: e, count: _.countFor(start, Math.max(start + 1, e), 1) });
-    else if (self) _.setRange({ edges: [start, e], start, bin, label, target: e, count: 1 });
-    else _.setRange({ edges: null, start, bin, label, target: e, count: _.countFor(start, Math.max(start + bin, e), bin) });
+    if (sec1) setRange({ edges: null, start, bin: 1, label, target: e, count: _.countFor(start, Math.max(start + 1, e), 1) });
+    else if (self) setRange({ edges: [start, e], start, bin, label, target: e, count: 1 });
+    else setRange({ edges: null, start, bin, label, target: e, count: _.countFor(start, Math.max(start + bin, e), bin) });
     return null;
   }
 
@@ -626,7 +628,7 @@
   // 設定の欄は exp-check.js の SETTINGS から作る。フォルダに setup.json があればその値を、無い項目は今の画面の値を初めの値にする
   // （手や Agent で直した設定を、評価区間を直すための書き出し直しで消さないため）。動画はフォルダの中のものを並べ、
   // それぞれに覚えてある評価区間（通常の画面で合わせたもの）を付ける。覚えていなければ setup.json の区間を使い、どちらも無い動画は「未設定」と出して書き出さない。
-  // 基準音声の時刻 ref と発声なしの区間 novoice は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
+  // 基準音声の時刻 ref と発声なしの区間 novoice、列の表記の 0 の時刻 labelZero は書き出しの画面では作らないので、setup.json にあれば引き継ぐ
   // 録画の試行の録画をフォルダに入れたときは、発声者の結果（zip か _session.json）から評価区間と区切りを取り込める（core/speaker.js）
   function currentSettings() {
     return { ...DEF, axes: _.axesId(), rate: +$('rate').value, afterWrite: $('afterWrite').value, timeline: !document.body.classList.contains('noTl'),
@@ -670,7 +672,7 @@
       const r = dur ? _.loadRange(v.file.name, `${v.file.size}:${dur.toFixed(2)}`) : null;
       const prev = isObj(oldVids[v.path]) ? oldVids[v.path] : null;
       const entry = r ? { ...videoEntry(r, dur), ...(prev && typeof prev.ref === 'number' ? { ref: prev.ref } : {}), ...(prev && typeof prev.refVideo === 'string' ? { refVideo: prev.refVideo } : {}),
-        ...(prev && Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) } : prev;
+        ...(prev && Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}), ...(prev && typeof prev.labelZero === 'number' ? { labelZero: prev.labelZero } : {}) } : prev;
       rows.push({ path: v.path, dur, entry, kept: !r && !!prev, refOnly: !r && !prev && refPaths.has(v.path) });
     }
     const cur = { ...currentSettings(), ...Object.fromEntries(E.SETTINGS.filter(d => d.key in oldSet).map(d => [d.key, oldSet[d.key]])) };
@@ -764,7 +766,7 @@
           if (sp.refVideo && !refPath) notes.push(`${tag}：基準音声の録画「${sp.refVideo}」がフォルダに無いので、refVideo は付けません`);
           const ref = refPath ? { refVideo: refPath, ...(prev.refVideo === refPath && typeof prev.ref === 'number' ? { ref: prev.ref } : {}) }
             : { ...(typeof prev.refVideo === 'string' ? { refVideo: prev.refVideo } : {}), ...(typeof prev.ref === 'number' ? { ref: prev.ref } : {}) };
-          row.entry = { ...videoEntry(sp.range, row.dur), ...ref, ...(Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}) };
+          row.entry = { ...videoEntry(sp.range, row.dur), ...ref, ...(Array.isArray(prev.novoice) ? { novoice: prev.novoice } : {}), ...(typeof prev.labelZero === 'number' ? { labelZero: prev.labelZero } : {}) };
           row.from = tag; row.kept = false;
           if (row.dur) _.storeRange(vf.name, `${vf.size}:${row.dur.toFixed(2)}`, sp.range);
           if (refPath) { const rr = rows.find(r => r.path === refPath); if (rr && !rr.entry) rr.refOnly = true; }
