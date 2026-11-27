@@ -1,13 +1,13 @@
 ---
 name: krippendorff-alpha
-description: あアラウド アノテーションツール（annotator）で評価した結果から，分析者間の一致度を Krippendorff の α で出す．実験の設計（experiment.json と集めたデータ）を読んで，α のまとめ方（条件ごと・動画ごと）・尺度・信頼区間を理由つきで勧め，受け入れられたら計算スクリプトを回し，結果の読み方と論文の方法の節の下書きまで返す．「一致度を出して」「α を計算して」「分析者間の信頼性を出したい」「この実験ならどう分析すればいい？」などで使う．Use when computing inter-rater agreement (Krippendorff's alpha) from annotator results, or when asked which agreement analysis fits an experiment's design.
+description: あアラウド アノテーションツール（Ahnotator）で評価した結果から，分析者間の一致度を Krippendorff の α で出す．実験の設計（experiment.json と集めたデータ）を読んで，α のまとめ方（条件ごと・動画ごと）・尺度・信頼区間を理由つきで勧め，受け入れられたら計算スクリプトを回し，結果の読み方と論文の方法の節の下書きまで返す．「一致度を出して」「α を計算して」「分析者間の信頼性を出したい」「この実験ならどう分析すればいい？」などで使う．Use when computing inter-rater agreement (Krippendorff's alpha) from Ahnotator results, or when asked which agreement analysis fits an experiment's design.
 ---
 
 # 分析者間の一致度（Krippendorff の α）を出す
 
-annotator の評価から，分析者間の一致度を Krippendorff の α で出す．この skill の立場は，設定を聞き取るだけの係ではない．実験の設計を読み，「この設計ならこの分析がよい」と理由をつけて勧める係である．利用者が勧めを受け入れるか直すだけで済むようにする．
+Ahnotator の評価から，分析者間の一致度を Krippendorff の α で出す．この skill の立場は，設定を聞き取るだけの係ではない．実験の設計を読み，「この設計ならこの分析がよい」と理由をつけて勧める係である．利用者が勧めを受け入れるか直すだけで済むようにする．
 
-計算は `tools/alpha/alpha.js`（本体は `core/alpha.js`）が行う．リポジトリの中で使うならリポジトリの直下のものを使う．無ければ（claude.ai で使うとき）この skill のフォルダの中の `annotator/` にあるものを使う．`npm run alpha -- <実験フォルダ> …` の代わりに `node annotator/tools/alpha/alpha.js <実験フォルダ> …` を実行する．スクリプトの細かい仕様は README の「結果の回収」の節の「一致度」の項にある．
+計算は `tools/alpha/alpha.js`（本体は `core/alpha.js`）が行う．リポジトリの中で使うならリポジトリの直下のものを使う．無ければ（claude.ai で使うとき）この skill のフォルダの中の `ahnotator/` にあるものを使う．`npm run alpha -- <実験フォルダ> …` の代わりに `node ahnotator/tools/alpha/alpha.js <実験フォルダ> …` を実行する．スクリプトの細かい仕様は README の「結果の回収」の節の「一致度」の項にある．
 
 ## α の定義（説明に使う）
 

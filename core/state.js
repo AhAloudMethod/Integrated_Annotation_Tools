@@ -21,7 +21,7 @@ const AH = { _: {} };
 
   // ---------- 状態 ----------
   const S = {
-    meta: { participant: '', video_file: '', duration: 0, session_start_iso: '', tool: 'ah-annotator-v0.5', mode: '', options: {}, range: null },
+    meta: { participant: '', video_file: '', duration: 0, session_start_iso: '', tool: 'ahnotator-v0.5', mode: '', options: {}, range: null },
     data: null,   // {points:{v,a}, strokes:[], cells:{v,a}, items:[], events:[], memo:''}（items：区間ごとの項目の回答。PANAS だけが使う）
     log: [], undo: [], redo: [], t0: performance.now(), lastTime: 0,
     armed: false,

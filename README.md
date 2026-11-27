@@ -1,4 +1,6 @@
-# あアラウド 統合アノテーションツール（v1.0）
+# Ahnotator：あアラウド 統合アノテーションツール（v1.0）
+
+Ahnotator は「あ」（Ah）と annotator を合わせた名前である．
 
 感情アノテーションの既存の方式を，1 つのツールの中で再現したものである．`index.html` をブラウザで開けば使える．ビルドは要らない．
 ページ右側のDeploymentsにあるgithub-pagesから使うことも可能
@@ -13,18 +15,18 @@
 
 ## Claude Code に頼めること（skill）
 
-Claude Code を `annotator` フォルダで起動して頼むと，内容に合う次の skill が自動で働く．確実に使いたいときは `/annotator-guide` のように `/` に続けて skill の名前を打つ．
+Claude Code を `ahnotator` フォルダで起動して頼むと，内容に合う次の skill が自動で働く．確実に使いたいときは `/ahnotator-guide` のように `/` に続けて skill の名前を打つ．
 
 | skill | 頼み方の例 | すること |
 |---|---|---|
-| `annotator-guide` | 「ゲームパッドで評価するには？」「後輩向けの説明資料を作って」 | 使い方を画面の言葉で答える．初めての人向けの説明資料（HTML）も作る |
+| `ahnotator-guide` | 「ゲームパッドで評価するには？」「後輩向けの説明資料を作って」 | 使い方を画面の言葉で答える．初めての人向けの説明資料（HTML）も作る |
 | `experiment-config` | 「実験の設定を作って」「参加者を足して」 | 実験モードの `experiment.json` を作る．順序のカウンターバランスを組み，検査で誤りが無くなるまで直す |
 | `experiment-script-analyst` | 「分析者側の実験説明を書いて」 | 分析者（動画を評価する人）に実験者が読み上げる台本を書く |
 | `experiment-script-speaker` | 「発声者側の実験説明を書いて」 | 発声者（「あ」の声で感情を表す人）に読み上げる台本を書く．収録と回顧評価を含む |
 | `krippendorff-alpha` | 「一致度を出して」「この実験ならどう分析すればいい？」 | 実験の設計を読んで α のまとめ方・尺度・信頼区間を勧め，参加者ごとの zip から分析者間の一致度（Krippendorff の α）を出して読み方と方法の節の下書きを返す |
 | `experiment-script-designer` | 「設計者側の実験説明を書いて」 | 設計者（プレイ動画を見てステージを直す人）に読み上げる台本を書く．思考発話を含む |
 
-ウェブ版・デスクトップ版の Claude（claude.ai）で使うときは，[`.claude/skills/claude-web-zip/`](.claude/skills/claude-web-zip/) の zip を 1 つずつ Skill としてアップロードする．claude.ai ではこのリポジトリを読めないので，skill が読むものを zip に同梱してある．台本の skill と `annotator-guide` には共通のテンプレート（`experiment-script-common`）を，`annotator-guide`・`experiment-config`・`krippendorff-alpha` には README・`index.html`・`core/` などを `annotator/` として入れてある．
+ウェブ版・デスクトップ版の Claude（claude.ai）で使うときは，[`.claude/skills/claude-web-zip/`](.claude/skills/claude-web-zip/) の zip を 1 つずつ Skill としてアップロードする．claude.ai ではこのリポジトリを読めないので，skill が読むものを zip に同梱してある．台本の skill と `ahnotator-guide` には共通のテンプレート（`experiment-script-common`）を，`ahnotator-guide`・`experiment-config`・`krippendorff-alpha` には README・`index.html`・`core/` などを `ahnotator/` として入れてある．
 
 `.claude/skills/` の skill か，同梱しているリポジトリのファイルを直したら，`npm run build-skill-zips` で zip を作り直してコミットする．作り直さないと，ウェブ版だけ古いままになる．
 
@@ -732,7 +734,7 @@ exp2/
 
 ### 結果の回収
 
-実験フォルダの `ツール/` に置いた bat で，参加者ごとの成果物を `データ/<ID>/` へ移し，全員分の CSV を表にまとめる．Node.js だけで動き，annotator のリポジトリは要らない．
+実験フォルダの `ツール/` に置いた bat で，参加者ごとの成果物を `データ/<ID>/` へ移し，全員分の CSV を表にまとめる．Node.js だけで動き，Ahnotator のリポジトリは要らない．
 
 - **置き方**：Pages の `collect-tools.zip`（[実験の進め方](https://ahaloudmethod.github.io/Integrated_Annotation_Tools/experimenter-guide.html)からダウンロードできる）を実験フォルダで展開する．`ツール/設定.json` に，zip（`zips`），録画（`recordings`，`recordingExts`），外のソフトのログ（`logs`：`name`，`path`，`include`）の置き場を書く．`%USERPROFILE%` などの環境変数を展開し，相対パスは実験フォルダから読む．`include` は `path` からの相対のパターンで（`*` は `/` 以外の 0 文字以上．例：`*/PlayLogs/*`），合うものだけを移す．`データ/` を Google Drive などへあげるなら，`drive` に rclone のリモート名とフォルダを書く（例：`"gdrive:実験名/データ"`）．
 - **`0_最初に1回_Node.jsを入れる.bat`**：Node.js が無ければ `winget` で LTS を入れる．
@@ -744,7 +746,7 @@ exp2/
   - 修正入力：直す前の値（`prev=`）があり値が変わった入力．消して入れ直すと消した方の 1 回．`graph_cells` は直す前と同じ値の区間を除く．なぞりは同じ軸で前のなぞりと時間帯が重なったときだけ．修正回数の合計＝修正入力＋undo
   - 入力にかかった時間：`via=click` の `cell_focus` からそのセルの最初の入力まで（`via=key`，つまり Enter などで移った場合は `key_ms` に別に出す．表の作り直しの `cell_blur`・`cell_focus` の組は選び直しにしない）．グラフは直前の `graph_down` から．聴き終えてから入力まで（`listen_pause` から）も出す
   - 連続の方式の記録：`_session.json` の `strokes` の 1 件（undo で取り消した記録は残らない）．録り直しは同じ軸で前の記録と時間が重なる記録で，修正回数の合計＝録り直し＋undo＋止めている間のクリック・点の削除．揺れは，値が `sway` の幅を超えて戻ったときに数える向きの反転．動かした量は，そうして確かめた動きの絶対値の合計．止めていた時間の割合は，1/60 秒ごとに，その時刻から 0.5 秒の間の値の幅が `still` 以下の刻みの割合（軸が 2 つなら両方）
-  - 最終的な値：連続の方式は，記録を順に annotator と同じ仕方で上書きした時系列（`keepHead` が 0 なら書き出しの `_60hz.csv` と照合し，食い違えば `problems.txt` に書く）．区間ごとの方式は `_60hz.csv`（区間内で変化を使ったとき）か `_bins.csv`．空欄と発声なし（0）は平均に入れない．1 秒平均は評価区間の始めから 1 秒ごとに切り，時間で重み付けする
+  - 最終的な値：連続の方式は，記録を順に Ahnotator と同じ仕方で上書きした時系列（`keepHead` が 0 なら書き出しの `_60hz.csv` と照合し，食い違えば `problems.txt` に書く）．区間ごとの方式は `_60hz.csv`（区間内で変化を使ったとき）か `_bins.csv`．空欄と発声なし（0）は平均に入れない．1 秒平均は評価区間の始めから 1 秒ごとに切り，時間で重み付けする
 - **`4_Driveにあげる.bat`**（`node ツール/upload.js <実験フォルダ>`）：集めずに Drive にあげるだけを行う．`データ/` を録画も含めて `rclone copy` で `drive` のあげ先へコピーし，`rclone check --one-way` で手元のファイルがすべて同じ中身（Google Drive なら MD5）であるかを確かめる．あげ先のファイルは消さないので，手元で消したものも残る．`.collect.lock` と `*.tmp` はあげず，`データ/.collect.lock` があれば集めている途中とみなして止まる．rclone は PATH か `winget install Rclone.Rclone` の入れ先から探す．リモートは前もって `rclone config` で作っておく．`--dry-run` を付けると，あげるものを見るだけで何もあげない．`--auto` を付けると，`drive` が無いときに何もせずに終わる．
 - **一致度（Krippendorff の α）**（`npm run alpha -- <実験フォルダ> [--by condition,video] [--scale interval] [--boot 1000] [--block 5] [--seed 1]`．bat は無く，skill `krippendorff-alpha` が回す）：`データ/<ID>/annotator/` の zip の `bins.csv`・`60hz.csv`・`changepoints.csv` から，分析者間の α を軸ごとに `データ/一致度/<実験名>/alpha.csv` へ出す（`2_全員終わったら_表にまとめる.bat` は要らない）．試行の採り方（途中で抜けた試行・やり直す前・重複を除く）は表へのまとめと同じである．時間連続の評価として，単位は動画の 1 フレーム（1/60 秒），評定者は分析者とする．区間ごとの方式で `60hz.csv` の無いもの（Excel・SAM など）は区間の値をフレームへ展開する．評価区間（`bins.csv` の `t_start`〜`t_end`）の外，区間ごとの方式の 0（発声なし），連続の方式で最初に動かすまでの初期値（`changepoints.csv` の `initial`）は欠損にする．`--by condition` は条件ごとに全動画をまとめ，`--by video` は条件×動画ごとに出す．信頼区間はブートストラップ（百分位法・95%）で，条件ごとは動画を（5 本未満なら出さない），動画ごとは `--block` 秒の塊を単位に再標本化する．練習は除き，同じ分析者が同じ条件・動画を 2 回評価していれば後の試行を使う．条件名（`condition`）が空の試行は方式（`method`）を条件とする．PANAS，RankTrace，変化の時点を押す方式は除く．`settings.txt`（実行した設定）と `problems.txt`（除いた試行，α を出せなかった組など）も出す．各自が別の動画を評価する設計（発声者が自分の録画を回顧評価するなど）では，同じ動画を 2 人以上が評価していないので α は出ない．毎回作り直す．
 - **作り直し**：`tools/collect/` を変えたら `npm run build-collect` で `collect-tools.zip` を作り直す（テストが中身の一致を確かめる）．
@@ -829,7 +831,7 @@ exp2/
 
 `_session.json` は `{ meta, data, log }` である．
 
-- `meta`：参加者 ID，動画名，長さ，開始時刻，ツールの版（`ah-annotator-v0.5`），方式，方式の設定，評価区間，色の設定（`colors`），聴いてから入力で評価したか（`listen`：`on`），ゲームパッド（`gamepads`）を持つ．実験モードでは `experiment` も持つ（「実験モード」の節）．
+- `meta`：参加者 ID，動画名，長さ，開始時刻，ツールの版（`ahnotator-v0.5`），方式，方式の設定，評価区間，色の設定（`colors`），聴いてから入力で評価したか（`listen`：`on`），ゲームパッド（`gamepads`）を持つ．実験モードでは `experiment` も持つ（「実験モード」の節）．
   - `gamepads` の中身は，`use`（使うか），`device`（選んだ機器か auto），`joystick`・`slider`（書き出した時点で使っている機器名），`connected`（つながっている機器），`used`（書き込みに使った機器 `{ role: joy|slider, id }`）である．
 - `data`：変化点（`points`），書き込み（`strokes`．機器で入れたものは `source: 'gamepad'` と `pad` を持つ．`wall_ms_start`・`wall_ms_end` は書き始めと書き終わりの経過ミリ秒），区間の値（`cells`），相対の変化（`events`），メモを持つ．
 - `log`：`_events.csv` と同じ内容である．

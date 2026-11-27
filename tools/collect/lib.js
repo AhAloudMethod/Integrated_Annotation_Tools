@@ -1,5 +1,5 @@
 // 回収ツールの共通処理：zip の読み込み，試行の zip の読み取り，設定，CSV，パターンの判定．
-// ツール/ に置くだけで動かすため，Node の標準モジュールだけを使い，annotator の core/ には頼らない
+// ツール/ に置くだけで動かすため，Node の標準モジュールだけを使い，Ahnotator の core/ には頼らない
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');

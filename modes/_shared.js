@@ -345,7 +345,7 @@
     else AH.seekTo(AH.binStart(t) + 0.001);
   }
 
-  // SAM の絵：annotator/sam/ に原典の画像（valence_figure_1〜5.png、arousal_figure_1〜5.png）があればそれを使い、なければ簡略版を描く
+  // SAM の絵：sam/ に原典の画像（valence_figure_1〜5.png、arousal_figure_1〜5.png）があればそれを使い、なければ簡略版を描く
   // 番号は 1＝不快・穏やか → 5＝快・興奮（ツールの1〜9と同じ向き）
   const samSrc = (ax, lv) => `sam/${ax === 'v' ? 'valence' : 'arousal'}_figure_${lv}.png`;
   const SAM_IMG = { v: false, a: false };

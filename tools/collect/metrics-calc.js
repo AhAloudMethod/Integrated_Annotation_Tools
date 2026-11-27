@@ -42,7 +42,7 @@ function union(ints) {
 }
 
 // ---------- 試行の共通部分 ----------
-// 最後の task_start から task_end まで（annotator の試行の要約と同じ）
+// 最後の task_start から task_end まで（Ahnotator の試行の要約と同じ）
 function taskSpan(log) {
   let k0 = -1;
   for (let k = log.length - 1; k >= 0; k--) if (log[k].type === 'task_start') { k0 = k; break; }

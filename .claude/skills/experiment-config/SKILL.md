@@ -1,13 +1,13 @@
 ---
 name: experiment-config
-description: あアラウド アノテーションツールの実験モード用の experiment.json（参加者ごとの試行の順，練習，アンケートの URL）を作る・直す．設定と動画ごとの評価区間は通常の画面で書き出す setup.json に任せる．カウンターバランス（ラテン方格など）を組み，npm run exp-check で誤りと偏りが無くなるまで直す．「実験の設定を作って」「experiment.json を作って」「参加者を足して」「順序をカウンターバランスして」などで使う．Use when creating or editing experiment.json for the annotator's experiment mode.
+description: あアラウド アノテーションツールの実験モード用の experiment.json（参加者ごとの試行の順，練習，アンケートの URL）を作る・直す．設定と動画ごとの評価区間は通常の画面で書き出す setup.json に任せる．カウンターバランス（ラテン方格など）を組み，npm run exp-check で誤りと偏りが無くなるまで直す．「実験の設定を作って」「experiment.json を作って」「参加者を足して」「順序をカウンターバランスして」などで使う．Use when creating or editing experiment.json for the Ahnotator's experiment mode.
 ---
 
 # 実験の設定ファイル（experiment.json）を作る
 
 実験モード（`core/experiment.js`）が読む `experiment.json` を作る．形式の詳細は README の「実験モード」の節にある．作ったら必ず `npm run exp-check` で検査し，誤りが無くなるまで直す．
 
-README・`core/`・`collect-tools.zip` などは，リポジトリの中で使うならリポジトリの直下のものを，無ければ（claude.ai で使うとき）この skill のフォルダの中の `annotator/` にあるものを使う．`annotator/` を使うときは，`npm run exp-check -- <フォルダ>` の代わりに `node annotator/tools/exp-check.js <フォルダ>` を実行する．
+README・`core/`・`collect-tools.zip` などは，リポジトリの中で使うならリポジトリの直下のものを，無ければ（claude.ai で使うとき）この skill のフォルダの中の `ahnotator/` にあるものを使う．`ahnotator/` を使うときは，`npm run exp-check -- <フォルダ>` の代わりに `node ahnotator/tools/exp-check.js <フォルダ>` を実行する．
 
 実験フォルダには設定ファイルが 2 つある．役割を混ぜない．
 
