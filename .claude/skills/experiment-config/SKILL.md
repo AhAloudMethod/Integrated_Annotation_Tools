@@ -169,9 +169,13 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
 3. `{pid}` が無い URL は検査で警告になる．外部のサイト（NASA-TLX など）で事前入力ができないものは，警告が残ることを報告で伝える．
 4. `finalSurvey` で使える置き換えは `{pid}` と `{name}` だけである（実験全体の 1 回なので，条件は無い）．
 5. もしNASA-TLX をアンケートに使うときは，結果の保存に気をつける．公開されている HTML 版の NASA-TLX には，結果を画面に出すだけでファイルに保存しないものがある．
-   - 結果を CSV などで保存する版を実験フォルダに置いてあるか（デフォルトでは `annotator/tlx/nasatlx-ja.html`）を確認する．あれば，手順 2 で確かめた実験フォルダの絶対パスから `file:///` の URL を作り，参加者・試行・条件を URL の後ろで渡す（受け取る名前はその HTML に合わせる）．
-     `{ "url": "file:///<実験フォルダの絶対パス>/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}", "label": "NASA-TLX" }`
-   - パスにスペースや日本語が入っていてもそのまま書いてよい（ブラウザが開くときに変換する）．
+   - 結果を CSV で保存する同梱の版（リポジトリの `tlx/nasatlx-ja.html`）を，GitHub Pages の URL で開く．参加者・試行・条件・実験名を URL の後ろで渡す．
+     `{ "url": "https://ahaloudmethod.github.io/Integrated_Annotation_Tools/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}&name={name}", "label": "NASA-TLX" }`
+   - `file:///` で実験フォルダの中の HTML を開く書き方はしない．絶対パスが入るので，実験用 PC でフォルダの場所が変わると開けなくなるからである．
+   - `name={name}` は省かない．回収ツールは，CSV の `name` 列が実験名と違う結果を集めないからである（README の「結果の回収」）．
+   - 結果の CSV（`<ID>_t<試行2桁>_tlx.csv`）はブラウザのダウンロード先に保存され，回収ツールの `zips` から集まる．
+   - Pages の版は main に push すると変わる．実験の期間中は `tlx/nasatlx-ja.html` を変えないよう報告で伝える．実験用 PC にインターネットが要ることも伝える．
+   - ボタンの文言（`label`）は参加者に見える．Raw TLX にするなどで名前を出したくなければ，「作業負荷のアンケート」のようにし，台本の台詞とそろえる．
    - 同梱の `nasatlx-ja.html` は，既定では一対比較（15 回）まで行う通常の NASA-TLX になる．Raw TLX（6 尺度の評定だけ）にするなら URL に `&raw=1` を足す．どちらにするかは聞き取りで確かめる．CSV の `variant` 列に `weighted` か `raw` が入り，`raw_tlx` 列（6 尺度の単純平均）はどちらでも入る．
 
 ## 条件名の振り方
