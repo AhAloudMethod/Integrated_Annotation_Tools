@@ -35,7 +35,7 @@ function makeDeflateZip(files) {
   return Buffer.concat([...parts, cd, end]);
 }
 
-// Ahnotator の実験モードが書き出す試行の zip を作り，パスを返す．
+// Ahnotation の実験モードが書き出す試行の zip を作り，パスを返す．
 // o：{ pid, exp, trial（0 始まり）, practice, condition, method, video, redo, partial, start, end（ISO 文字列）,
 //      record（{ file, size, last_modified, ref_video, ref_video_size, ref_video_last_modified } か null）,
 //      csvs（{ 'bins.csv': 本文 }）, trials（要約の本文．省けば作らない）, deflate, name（ファイル名を変える）, mtime（zip の更新日時 ms）}

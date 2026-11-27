@@ -1,13 +1,13 @@
 ---
-name: ahnotator-guide
-description: あアラウド アノテーションツール（Ahnotator）の使い方を，使う人（実験者・評価者・発声者）に説明する．「〜はどうやるの？」「このボタンは何？」「ゲームパッドで評価できる？」「CSV のこの列は何？」のような操作・機能・書き出しの質問に答えるとき，「後輩に使い方を説明する資料を作って」「評価者向けのマニュアルを作って」のように説明資料を頼まれたときに使う．experiment.json を作る作業は experiment-config，実験者が読み上げる台本は experiment-script-analyst / experiment-script-speaker / experiment-script-designer を使う．Use when explaining how to use the Ahnotator to its users, answering usage questions, or making a user-facing manual.
+name: ahnotation-guide
+description: あアラウド アノテーションツール（Ahnotation）の使い方を，使う人（実験者・評価者・発声者）に説明する．「〜はどうやるの？」「このボタンは何？」「ゲームパッドで評価できる？」「CSV のこの列は何？」のような操作・機能・書き出しの質問に答えるとき，「後輩に使い方を説明する資料を作って」「評価者向けのマニュアルを作って」のように説明資料を頼まれたときに使う．experiment.json を作る作業は experiment-config，実験者が読み上げる台本は experiment-script-analyst / experiment-script-speaker / experiment-script-designer を使う．Use when explaining how to use the Ahnotation to its users, answering usage questions, or making a user-facing manual.
 ---
 
 # アノテーションツールの使い方を説明する
 
 相手はプログラミングをしない人である．画面で何を押せばよいかを，画面の言葉で答える．このツールのコードと README は直さない．
 
-以下で読む `index.html`・`README.md`・`core/` などは，リポジトリの中で使うならリポジトリの直下のものを，無ければ（claude.ai で使うとき）この skill のフォルダの中の `ahnotator/` にあるものを使う．`experiment-script-common` も，この skill のフォルダの中にあればそれを，無ければ同じ階層にあるものを使う．
+以下で読む `index.html`・`README.md`・`core/` などは，リポジトリの中で使うならリポジトリの直下のものを，無ければ（claude.ai で使うとき）この skill のフォルダの中の `ahnotation/` にあるものを使う．`experiment-script-common` も，この skill のフォルダの中にあればそれを，無ければ同じ階層にあるものを使う．
 
 ## 1. 答える前に決める 2 つ
 
