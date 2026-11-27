@@ -193,7 +193,7 @@
     box.appendChild(ps);
     sel('インタフェース', 'rep', Object.entries(REPS));
     if (!rank() && !xl()) sel('時間', 'time', [['cont', '連続'], ['disc', '区間ごと']]);
-    if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '連続値'], ['int', '9段階']]);
+    if (!nine(o().rep) && !rank() && !rel()) sel('値', 'values', [['real', '小数（1〜9）'], ['int', '整数（1〜9）']]);
     if (xl()) sel('区間内で変化', 'curve', [['off', '使わない'], ['on', '使う']]);
     if (curve()) sel('入れ方', 'curveInput', [['both', '描く・テンプレート'], ['draw', '描くだけ'], ['template', 'テンプレートだけ']]);
     const inputs = rank() ? [['mouse', 'マウス'], ['keyboard', 'テンキー']] : nine(o().rep) || o().time === 'disc' ? [['mouse', 'マウス'], ['keyboard', 'キーボード（数字）']] : [['mouse', 'マウス'], ['keyboard', 'キーボード'], ['gamepad', 'ゲームパッド']];
