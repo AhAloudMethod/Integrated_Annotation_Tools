@@ -93,7 +93,7 @@ modes/                入力方式（読み込み順が「入力方式」の選�
   key.js emujoy.js feeltrace.js rcea.js darma.js throttle.js halolight.js
   carma.js ranktrace.js excel.js affectgrid.js sam.js panas.js affectrank.js custom.js
 sam/                  SAM の原典画像
-vendor/               同梱した外部ライブラリ（vosk.js）
+vendor/               同梱した外部ライブラリ（vosk.js，SurveyJS）
 tools/                補助スクリプト（vosk-model.js：Vosk のモデルを用意する．exp-check.js：実験フォルダを検査する．build-collect.js：collect-tools.zip を作る．voiced-why.js：発声の帯が出ない理由を録画から調べる（npm run voiced-why -- <録画>））
   collect/            回収ツール（bat，設定.json の見本，collect.js，aggregate.js，lib.js）
   alpha/              分析者間の一致度（alpha.js．npm run alpha -- <実験フォルダ>）
