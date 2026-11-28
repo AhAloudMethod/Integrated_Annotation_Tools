@@ -251,12 +251,15 @@ const BADFORM = makeFolder('survey_bad', {
   // ---- Google フォームから変換した定義（tools/gform/convert.js）を画面の中で出して答える
   const gf = convert(JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'gform-export.json'), 'utf8'))).form;
   const optional = JSON.parse(JSON.stringify(gf)); for (const pg of optional.pages) for (const e of pg.elements) if (e.type !== 'html') { e.isRequired = false; delete e.isAllRowRequired; }
-  await p.evaluate(f => { window.__gf = AH._.survey.run({ form: f, id: 'gform' }); }, optional);
+  await p.evaluate(f => { document.documentElement.dataset.theme = 'dark'; window.__gf = AH._.survey.run({ form: f, id: 'gform' }); }, optional);
   await p.waitForSelector('#ahSurvey .sd-question');
   const gfUi = await p.evaluate(() => ({ html: !!document.querySelector('#ahSurvey .sd-html h3'), matrix: !!document.querySelector('#ahSurvey .sd-matrix'), other: [...document.querySelectorAll('#ahSurvey .sd-item__control-label')].some(e => e.textContent.includes('その他')) }));
   check('変換した定義：見出し（html）・表・「その他」を画面に出す', gfUi.html && gfUi.matrix && gfUi.other, JSON.stringify(gfUi));
   await p.locator('#ahSurvey').getByText('ある', { exact: true }).click();
   await next();
+  const inp = await p.evaluate(() => [...document.querySelectorAll('#ahSurvey input[type=text]')].map(i => { const c = getComputedStyle(i); return { w: i.getBoundingClientRect().width, box: i.closest('.sd-formbox').getBoundingClientRect().width, bg: c.backgroundColor, color: c.color }; }));
+  check('ダーク表示でも、1 行の欄は外枠いっぱいで、本体の背景（黒）と文字の色が入らない',
+    inp.length >= 2 && inp.every(x => x.w > x.box * 0.8 && x.bg === 'rgba(0, 0, 0, 0)' && x.color === 'rgb(31, 35, 40)'), JSON.stringify(inp));
   await p.locator('#ahSurvey .sd-table__row').filter({ hasText: '本番' }).locator('.sd-item__decorator').nth(1).click();
   await done();
   const gfRows = await p.evaluate(() => window.__gf.then(r => r.rows));

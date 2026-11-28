@@ -200,3 +200,10 @@
 .ah-survey .sd-question--error .sd-item__decorator,
 .ah-survey .sd-question--error .sd-rating__item { border-color: #D9A090; }
 .ah-survey .sd-question--error .sd-item__decorator { box-shadow: none; }
+
+/* Ahnotation 本体の style.css は input[type=text]・select・textarea に幅（110px）・背景・文字の色（配色の設定に従う）を当てる．
+   ダーク表示では欄の中に黒い箱が出るので，アンケートの中では打ち消し，枠と背景は SurveyJS の外枠（.sd-formbox）に任せる */
+.ah-survey input[type=text], .ah-survey select, .ah-survey textarea {
+  width: 100%; padding: 0; border: none; border-radius: 0; background: transparent; color: inherit; font: inherit; box-shadow: none;
+}
+.ah-survey .sd-formbox { color: var(--ah-ink); }
