@@ -12,8 +12,8 @@ const SKILLS = path.join(ROOT, '.claude', 'skills');
 const OUT = path.join(SKILLS, 'claude-web-zip');
 const COMMON = 'experiment-script-common';
 // リポジトリから同梱するもの（ahnotation/ の下に同じ相対パスで入れる）
-const REPO = ['README.md', 'index.html', 'evaluator-manual.html', 'evaluator-quick-excel.html', 'experimenter-guide.html', 'core', 'modes', 'tlx', 'tools/exp-check.js', 'tools/alpha', 'tools/collect/lib.js', 'tools/collect/aggregate.js', 'collect-tools.zip'];
-const USES_REPO = new Set(['ahnotation-guide', 'experiment-config', 'krippendorff-alpha']);
+const REPO = ['README.md', 'index.html', 'evaluator-manual.html', 'evaluator-quick-excel.html', 'experimenter-guide.html', 'core', 'modes', 'tlx', 'tools/exp-check.js', 'tools/gform', 'tools/alpha', 'tools/collect/lib.js', 'tools/collect/aggregate.js', 'collect-tools.zip'];
+const USES_REPO = new Set(['ahnotation-guide', 'experiment-config', 'experiment-survey', 'krippendorff-alpha']);
 
 function walk(abs, rel) {
   if (fs.statSync(abs).isFile()) return [{ abs, rel }];
