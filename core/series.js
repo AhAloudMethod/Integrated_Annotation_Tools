@@ -28,12 +28,14 @@
   }
 
   // フレームごとの値（samples：フレーム番号→値）で、その範囲の変化点を描き換えた新しい変化点の列を返す。
-  // 範囲の外の変化点はそのまま残し、範囲の直後は元の値に戻す（グラフでの編集と「区間内で変化」のテンプレートで使う）
+  // 範囲の外の変化点はそのまま残し、範囲の直後は元の値に戻す（グラフでの編集と「区間内で変化」のテンプレートで使う）。
+  // 範囲の内か外かは変化点のフレームで決める。時刻で比べると、丸めで前にずれた範囲の始めの点（122/60＝2.03333…→2.0333）を範囲の前の点として残してしまう
   function rewriteFrames(src, samples) {
     const fs = [...samples.keys()].sort((a, b) => a - b);
     const fmin = fs[0], fmax = fs[fs.length - 1], tmin = fmin / FPS, tmax = (fmax + 1) / FPS;
     const old = valueIn(src, tmax), init = { ...src[0] };
-    const keep = src.filter(p => !p.init && (p.t < tmin - 1e-9 || p.t >= tmax - 1e-9)).map(p => ({ ...p }));
+    const frameOf = p => Math.ceil(p.t * FPS - TT * FPS);   // その点が最初に効くフレーム（idxAt と同じく TT のずれを許す）
+    const keep = src.filter(p => !p.init && (frameOf(p) < fmin || frameOf(p) > fmax)).map(p => ({ ...p }));
     const ins = [];
     let last = fmin === 0 ? null : valueIn(src, tmin - 0.5 / FPS);   // 範囲の直前のフレームの値（範囲の始めの点は読まない）
     for (let f = fmin; f <= fmax; f++) {
@@ -41,7 +43,7 @@
       if (f === 0) init.val = v; else ins.push({ t: +(f / FPS).toFixed(4), val: v });
       last = v;
     }
-    if (tmax < S.meta.duration && last !== old && !keep.some(p => Math.abs(p.t - tmax) < 1e-9)) ins.push({ t: +tmax.toFixed(4), val: old });
+    if (tmax < S.meta.duration && last !== old && !keep.some(p => frameOf(p) === fmax + 1)) ins.push({ t: +tmax.toFixed(4), val: old });
     return [init, ...[...keep, ...ins].sort((a, b) => a.t - b.t)];
   }
 

@@ -303,6 +303,21 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await p.close();
   }
 
+  // ---- 8. 区切りの時刻のフレームが小数 4 桁に丸めると前にずれるとき（122/60＝2.03333…→2.0333。P22 の 33.7331 秒の区切り）：
+  // 発声なしにして戻した区間を「なぞって評価する」で変化の区間にすると、0 が残らず一定の線になる
+  {
+    const p = await open({ values: 'real', cuts: 'self', curveInput: 'draw' });
+    await p.evaluate(() => AH._.setCutEdges([0, 1, 2.0331, 3, 4, 12]));
+    await p.evaluate(() => AH.refresh());
+    const s = await p.evaluate(() => AH._.binAt(2.5));
+    await mark(p, 2.5);
+    await p.evaluate(s => { AH.curveNoVoice(s, ['v', 'a']); AH.curveNoVoice(s, ['v', 'a']); }, s);
+    await mark(p, 2.5);
+    const r = await p.evaluate(s => ({ zero: AH.curveIsZero(s, ['v', 'a']), v: [2.04, 2.5, 2.99].map(t => AH.valueAt('v', t)) }), s);
+    check('丸めで前にずれる区切りの区間でも、発声なしを戻してから変化の区間にすると一定の線（5）になり、発声なしにならない', !r.zero && r.v.every(x => x === 5), JSON.stringify(r));
+    await p.close();
+  }
+
   console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none');
   await browser.close();
 })();
