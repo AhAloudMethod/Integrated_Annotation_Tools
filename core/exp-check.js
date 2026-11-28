@@ -28,6 +28,8 @@
     { key: 'voice', label: '「音声入力」ボタンを出す', type: 'check', def: false, exp: true, adv: true },
   ];
   const DEF = Object.fromEntries(SETTINGS.map(s => [s.key, s.def]));
+  // 画面の中で出す同梱のアンケート（core/survey.js の BUILTIN と同じ名前）
+  const SURVEY_BUILTINS = ['nasa-tlx', 'raw-tlx'];
   const VIDEO_KEYS = ['start', 'end', 'bin', 'label', 'edges', 'duration', 'ref', 'refVideo', 'novoice', 'labelZero'];   // labelZero：列の表記が 0 になる時刻（秒。ゲームのタイマーに合わせる）。ref：基準音声の時刻（秒。無ければ最初の声）。refVideo：基準音声の動画（フォルダからの相対パス。ref はこの動画の秒）。novoice：発声なしの区間 [[始め, 終わり（秒）], …]（PANAS。事前に印が付き、参加者は変えられない）
   const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
 
@@ -98,11 +100,24 @@
     const isUrl = s => typeof s === 'string' && s !== '';
     // {pid} の無いアンケートの URL は、回答と参加者を結び付けられない（Google フォームの事前入力の URL に {pid} を入れる）。同じ URL は 1 回だけ警告する
     const noPid = new Set();
+    // 要素は URL（別のタブで開く）か、画面の中で出すアンケート { form: 定義の JSON のパス } か { builtin: 同梱の雛形の名前 }（core/survey.js）
+    const optStr = x => x == null || typeof x === 'string';
+    const isItem = s => isUrl(s) || (isObj(s) && optStr(s.label) && optStr(s.id) && [s.url, s.form, s.builtin].filter(x => x != null).length === 1
+      && (s.url != null ? isUrl(s.url) : s.form != null ? isUrl(s.form) : SURVEY_BUILTINS.includes(s.builtin)));
     const chkSurvey = (v, where, key = 'survey') => {
       if (v == null || v === false) return;
-      const list = isUrl(v) ? [v] : Array.isArray(v) && v.length && v.every(s => isUrl(s) || (isObj(s) && isUrl(s.url) && (s.label == null || typeof s.label === 'string'))) ? v.map(s => (isUrl(s) ? s : s.url)) : null;
-      if (!list) { errors.push(`${where}：${key} は URL の文字列、URL（または { url, label }）の配列、false のどれかです`); return; }
-      for (const u of list) if (!u.includes('{pid}') && !noPid.has(u)) { noPid.add(u); warnings.push(`${where}：${key} の URL に {pid}（参加者 ID）がありません。回答と参加者を結び付けられません（${u}）`); }
+      const items = isUrl(v) ? [v] : Array.isArray(v) && v.length && v.every(isItem) ? v : null;
+      if (!items) {
+        const bad = Array.isArray(v) ? v.find(s => isObj(s) && s.builtin != null && !SURVEY_BUILTINS.includes(s.builtin)) : null;
+        errors.push(bad ? `${where}：${key} の builtin「${bad.builtin}」はありません（${SURVEY_BUILTINS.join('・')}）`
+          : `${where}：${key} は URL の文字列、URL（または { url, label }・{ form, label }・{ builtin, label }）の配列、false のどれかです`);
+        return;
+      }
+      for (const s of items) {
+        const u = isUrl(s) ? s : s.url;
+        if (u != null && !u.includes('{pid}') && !noPid.has(u)) { noPid.add(u); warnings.push(`${where}：${key} の URL に {pid}（参加者 ID）がありません。回答と参加者を結び付けられません（${u}）`); }
+        if (isObj(s) && s.form != null && env.has && !env.has(s.form)) errors.push(`${where}：${key} のアンケートの定義「${s.form}」がフォルダにありません`);
+      }
     };
     if (cfg.conditions != null) {
       if (!isObj(cfg.conditions) || Object.values(cfg.conditions).some(c => typeof c !== 'string')) errors.push('conditions は方式 id から条件名（文字列）への対応です');
@@ -207,7 +222,43 @@
     return ws;
   }
 
-  const api = { SETTINGS, DEF, merge, rangeFor, conditionFor, check, orderWarnings };
+  // 定義の検査：誤り（出せない）と警告（出せるが確かめたほうがよい）。実験フォルダを開いたとき（core/experiment.js）と npm run exp-check で使う
+  function lintForm(def, where) {
+    const errors = [], warnings = [];
+    if (!isObj(def)) return { errors: [`${where}：アンケートの定義が JSON のオブジェクトではありません`], warnings };
+    const pages = Array.isArray(def.pages) ? def.pages : Array.isArray(def.elements) ? [{ elements: def.elements }] : null;
+    if (!pages || !pages.length) return { errors: [`${where}：pages（ページの配列）か elements（設問の配列）がありません`], warnings };
+    const names = new Set();
+    const walk = els => {
+      for (const e of Array.isArray(els) ? els : []) {
+        if (!isObj(e)) { errors.push(`${where}：設問がオブジェクトではありません`); continue; }
+        if (Array.isArray(e.elements)) walk(e.elements);
+        if (Array.isArray(e.templateElements)) walk(e.templateElements);
+        if (!e.type) errors.push(`${where}：type の無い設問があります（${e.name || e.title || '名前なし'}）`);
+        if (e.type === 'html' || e.type === 'image' || e.type === 'panel') continue;
+        if (!e.name) { errors.push(`${where}：name の無い設問があります（${e.title || e.type}）`); continue; }
+        if (names.has(e.name)) errors.push(`${where}：設問の name「${e.name}」が重複しています（回答の列が混ざります）`);
+        names.add(e.name);
+        if (e.type === 'rating' && !Array.isArray(e.rateValues) && (!e.minRateDescription || !e.maxRateDescription))
+          warnings.push(`${where}：評定「${e.name}」に両端のラベル（minRateDescription・maxRateDescription）がありません`);
+      }
+    };
+    for (const p of pages) walk(isObj(p) ? p.elements : null);
+    if (!names.size) errors.push(`${where}：答える設問がありません`);
+    return { errors, warnings };
+  }
+
+  // experiment.json が使う画面の中のアンケートの定義のパス（重なりを除く）。中身の検査は呼ぶ側が読んで lintForm で行う
+  function formPaths(cfg) {
+    const out = new Set();
+    const add = v => { for (const s of Array.isArray(v) ? v : []) if (isObj(s) && typeof s.form === 'string' && s.form) out.add(s.form); };
+    if (!isObj(cfg)) return [];
+    add(cfg.survey); add(cfg.finalSurvey);
+    for (const ts of Object.values(isObj(cfg.participants) ? cfg.participants : {})) for (const t of Array.isArray(ts) ? ts : []) if (isObj(t)) add(t.survey);
+    return [...out];
+  }
+
+  const api = { SETTINGS, DEF, SURVEY_BUILTINS, merge, rangeFor, conditionFor, check, orderWarnings, formPaths, lintForm };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else AH._.expCheck = api;
 })();

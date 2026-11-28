@@ -1,0 +1,213 @@
+/* 画面の中のアンケート（core/survey.js）の見た目．survey-core.min.css の後に読み，.ah-survey の中だけを上書きする */
+.ah-survey {
+  --ah-bg: #F3F4F1;
+  --ah-sheet: #FFFFFF;
+  --ah-ink: #1F2328;
+  --ah-muted: #6A737D;
+  --ah-line: #D0D5DA;
+  --ah-line-soft: #E6E9EC;
+  --ah-accent: #1F6F80;
+  --ah-accent-soft: #E8F1F3;
+  --ah-font: "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Sans", "Noto Sans JP", "Meiryo", sans-serif;
+  background: var(--ah-bg);
+  min-height: 100vh;
+  padding: 40px 16px 64px;
+  box-sizing: border-box;
+  font-family: var(--ah-font);
+  color: var(--ah-ink);
+}
+.ah-survey .sd-root-modern { background: transparent; font-family: var(--ah-font); }
+.ah-survey .sd-root-modern * { font-family: var(--ah-font); letter-spacing: 0.02em; }
+
+/* 1 枚の用紙：中央に置き，影ではなく細い線で縁取る */
+.ah-survey .sd-container-modern {
+  max-width: 720px; margin: 0 auto;
+  background: var(--ah-sheet);
+  border: 1px solid var(--ah-line-soft); border-radius: 8px;
+  padding: 36px 48px 28px;
+}
+
+/* 進み具合：上端の細い線と「1 / 2」の文字 */
+.ah-survey .sd-progress-buttons { display: none; }
+.ah-survey .ah-progress { display: flex; align-items: center; gap: 12px; margin: 0 0 28px; font-size: 12.5px; color: var(--ah-muted); }
+.ah-survey .ah-progress__bar { flex: 1; height: 3px; background: var(--ah-line-soft); border-radius: 2px; overflow: hidden; }
+.ah-survey .ah-progress__fill { height: 100%; background: var(--ah-accent); transition: width .3s; }
+
+/* 見出し：左揃え，下に細い区切り線 */
+.ah-survey .sv-header { padding: 0; background: none; }
+.ah-survey .sv-header__content { padding: 0 0 20px; border-bottom: 1px solid var(--ah-line-soft); }
+.ah-survey .sv-header__cell--empty { display: none; }
+.ah-survey .sv-header__cell-content { padding: 0; }
+.ah-survey .sv-header__title .sd-title { font-size: 22px; font-weight: 700; line-height: 1.5; color: var(--ah-ink); margin: 0; }
+.ah-survey .sv-header__description .sd-description { font-size: 14px; line-height: 1.8; color: var(--ah-muted); margin-top: 6px; }
+
+/* ページ */
+.ah-survey .sd-body.sd-body--responsive, .ah-survey .sd-body { padding: 0; max-width: none; }
+.ah-survey .sd-page { padding: 0; }
+.ah-survey .sd-page__header { padding: 24px 0 0; }
+.ah-survey .sd-page__title { font-size: 13px; font-weight: 700; color: var(--ah-accent); letter-spacing: 0.08em; margin: 0; }
+.ah-survey .sd-page__row, .ah-survey .sd-row { margin-top: 0; }
+
+/* 設問：カードをやめ，設問どうしを細い線で区切る */
+.ah-survey .sd-element--with-frame {
+  background: none; box-shadow: none; border-radius: 0;
+  padding: 24px 0 26px; margin: 0;
+  border-bottom: 1px solid var(--ah-line-soft);
+}
+.ah-survey .sd-row:last-child .sd-element--with-frame { border-bottom: none; }
+.ah-survey .sd-element-wrapper { padding: 0; }
+.ah-survey .sd-question__header--location-top { padding-bottom: 14px; }
+.ah-survey .sd-question__title {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 15.5px; font-weight: 700; line-height: 1.7; color: var(--ah-ink); margin: 0;
+}
+.ah-survey .sd-element__num {
+  position: static; float: none; margin: 0; padding: 0; width: auto;
+  font-size: 12.5px; font-weight: 700; color: var(--ah-accent);
+  font-variant-numeric: tabular-nums; flex: none;
+}
+.ah-survey .sd-element__num::before { content: "Q"; }
+.ah-survey .sd-question__title .sv-string-viewer + span:empty { display: none; }
+.ah-survey .sd-question__required-text { color: #B4513A; font-weight: 400; margin-left: -6px; }
+.ah-survey .sd-question__content { padding-left: 0; }
+.ah-survey .sd-question__erbox {
+  background: none; color: #B4513A; font-size: 13px; padding: 8px 0 0; margin: 0; border: none;
+}
+.ah-survey .sd-question--error { background: none; }
+
+/* 段階の評定：つながった横長の帯．両端のラベルは帯の下に置く */
+.ah-survey .sd-rating { width: 100%; max-width: 560px; overflow: visible; }
+.ah-survey .sd-rating fieldset { display: flex; flex-wrap: wrap; align-items: stretch; width: 100%; gap: 0; margin: 0; padding: 0; border: none; }
+.ah-survey .sd-rating fieldset::after { content: ""; order: 1; flex: 0 0 100%; height: 0; }
+.ah-survey .sd-rating__item {
+  flex: 1 1 0; min-width: 40px; width: auto; height: 44px;
+  margin: 0 0 0 -1px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ah-sheet); border: 1px solid var(--ah-line); border-radius: 0;
+  box-shadow: none; outline: none; position: relative; cursor: pointer;
+  transition: background-color .12s, border-color .12s, color .12s;
+}
+.ah-survey .sd-rating__item:first-of-type { margin-left: 0; border-radius: 6px 0 0 6px; }
+.ah-survey .sd-rating__item:last-of-type { border-radius: 0 6px 6px 0; }
+.ah-survey .sd-rating__item .sd-rating__item-text { font-size: 15px; font-weight: 700; color: var(--ah-ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.ah-survey .sd-rating__item--allowhover:hover { background: var(--ah-accent-soft); z-index: 1; border-color: #A9C6CD; }
+.ah-survey .sd-rating__item--selected,
+.ah-survey .sd-rating__item--selected:hover { background: var(--ah-accent); border-color: var(--ah-accent); z-index: 2; }
+.ah-survey .sd-rating__item--selected .sd-rating__item-text { color: #FFFFFF; }
+.ah-survey .sd-rating__item:focus-within { box-shadow: 0 0 0 2px var(--ah-sheet), 0 0 0 4px #9CC3CC; z-index: 3; }
+.ah-survey .sd-rating__min-text, .ah-survey .sd-rating__max-text {
+  order: 2; flex: 1 1 50%; margin: 8px 0 0; padding: 0; border: none;
+  font-size: 12.5px; font-weight: 400; color: var(--ah-muted); line-height: 1.5;
+}
+.ah-survey .sd-rating__min-text { text-align: left; }
+.ah-survey .sd-rating__max-text { text-align: right; }
+
+/* 表の形の評定：行を細い線で区切り，見出しは小さく */
+.ah-survey .sd-table { border-collapse: collapse; width: 100%; background: none; }
+.ah-survey .sd-table__cell--header { font-size: 12px; font-weight: 400; color: var(--ah-muted); line-height: 1.4; padding: 0 4px 10px; vertical-align: bottom; text-align: center; }
+.ah-survey .sd-table__row--data { border-top: 1px solid var(--ah-line-soft); }
+.ah-survey .sd-table__row--data:hover { background: #FAFBFA; }
+.ah-survey .sd-table__cell { padding: 12px 4px; }
+.ah-survey .sd-table__cell--row-text { font-size: 14.5px; color: var(--ah-ink); text-align: left; padding-right: 16px; min-width: 200px; }
+.ah-survey .sd-matrix__label { justify-content: center; }
+
+/* 丸とチェックの選択肢 */
+.ah-survey .sd-selectbase__item { padding: 6px 0; }
+.ah-survey .sd-item__control-label { font-size: 14.5px; color: var(--ah-ink); }
+.ah-survey .sd-item__decorator {
+  width: 20px; height: 20px; min-width: 20px; box-shadow: none;
+  background: var(--ah-sheet); border: 1.5px solid #9AA4AE;
+}
+.ah-survey .sd-checkbox__decorator { border-radius: 4px; }
+.ah-survey .sd-item--allowhover:hover .sd-item__decorator { border-color: var(--ah-accent); background: var(--ah-accent-soft); }
+.ah-survey .sd-item--checked .sd-item__decorator { background: var(--ah-accent); border-color: var(--ah-accent); }
+.ah-survey .sd-radio--checked .sd-radio__decorator:after { background: #FFFFFF; width: 8px; height: 8px; }
+.ah-survey .sd-checkbox--checked .sd-checkbox__svg use { fill: #FFFFFF; }
+
+/* スライダー */
+.ah-survey .sd-slider { max-width: 560px; }
+.ah-survey .sd-slider__track { height: 4px; }
+.ah-survey .sd-slider__inverse-track { background: var(--ah-line-soft); }
+.ah-survey .sd-slider__range-track { background: var(--ah-accent); }
+.ah-survey .sd-slider__thumb { background: var(--ah-sheet); border: 2px solid var(--ah-accent); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.ah-survey .sd-slider__thumb-dot { display: none; }
+.ah-survey .sd-slider__label-text { font-size: 12.5px; color: var(--ah-muted); }
+
+/* 自由記述 */
+.ah-survey .sd-comment, .ah-survey .sd-input {
+  background: var(--ah-sheet); box-shadow: none; border: 1px solid var(--ah-line); border-radius: 6px;
+  font-size: 14.5px; line-height: 1.7; padding: 10px 12px;
+}
+.ah-survey .sd-comment:focus, .ah-survey .sd-input:focus { border-color: var(--ah-accent); box-shadow: 0 0 0 3px var(--ah-accent-soft); }
+
+/* ボタン：角の小さい長方形．主ボタンだけ塗る */
+.ah-survey .sd-body__navigation { padding: 20px 0 0; margin-top: 8px; border-top: 1px solid var(--ah-line-soft); display: flex; justify-content: flex-end; gap: 10px; }
+.ah-survey .sd-body__navigation .sd-action {
+  min-width: 112px; height: 42px; padding: 0 22px; border-radius: 6px; box-shadow: none;
+  font-size: 14.5px; font-weight: 700; letter-spacing: 0.06em;
+  background: var(--ah-sheet); color: var(--ah-ink); border: 1px solid var(--ah-line);
+}
+.ah-survey .sd-body__navigation .sd-action:hover { background: #F5F6F7; }
+.ah-survey .sd-navigation__next-btn, .ah-survey .sd-navigation__complete-btn { order: 2; }
+.ah-survey .sd-body__navigation .sd-navigation__next-btn,
+.ah-survey .sd-body__navigation .sd-navigation__complete-btn { background: var(--ah-accent); color: #FFFFFF; border-color: var(--ah-accent); }
+.ah-survey .sd-body__navigation .sd-navigation__next-btn:hover,
+.ah-survey .sd-body__navigation .sd-navigation__complete-btn:hover { background: #185B69; }
+.ah-survey .sd-action__title { color: inherit; }
+
+/* ---- 既定の CSS の余白・幅を打ち消す（詳細度を上げて上書きする） ---- */
+.ah-survey .sd-body .sd-page__content { padding: 0; }
+.ah-survey .sd-body .sd-page .sd-page__header { padding: 24px 0 4px; margin: 0; min-height: 0; }
+.ah-survey .sd-body .sd-element--with-frame > .sd-question__container .sd-element__header,
+.ah-survey .sd-body .sd-question__header { padding: 0 0 14px; }
+.ah-survey .sd-rating fieldset .sd-rating__item-text.sd-rating__min-text,
+.ah-survey .sd-rating fieldset .sd-rating__item-text.sd-rating__max-text {
+  order: 2; flex: 1 1 0; min-width: 0; width: auto; margin: 8px 0 0; padding: 0;
+}
+.ah-survey .sd-body .sd-matrix.sd-table-wrapper { padding: 0; margin: 0; overflow: visible; }
+.ah-survey .sd-body .sd-matrix .sd-table { table-layout: fixed; min-width: 0; }
+.ah-survey .sd-body .sd-matrix .sd-table__cell { min-width: 0; width: auto; }
+.ah-survey .sd-body .sd-matrix .sd-table__cell--header { white-space: normal; word-break: keep-all; overflow-wrap: anywhere; padding: 0 4px 10px; }
+.ah-survey .sd-body .sd-matrix thead .sd-table__cell:first-child,
+.ah-survey .sd-body .sd-matrix .sd-table__cell--row-text { width: 34%; }
+/* 選んだ帯の枠は，キーボードで動かしたときだけ出す */
+.ah-survey .sd-rating__item:focus-within { box-shadow: none; }
+.ah-survey .sd-rating__item:has(input:focus-visible) { box-shadow: 0 0 0 2px var(--ah-sheet), 0 0 0 4px #9CC3CC; z-index: 3; }
+.ah-survey .sd-question__title > span:empty { display: none; }
+.ah-survey .sd-question__required-text { margin-left: -4px; }
+/* 既定はページと設問の並びに 40px の gap を入れる．区切り線と設問の余白で間を取るので 0 にする */
+.ah-survey .sd-body .sd-page, .ah-survey .sd-body .sd-page__content { gap: 0; row-gap: 0; }
+.ah-survey .sv-components-column { gap: 0; row-gap: 0; }
+.ah-survey .sd-body .sd-page .sd-page__header { padding: 28px 0 0; }
+.ah-survey .sd-body__navigation { margin-top: 12px; }
+.ah-survey .sd-question__required-text { margin-left: -8px; }
+/* スライダーの両端のラベルを，目盛りの中央ではなく帯の端に揃える */
+.ah-survey .sd-slider__label-tick { display: none; }
+.ah-survey .sd-slider__label:first-child .sd-slider__label-text-container { transform: translateX(50%); text-align: left; }
+.ah-survey .sd-slider__label:last-child .sd-slider__label-text-container { transform: translateX(-50%); text-align: right; }
+.ah-survey .sd-body .sd-matrix .sd-table { margin-bottom: 0; }
+.ah-survey .sd-body .sd-question--table { padding-bottom: 8px; }
+/* 狭い画面：用紙の余白を詰め，帯を 1 行に収める．表が縦の並びになったときは行の文の幅を戻す */
+.ah-survey .sd-rating__item { min-width: 0; }
+@media (max-width: 600px) {
+  .ah-survey { padding: 16px 8px 40px; }
+  .ah-survey .sd-container-modern { padding: 24px 20px 20px; }
+  .ah-survey .sv-header__content { padding-left: 0; padding-right: 0; }
+  .ah-survey .sd-body .sd-matrix .sd-table__cell--row-text { width: auto; }
+  .ah-survey .sd-body .sd-matrix .sd-table { table-layout: auto; }
+}
+/* 未回答のエラー：既定のピンクをやめ，エラーの文字と同じ赤茶にする */
+.ah-survey .sd-question--error .sd-item__decorator,
+.ah-survey .sd-question--error .sd-rating__item { border-color: #D9A090; }
+.ah-survey .sd-question--error .sd-item__decorator { box-shadow: none; }
+
+/* 画面を覆う箱：実験の覆い（.expCover，z-index 1000）より上に出す．アンケートは配色の設定（ダーク）によらず白い用紙で出す */
+.ahSurveyBox { position: fixed; inset: 0; z-index: 1100; overflow: auto; color-scheme: light; }
+.ahSurveyBox[hidden] { display: none; }
+
+/* NASA-TLX の評定（core/survey.js の雛形）：20 個の枠の帯．数字は出さず，枠を低くし，中央（10 個目の右）に目盛りを付ける */
+.ah-survey .ah-tlx-scale .sd-rating { max-width: 600px; }
+.ah-survey .ah-tlx-scale .sd-rating__item { height: 30px; }
+.ah-survey .ah-tlx-scale .sd-rating__item .sd-rating__item-text { visibility: hidden; }
+.ah-survey .ah-tlx-scale .sd-rating__item:nth-of-type(10) { border-right: 2px solid #7D8792; }
+.ah-survey .ah-tlx-scale .sd-question__description { font-size: 13px; line-height: 1.7; color: var(--ah-muted); margin: 2px 0 0; }

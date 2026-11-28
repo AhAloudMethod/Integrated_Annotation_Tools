@@ -3,7 +3,7 @@
 // 参加者ごとの順と、動画ごとの評価区間、誤り・警告を出す。誤りがあれば終了コード 1
 const fs = require('fs');
 const path = require('path');
-const { check, merge, rangeFor, conditionFor } = require('../core/exp-check');
+const { check, merge, rangeFor, conditionFor, formPaths, lintForm } = require('../core/exp-check');
 
 const ROOT = path.resolve(__dirname, '..');
 // 方式は index.html が読み込むもの（modes/_shared.js を除く）。表示名は各ファイルの登録（id と同じ行の label）
@@ -34,6 +34,13 @@ function main(arg) {
   if (fs.existsSync(sf)) { try { setup = read(sf); } catch (e) { console.log(`setup.json を JSON として読めません：${e.message}`); return 1; } }
   const modes = modeList();
   const { errors, warnings } = check(exp, { modes: modes.map(m => m.id), axes: axesList(), has: p => fs.existsSync(path.join(dir, p)) && fs.statSync(path.join(dir, p)).isFile() }, setup);
+  // 画面の中のアンケートの定義（survey・finalSurvey の form）を読んで検査する（ブラウザで開いたときと同じ）
+  if (!errors.length) for (const fp of formPaths(exp)) {
+    let def;
+    try { def = read(path.join(dir, fp)); } catch (e) { errors.push(`アンケートの定義「${fp}」を JSON として読めません：${e.message}`); continue; }
+    const r = lintForm(def, `アンケートの定義「${fp}」`);
+    errors.push(...r.errors); warnings.push(...r.warnings);
+  }
   const cfg = merge(exp, setup);
 
   console.log(`実験：${(cfg && cfg.name) || '（名前なし）'}（${file}）`);

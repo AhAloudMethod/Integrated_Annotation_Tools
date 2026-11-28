@@ -246,6 +246,10 @@
       S.meta.experiment.task = row; saveProgress(X.i, row);
       await saveZip(true);
       await new Promise(r => setTimeout(r, 800));   // ダウンロードが始まるのを待ってから読み込み直す
+    } else if (X.surveyPending && video.src && S.meta.video_file) {
+      // 画面の中のアンケートに答える前に抜ける：評価は完了しているので、回答の無い zip を書き出しておく
+      await saveZip(false);
+      await new Promise(r => setTimeout(r, 800));
     } else if (video.src && S.meta.video_file) { endStroke('exp_exit'); _.autosave(); }
     restoreSettings(); X = null;
     location.reload();
@@ -512,18 +516,39 @@
     } else if (st === 'done' || st === 'finished') {
       // アンケートがある試行は、すべての「アンケートを開く」を押すまで「次へ」（残りが無ければ終わりの案内）を出さない。最後の試行の後には finalSurvey も出す
       // （やり直した試行の後に残りが無くても、最後の試行でなければ finalSurvey は出さない）
-      const last = st === 'finished', sv = surveys(X.i, X.i + 1 >= X.trials.length), opened = new Set();
+      // URL のアンケートは別のタブで開き、押した時点で済みとする。画面の中のアンケート（form・builtin）は答え終えた時点で済みとし、
+      // すべてに答えたら、回答（_survey.csv）を入れた zip を書き出す（完了の時点ではブラウザに残すだけにしてある。complete・saveZip）
+      const last = st === 'finished', sv = surveys(X.i, X.i + 1 >= X.trials.length), opened = new Set(), rows = [];
+      const anyPage = sv.some(inPage), allPage = sv.length && sv.every(inPage);
+      X.surveyPending = anyPage;
       const next = last ? '<p>すべての試行が終わりました。ありがとうございました。</p><button id="expSum" type="button">要約をもう一度書き出す</button>'
         : '<button id="expNext" type="button" class="expMain">次へ</button>';
       const many = sv.length > 1;
-      cover(head + '<p>完了しました。</p>' + (sv.length ? `<p>アンケートに答えてください${many ? `（${sv.length} つあります。上から順に答えてください）` : ''}。答え終わったら、この画面に戻ってください。</p>`
-        + `<div class="expSurveys">${sv.map((s, k) => `<button id="expSurvey${k ? k + 1 : ''}" type="button" class="expMain expSurvey">${esc(s.label || (many ? `アンケート ${k + 1} を開く` : 'アンケートを開く'))}</button>`).join('')}</div>` : '')
+      const label = (s, k) => s.label || (inPage(s) ? (s.builtin ? _.survey.builtinLabel(s.builtin) : many ? `アンケート ${k + 1}` : 'アンケート') + ' に答える' : many ? `アンケート ${k + 1} を開く` : 'アンケートを開く');
+      cover(head + '<p>完了しました。</p>' + (sv.length ? `<p>アンケートに答えてください${many ? `（${sv.length} つあります。上から順に答えてください）` : ''}。${allPage ? '' : '答え終わったら、この画面に戻ってください。'}</p>`
+        + `<div class="expSurveys">${sv.map((s, k) => `<button id="expSurvey${k ? k + 1 : ''}" type="button" class="expMain expSurvey">${esc(label(s, k))}</button>`).join('')}</div>`
+        + '<p id="expSurveyErr" class="expMiss" hidden></p>' : '')
         + `<div id="expAfter"${sv.length ? ' hidden' : ''} class="expAfter">${next}</div>`);
-      sv.forEach((s, k) => $('expSurvey' + (k ? k + 1 : '')).addEventListener('click', e => {
-        window.open(s.url, '_blank');
-        opened.add(k); e.currentTarget.classList.add('expOpened');
+      const finish = async () => {
         saveProgress(X.i, { survey_opened: opened.size });   // 完了の後なので、操作ログではなく要約に残す
-        if (opened.size === sv.length) $('expAfter').hidden = false;
+        if (opened.size < sv.length) return;
+        if (anyPage) { await saveZip(false, { extra: rows }); X.surveyPending = false; }
+        $('expAfter').hidden = false;
+      };
+      sv.forEach((s, k) => $('expSurvey' + (k ? k + 1 : '')).addEventListener('click', async e => {
+        const btn = e.currentTarget;
+        if (!inPage(s)) { window.open(s.url, '_blank'); opened.add(k); btn.classList.add('expOpened'); finish(); return; }
+        if (opened.has(k)) return;
+        btn.disabled = true;
+        try {
+          const r = await _.survey.run(s);
+          rows.push(...r.rows); opened.add(k);
+          btn.classList.add('expOpened'); btn.textContent = `${label(s, k)}（回答済み）`;
+          finish();
+        } catch (err) {
+          btn.disabled = false;
+          const m = $('expSurveyErr'); m.hidden = false; m.textContent = `アンケートを出せません（${err.message}）。実験者に知らせてください`;
+        }
       }));
       if (last) $('expSum').addEventListener('click', () => _.download(summaryName(), summaryCSV(), 'text/csv'));
       else $('expNext').addEventListener('click', () => startTrial(nextTrial(X.i)));
@@ -536,16 +561,24 @@
     for (let k = i + 1; k < X.trials.length; k++) if (!done[k] || done[k].partial) return k;
     return -1;
   }
-  // アンケートの一覧 [{ url, label }]：試行の survey（false なら無し）、なければ全体の survey（練習の試行には使わない）。
+  // アンケートの一覧 [{ url, label } か { form, builtin, id, label }]：試行の survey（false なら無し）、なければ全体の survey（練習の試行には使わない）。
   // final なら、実験の後に 1 回だけ答える finalSurvey を後ろに足す。
-  // どちらも URL の文字列か、URL の文字列・{ url, label } の配列。{pid} などを試行の値に置き換える
+  // どちらも URL の文字列か、URL の文字列・{ url, label }・{ form, label }・{ builtin, label } の配列。URL の {pid} などを試行の値に置き換える。
+  // form（実験フォルダの定義）と builtin（同梱の雛形）は画面の中で出す（core/survey.js）。id は回答の表の survey 列（無ければ定義のファイル名か雛形の名前）
   function surveys(i, final) {
     const t = X.trials[i];
     const val = { pid: X.pid, trial: i + 1, mode: t.mode, condition: cond(t), video: vidName(t), practice: t.practice ? 1 : 0, name: X.cfg.name };
     const fill = u => u.replace(/\{(pid|trial|mode|condition|video|practice|name)\}/g, (_m, k) => encodeURIComponent(val[k]));
-    const list = tpl => !tpl ? [] : (Array.isArray(tpl) ? tpl : [tpl]).map(s => typeof s === 'string' ? { url: fill(s) } : { url: fill(s.url), label: s.label });
+    const item = s => {
+      if (typeof s === 'string') return { url: fill(s) };
+      if (s.url != null) return { url: fill(s.url), label: s.label };
+      if (s.form != null) return { form: (X.cfg._forms || new Map()).get(s.form), id: s.id || s.form.split('/').pop().replace(/\.json$/i, ''), label: s.label };
+      return { builtin: s.builtin, id: s.id || s.builtin, label: s.label };
+    };
+    const list = tpl => !tpl ? [] : (Array.isArray(tpl) ? tpl : [tpl]).map(item);
     return [...list(t.survey !== undefined ? t.survey : t.practice ? null : X.cfg.survey), ...(final ? list(X.cfg.finalSurvey) : [])];
   }
+  const inPage = s => s.url == null;
   // 経過時間：操作ログの最後の task_start から。途中で抜けて再開した試行は、操作ログの経過時間と同じく続きから数える（要約の task_ms と合う）
   function tickTimer() {
     if (!X || X.state !== 'running') return;
@@ -572,23 +605,29 @@
     const row = { ...summarize(), partial: 0, survey_opened: 0 };
     S.meta.experiment.task = row;
     saveProgress(X.i, row);
+    // 画面の中のアンケートがある試行は、回答を同じ zip に入れるため、ここではブラウザに残すだけにして書き出しは答えた後にする
+    // （ブラウザに残すのを待ってから出す。答え終えた後の書き出しより後に、回答の無い zip でブラウザの分を上書きしないように）
+    const hold = surveys(X.i, X.i + 1 >= X.trials.length).some(inPage);
+    if (hold) await saveZip(false, { hold });
     setState(nextTrial(X.i) >= 0 ? 'done' : 'finished');
-    await saveZip(false);
+    if (!hold) await saveZip(false);
   }
   // 今の試行を 1 つの zip にして書き出し、ブラウザにも残す。書き出せたら、この試行の自動保存は消す（ブラウザの容量を空けるため）。
-  // やり直した回は名前に _redo1 などを付け、前の回の zip と同じ名前にしない（ダウンロード先で (1) が付かず、ブラウザの zip も上書きしない）
-  async function saveZip(partial) {
+  // やり直した回は名前に _redo1 などを付け、前の回の zip と同じ名前にしない（ダウンロード先で (1) が付かず、ブラウザの zip も上書きしない）。
+  // opts.hold：ダウンロードせず、自動保存も消さない（画面の中のアンケートに答える前。読み込み直しても、アンケートからやり直せる）。
+  // opts.extra：画面の中のアンケートの回答の行（core/survey.js）。あれば <…>_survey.csv として zip に入れる
+  async function saveZip(partial, opts = {}) {
     const files = _.buildFiles(); if (!files) return;
     files.push({ name: summaryName(), text: summaryCSV() });
     const session = files.find(f => f.name.endsWith('_session.json')).name, rd = S.meta.experiment.redo;
+    if (opts.extra && opts.extra.length) files.push({ name: session.replace(/_session\.json$/, '_survey.csv'), text: _.survey.csv(opts.extra) });
     const name = session.replace(/_session\.json$/, `${rd ? `_redo${rd.n}` : ''}${partial ? '_partial' : ''}.zip`);
     const blob = new Blob([_.makeZip(files.map(f => ({ name: f.name, data: '﻿' + f.text })))], { type: 'application/zip' });
-    downloadBlob(name, blob);
-    $('status').textContent = `書き出しました（${name}）`;
+    if (!opts.hold) { downloadBlob(name, blob); $('status').textContent = `書き出しました（${name}）`; }
     const key = _.saveKey();
     try {
       await zipPut(`${X.cfg.name}|${X.pid}|${X.i}${rd ? `|redo${rd.n}` : ''}${partial ? '|partial' : ''}`, { name, blob, exp: X.cfg.name, pid: X.pid, trial: X.i, time: Date.now() });
-      if (!partial) { S.meta.video_file = ''; localStorage.removeItem(key); }   // video_file を空にして、以後の操作で自動保存を作り直さない
+      if (!partial && !opts.hold) { S.meta.video_file = ''; localStorage.removeItem(key); }   // video_file を空にして、以後の操作で自動保存を作り直さない
     } catch (_e) { /* 残せなくても、ダウンロードと自動保存はある */ }
   }
 
@@ -782,7 +821,8 @@
   // 他のキー操作（core/keys.js）より先に受け取るため、window の捕捉段階で止める
   window.addEventListener('keydown', e => {
     if (e.code === 'KeyE' && (e.ctrlKey || e.metaKey) && e.shiftKey) { if (X && X.state !== 'setup') { e.preventDefault(); exit(); } return; }
-    const inCover = !$('expCover').hidden && $('expCover').contains(e.target);
+    const sbox = document.getElementById('ahSurvey');   // 画面の中のアンケート（core/survey.js）も覆いと同じく、欄への入力を通す
+    const inCover = (!$('expCover').hidden && $('expCover').contains(e.target)) || (!!sbox && !sbox.hidden && sbox.contains(e.target));
     if (!X) { if (inCover) e.stopImmediatePropagation(); return; }   // setup.json の書き出しの画面の欄
     const block = () => { e.preventDefault(); e.stopImmediatePropagation(); };
     // 区間合わせの間は、再生（Space）・移動（←→）・1 フレーム移動（, .）だけを効かせる（取り消しなども止める）
@@ -833,7 +873,22 @@
     try { exp = await readJSON(cfgFile); } catch (err) { setup(null, get, { errors: ['experiment.json を JSON として読めません：' + err.message] }); return; }
     try { su = setupFile ? await readJSON(setupFile) : null; } catch (err) { setup(null, get, { errors: ['setup.json を JSON として読めません：' + err.message] }); return; }
     const res = E.check(exp, env(get), su);
-    setup(res.errors.length ? exp : E.merge(exp, su), get, res);
+    const forms = res.errors.length ? new Map() : await readForms(exp, get, res);
+    const cfg = res.errors.length ? exp : E.merge(exp, su);
+    cfg._forms = forms;
+    setup(cfg, get, res);
+  }
+  // 画面の中のアンケートの定義（survey・finalSurvey の form）を読んで検査する。読めないものと誤りは res.errors に足す
+  async function readForms(exp, get, res) {
+    const forms = new Map();
+    for (const p of E.formPaths(exp)) {
+      let def;
+      try { def = await readJSON(get(p)); } catch (err) { res.errors.push(`アンケートの定義「${p}」を JSON として読めません：${err.message}`); continue; }
+      const r = E.lintForm(def, `アンケートの定義「${p}」`);
+      res.errors.push(...r.errors); res.warnings.push(...r.warnings);
+      forms.set(p, def);
+    }
+    return forms;
   }
   $('expBtn').addEventListener('click', e => { e.currentTarget.blur(); $('expDir').click(); });
   $('expDir').addEventListener('change', e => { const list = [...e.target.files]; e.target.value = ''; if (list.length) openFolder(list); });
