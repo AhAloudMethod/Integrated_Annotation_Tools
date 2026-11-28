@@ -1,7 +1,7 @@
 // カスタム：設計軸を自由に組み合わせる（先行研究にない組み合わせも作れる）
 (() => {
   const { S, pen, video } = AH;
-  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, cutBox, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
+  const { opts, live, follower, h, stored, nowRow, armHint, squareVal, circleVal, drawSquareFrame, gridCircle, gridBar, trail, secStrip, xlTable, xlRef, cutBox, nvBox, autoNext, samRows, drawFace, heldRate, stick, sliders, rankPad } = AH.ui;
   const o = () => opts();
   const follow = follower();
   // インタフェース（rep）。grid・sam・buttons は1〜9の整数だけ、rank8 は変化の方向（相対イベント）
@@ -131,7 +131,7 @@
   const joyMode = () => !pointType() && (o().rep === 'plane' || o().rep === 'circle') && (o().input === 'gamepad' || (o().input === 'mouse' && stk().on()));
   const slDev = () => o().rep === 'sliders' && o().time === 'cont' && !rel() && sl.on();
   const slIdx = ax => (act().length === 1 ? 0 : ax === 'v' ? 0 : 1);
-  let c = null, g = null, rows = null, strip = null, note = null, table = null, memo = null; const PAD = 26;
+  let c = null, g = null, rows = null, strip = null, note = null, table = null, memo = null, nvSync = null; const PAD = 26;
 
   function writeMode() {
     if (rank() || curve() || pointType()) return null;   // 区間内で変化はグラフだけで入れる
@@ -338,7 +338,7 @@
     get help() {
       if (rank()) return `<p>${act().length === 1 ? AH.ax(act()[0]).name + 'が' : '快度・覚醒度が'}「変わった」と感じたときだけ、変化の方向をボタンから選んでクリックします（テンキーでも可：8＝覚醒、9＝覚醒・快、6＝快 …）。<kbd>Backspace</kbd> で今の時刻より前の直近の入力を削除します。</p>`;
       if (curve()) return `<p>Excel の評価シートと同じく、セルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで）' : ''}。区間の中で値が動く区間だけは、そのセルをクリックしてから「なぞって評価する」を押し、評価グラフで入れます（もう一度押すと、区間の平均を丸めた値の普通のセルに戻ります。そのセルの値を変えずにまた押せば、描いた曲線に戻ります）。${o().curveInput !== 'template' ? '「描く」では、評価グラフをなぞるとその範囲の動きを描きます（連続の方式のグラフでの編集と同じ。変化の区間の中だけ描きます）。' : ''}${o().curveInput !== 'draw' ? '「テンプレート」では、区間の中で始めの高さから終わりの高さへドラッグすると、選んだ形（直線・前半で変化・後半で変化）の曲線が入ります。形のボタンを押すと、今の区間の始めと終わりの値を保ったまま、その形に変えます。' : ''}「なぞって評価する」で変化の区間にすると、その区間を 1 軸ずつ評価グラフの欄の上下いっぱいに出す拡大の入力欄が開き、評価グラフより細かくなぞれます（軸はボタンで切り替え、Esc か「閉じる」で閉じます。「拡大」（<kbd>F</kbd>）でまた開きます）。「発声なし」で区間を 0 にします（もう一度押すと空欄に戻ります）。変化の区間のセルは表示だけで、始めの値→終わりの値と形（直＝直線、前＝前半で変化、後＝後半で変化、描＝自由に描いた）を出します。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。' : ''}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
-      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。数字を 2 つ続けて打つと小数で確定します：5、3 → 5.3）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : o().cuts === 'sec1' ? '区切りは評価区間の開始から 1 秒ごとで、編集できません。' : '区切りは事前に設定したもので、編集できません。'}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
+      if (xl()) return `<p>Excel の評価シートと同じ並びです。評価区間の各区間のセルに 1〜9（発声のない区間は 0）を入力します${o().values === 'real' ? '（小数も可。小数第1位まで。数字を 2 つ続けて打つと小数で確定します：5、3 → 5.3）' : ''}。<kbd>Tab</kbd>・<kbd>Enter</kbd>・矢印キーでセル移動。${o().cuts === 'self' ? '評価グラフを右クリックすると、区間の区切りを置く・動かす・消すことができます。「今の時間で区切る」（<kbd>C</kbd>）で今の時刻に区切りを置き、「近くの区切りを消す」で今の時刻に最も近い区切りを消します。' : o().cuts === 'sec1' ? '区切りは評価区間の開始から 1 秒ごとで、編集できません。「発声なし」を押すと、選んでいるセル（無ければ今）の区間を 0 にします（もう一度押すと空欄に戻ります）。' : '区切りは事前に設定したもので、編集できません。'}${other() ? AH.ax(other()).name + 'は入力しません。' : ''}</p>`;
       const t = o().time === 'disc' ? '評価区間（ヘッダーの「評価区間」で設定）の各区間に値を1つずつ入力します。' : '時間連続で評価します。';
       let how;
       if (pointType()) how = o().time === 'disc' ? 'クリック（または数字キー：快度＝1〜9、覚醒度＝Shift+数字）で今の区間の値を設定します。<kbd>Backspace</kbd> で今の区間を消去。' : 'クリック（または数字キー）でその時刻に変化点を置きます。<kbd>Backspace</kbd> で直前の変化点を削除。';
@@ -359,12 +359,13 @@
     mount({ panel, overlay, under }) {
       Object.assign(S.meta.options, normalize(S.meta.options));
       config(panel);
-      rows = null; c = null; g = null; this._rank = null; this._now = null; strip = null; table = null; memo = null;
+      rows = null; c = null; g = null; this._rank = null; this._now = null; strip = null; table = null; memo = null; nvSync = null;
       if (rank()) { this._rank = rankPad(panel, act()); return; }
       if (xl()) {
         table = xlTable(under, act(), o().values === 'real', curve());
         if (curve()) curveBox(panel);
         if (o().cuts === 'self') cutBox(panel);
+        nvSync = !curve() && o().cuts === 'sec1' ? nvBox(panel, act()) : null;   // 1秒固定：発声なしのボタン（区間内で変化のときは curveBox にある）
         memo = xlRef(panel);
         return;
       }
@@ -428,7 +429,7 @@
     onBlur() { kW.clear(); kUD.clear(); kAD.clear(); },
     update(t) {
       if (this._rank) { this._rank.update(); return; }
-      if (table) { table(); memo(); if (curve()) curveSync(); return; }
+      if (table) { table(); memo(); if (curve()) curveSync(); if (nvSync) nvSync(); return; }
       const c0 = cur(t), cv = c0.v == null || c0.a == null ? { ...c0, ...(other() ? { [other()]: 5 } : {}) } : qv(c0);   // 区間の未入力（null）は刻みを合わせず固定だけ
       if (c && g) { if (o().rep === 'sliders') drawSliders(t, cv); else drawPlaneLike(t, cv); }
       if (rows) for (const ax of Object.keys(rows)) for (const b of rows[ax].children) b.classList.toggle('on', cv[ax] != null && +b.dataset.v === Math.round(cv[ax]));

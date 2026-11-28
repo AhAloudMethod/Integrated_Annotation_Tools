@@ -335,6 +335,29 @@
     btn('近くの区切りを消す', () => AH._.delCut(video.currentTime || 0));
     panel.appendChild(box);
   }
+  // 発声なしのボタン（Excel で「1秒固定」のとき。区間が細かく 0 を打つ列が多いため）。トグル：対象の区間（cellSec）の軸をすべて 0 にする／もう 0 なら空欄に戻す。
+  // 区間内で変化がオンのときは curveBox（modes/custom.js）に同じボタンがあるので出さない
+  function nvBox(panel, axes = ['v', 'a']) {
+    const box = h('div', { class: 'planeBox nvBox' });
+    const tgtL = h('div', { class: 'curveTgt' });
+    const isZero = s => axes.every(ax => S.data.cells[ax][s] === 0);
+    const b = h('button', { type: 'button', class: 'novoice', title: '対象の区間を 0（発声なし）にする。もう一度押すと空欄に戻す',
+      onclick: e => {
+        e.currentTarget.blur(); if (AH._.reviewing()) return;
+        const s = cellSec(); if (s < 0 || s >= AH.nSec()) return;
+        AH.setCells(s, Object.fromEntries(axes.map(ax => [ax, isZero(s) ? null : 0])), 'novoice');
+        sync();
+      } }, '発声なし');
+    box.appendChild(tgtL); box.appendChild(b); panel.appendChild(box);
+    const sync = () => {
+      const s = cellSec(), ok = s >= 0 && s < AH.nSec();
+      const tx = ok ? '対象：' + AH.secLabel(s) : '';
+      if (tgtL.textContent !== tx) tgtL.textContent = tx;
+      b.classList.toggle('on', ok && isZero(s));
+      b.disabled = !ok || AH.novoiceLocked(s);
+    };
+    sync(); return sync;
+  }
   const setBoth = (s, v, a, how) => AH.setCells(s, { v, a }, how);
   // 入力後に次の区間へ。聴いてから入力で止まっているときは、次の区間を始めから聴く（シークだけだと Enter で 1 区間飛ばす）
   function autoNext(s) {
@@ -513,6 +536,6 @@
 
   AH.ui = {
     opts, live, follower, h, stored, shown, nowRow, toggle, armHint, square, squareVal, circleVal, bindHold, planeCanvas, drawSquareFrame, gridCircle, gridBar, trail,
-    secStrip, lockNote, xlTable, cellSec, setCellSec, xlRef, cutBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
+    secStrip, lockNote, xlTable, cellSec, setCellSec, xlRef, cutBox, nvBox, setBoth, autoNext, samSrc, SAM_IMG, manikin, samFig, samRows, drawFace, heldRate, dead, stick, sliders, passSelector, rankPad,
   };
 })();

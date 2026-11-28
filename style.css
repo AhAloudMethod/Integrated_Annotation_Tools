@@ -306,7 +306,7 @@ table.xl.curve .tgt{outline:2px dashed var(--ink);outline-offset:-2px}
 .curveTgt{font-size:12px;color:var(--muted);margin:2px 0 4px}
 /* 区間内で変化：入れ方と形のボタン */
 .curveBox .curveTools,.curveBox .curveShapes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.curveBox button.on{background:var(--val);border-color:var(--val);color:#fff}
+.curveBox button.on,.nvBox button.on{background:var(--val);border-color:var(--val);color:#fff}
 /* 区間内で変化の拡大の入力欄（core/curve-zoom.js）：評価グラフの欄に重ね，変化の区間を 1 軸だけ欄の上下いっぱいに出す */
 #curveZoom{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:4px;background:var(--panel);border-radius:4px;padding:4px 6px 6px}
 #curveZoom[hidden]{display:none}
@@ -322,8 +322,8 @@ table.xl td.cv{min-width:46px;height:28px;font-size:14px;cursor:pointer;white-sp
 table.xl td.cv small{font-size:10px;color:var(--muted);margin-left:2px}
 table.xl input.bad{background:color-mix(in srgb,var(--pen) 30%,transparent)}
 .refTitle{font-size:13px;font-weight:600;margin-bottom:4px}
-.cutBox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.cutBox .refTitle{flex-basis:100%;margin-bottom:0}
+.cutBox,.nvBox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cutBox .refTitle,.nvBox .refTitle,.nvBox .curveTgt{flex-basis:100%;margin-bottom:0}
 img.xlAg:not([hidden]){display:block}   /* 高さは右の列に収まるよう core/layout.js が決める */
 img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:border-box;background:var(--fig);border-radius:4px}   /* 透過 PNG の黒い線をダークモードでも読めるよう、明るい下地にする */
 .planeBox textarea{width:100%}

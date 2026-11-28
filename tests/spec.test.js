@@ -354,6 +354,16 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     const n4 = await p.evaluate(() => [AH.nSec(), AH.S.meta.range.edges.some(x => Math.abs(x - 8.5) < 0.05)]);
     check('Excel：「自分で区切る」で区切りのボタンを出す（表はそのまま）', self.cuts === 'self' && self.btns.join() === '今の時間で区切る,近くの区切りを消す' && self.rows === 3, JSON.stringify(self));
     check('Excel：「自分で区切る」では実験モードでも右クリックとボタンで区切りを置き、ボタンで消せる', n2 === 13 && n3[0] === 14 && n3[1] && n4[0] === 13 && !n4[1], JSON.stringify({ n2, n3, n4 }));
+    // 1秒固定：発声なしのボタンを出す。選んだセルの区間を両軸 0 にし、もう一度押すと空欄に戻す（ほかの区切りでは出さない）
+    await p.selectOption('select[aria-label=区切り]', 'sec1'); await p.waitForTimeout(150); await blur(p);
+    const nvShown = await p.evaluate(() => !!document.querySelector('.nvBox button.novoice'));
+    await p.click('input[data-ax=v][data-s="2"]'); await p.click('.nvBox button.novoice'); await p.waitForTimeout(100);
+    const nvOn = await p.evaluate(() => ({ c: [AH.S.data.cells.v[2], AH.S.data.cells.a[2]], on: document.querySelector('.nvBox button.novoice').classList.contains('on'), tgt: document.querySelector('.nvBox .curveTgt').textContent, log: AH.S.log.some(x => x.type === 'cell_novoice') }));
+    await p.click('.nvBox button.novoice'); await p.waitForTimeout(100);
+    const nvOff = await p.evaluate(() => [AH.S.data.cells.v[2] ?? null, AH.S.data.cells.a[2] ?? null]);
+    await p.selectOption('select[aria-label=区切り]', 'fixed'); await p.waitForTimeout(150); await blur(p);
+    const nvGone = await p.evaluate(() => !document.querySelector('.nvBox'));
+    check('Excel：1秒固定で「発声なし」のボタンを出し、選んだ区間を 0 にする（もう一度で空欄。ほかの区切りでは出さない）', nvShown && JSON.stringify(nvOn.c) === '[0,0]' && nvOn.on && /対象/.test(nvOn.tgt) && nvOn.log && JSON.stringify(nvOff) === '[null,null]' && nvGone, JSON.stringify({ nvShown, nvOn, nvOff, nvGone }));
     await p.evaluate(() => { AH._.expOn = AH._.__expOn; for (const k of Object.keys(localStorage)) if (k.startsWith('ahann_range')) localStorage.removeItem(k); });
     await p.close();
   }

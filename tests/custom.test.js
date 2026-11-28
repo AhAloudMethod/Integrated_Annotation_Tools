@@ -167,6 +167,16 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     check('自分で区切る：C キーで今の時間で区切る（セルに入れている間も効き、セルに C は入らない）', c1[0] === 14 && c1[1] && c2[0] === 15 && c2[1] && c2[2] === '7', JSON.stringify({ c1, c2 }));
     await p.keyboard.press('Escape');
     await p.evaluate(() => { AH._.expOn = AH._.__expOn; });
+    // 1秒固定：発声なしのボタンを出す。選んだセルの区間を両軸 0 にし、もう一度押すと空欄に戻す（ほかの区切りでは出さない）
+    await pick(p, '区切り', 'sec1');
+    const nvShown = await p.evaluate(() => !!document.querySelector('.nvBox button.novoice'));
+    await p.click('input[data-ax=v][data-s="2"]'); await p.click('.nvBox button.novoice'); await p.waitForTimeout(100);
+    const nvOn = await p.evaluate(() => ({ c: [AH.S.data.cells.v[2], AH.S.data.cells.a[2]], on: document.querySelector('.nvBox button.novoice').classList.contains('on'), tgt: document.querySelector('.nvBox .curveTgt').textContent, log: AH.S.log.some(x => x.type === 'cell_novoice') }));
+    await p.click('.nvBox button.novoice'); await p.waitForTimeout(100);
+    const nvOff = await p.evaluate(() => [AH.S.data.cells.v[2] ?? null, AH.S.data.cells.a[2] ?? null]);
+    await pick(p, '区切り', 'self');
+    const nvGone = await p.evaluate(() => !document.querySelector('.nvBox'));
+    check('カスタム（Excel）：1秒固定で「発声なし」のボタンを出し、選んだ区間を 0 にする（もう一度で空欄。ほかの区切りでは出さない）', nvShown && JSON.stringify(nvOn.c) === '[0,0]' && nvOn.on && /対象/.test(nvOn.tgt) && nvOn.log && JSON.stringify(nvOff) === '[null,null]' && nvGone, JSON.stringify({ nvShown, nvOn, nvOff, nvGone }));
     // 値「連続値」：セルに小数（小数第1位まで）が入り、確定のときに 1〜9 の外を弾く。全角の数字も入る
     await pick(p, '値', 'real');
     const realTb = await p.evaluate(() => ({ values: AH.S.meta.options.values, real: !!document.querySelector('table.xl.real'), int: AH.mode.isInteger() }));
