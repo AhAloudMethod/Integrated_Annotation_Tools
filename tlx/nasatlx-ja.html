@@ -8,6 +8,8 @@
   2026-11-12 に次を書き足した．
    - URL に raw=1 を付けると Raw TLX にする（6 尺度の評定だけで終え，一対比較を行わない）
    - CSV の最後に variant（weighted か raw）と raw_tlx（6 尺度の評定の単純平均）を足す．Raw TLX では tally・weight・overall・pairs を空にする
+  2026-11-28 に次を書き足した．
+   - アノテーションツールが開いたタブなら，結果を保存した 2 秒後にタブを閉じて元の画面に戻す
 -->
 <html>
 
@@ -358,6 +360,18 @@ function showResults()
 	document.getElementById('div_part4').style.display = '';
 	document.getElementById('div_part4').innerHTML = getResultsHTML() + '<p id="saved"></p><input type="button" value="結果をもう一度保存する" onClick="saveResults()">';
 	saveResults();
+	closeSoon();
+}
+
+// 書き足し：アノテーションツールが開いたタブなら，保存の後に閉じて元の画面に戻す．
+// スクリプトで開いたタブしか閉じられないので，手で開いたときは案内を残す
+var CLOSE_DELAY_MS = 2000;   // CSV の保存が始まるのを待つ
+function closeSoon()
+{
+	if (!window.opener) return;
+	var el = document.getElementById('saved');
+	if (el) el.textContent = el.textContent.replace(/この画面を閉じて.*$/, 'まもなくアノテーションツールの画面に戻ります。');
+	setTimeout(function () { window.close(); }, CLOSE_DELAY_MS);
 }
 
 // Move to the next pair

@@ -173,7 +173,7 @@ id は `modes/` のファイル名である．一覧が古い可能性がある�
      `{ "url": "https://ahaloudmethod.github.io/Ahnotation/tlx/nasatlx-ja.html?pid={pid}&trial={trial}&cond={condition}&name={name}", "label": "NASA-TLX" }`
    - `file:///` で実験フォルダの中の HTML を開く書き方はしない．絶対パスが入るので，実験用 PC でフォルダの場所が変わると開けなくなるからである．
    - `name={name}` は省かない．回収ツールは，CSV の `name` 列が実験名と違う結果を集めないからである（README の「結果の回収」）．
-   - 結果の CSV（`<ID>_t<試行2桁>_tlx.csv`）はブラウザのダウンロード先に保存され，回収ツールの `zips` から集まる．
+   - 結果の CSV（`<ID>_t<試行2桁>_tlx.csv`）はブラウザのダウンロード先に保存され，回収ツールの `zips` から集まる．保存の 2 秒後にタブが閉じ，参加者は Ahnotation の画面に戻る．
    - Pages の版は main に push すると変わる．実験の期間中は `tlx/nasatlx-ja.html` を変えないよう報告で伝える．実験用 PC にインターネットが要ることも伝える．
    - ボタンの文言（`label`）は参加者に見える．Raw TLX にするなどで名前を出したくなければ，「作業負荷のアンケート」のようにし，台本の台詞とそろえる．
    - 同梱の `nasatlx-ja.html` は，既定では一対比較（15 回）まで行う通常の NASA-TLX になる．Raw TLX（6 尺度の評定だけ）にするなら URL に `&raw=1` を足す．どちらにするかは聞き取りで確かめる．CSV の `variant` 列に `weighted` か `raw` が入り，`raw_tlx` 列（6 尺度の単純平均）はどちらでも入る．
