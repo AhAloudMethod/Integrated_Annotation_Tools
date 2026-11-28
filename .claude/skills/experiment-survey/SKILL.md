@@ -25,10 +25,12 @@ README・`core/`・`tools/` は，リポジトリの中で使うならリポジ�
 
 ## 同梱の雛形
 
-| `builtin` | 中身 | 回答に足す行 |
+| `builtin` | 中身 | 回答の行（`question`） |
 |---|---|---|
-| `nasa-tlx` | 6 尺度の評定（20 個の枠，5〜100）と一対比較 15 組（順は無作為） | `variant`（weighted），`raw_tlx`，`<尺度>_tally`，`<尺度>_weight`，`overall` |
-| `raw-tlx` | 6 尺度の評定だけ | `variant`（raw），`raw_tlx` |
+| `nasa-tlx` | 6 尺度の評定（20 個の枠）と一対比較 15 組 | `<尺度>_rating`，`<尺度>_tally`，`<尺度>_weight`，`overall`，`pairs`，`variant`（weighted），`raw_tlx` |
+| `raw-tlx` | 6 尺度の評定だけ | 同じ列（一対比較の値は空），`variant`（raw） |
+
+NASA-TLX は，見慣れた画面を変えないよう `tlx/nasatlx-ja.html` を埋め込んで出す．文言や画面を変えたいと言われても，雛形は変えず，必要なら自作の定義として別に作る．
 
 同じ試行に同じ雛形を 2 回出すとき（試行の後と実験の後など）は，`id` を付け分けて回答の `survey` 列で区別できるようにする．
 

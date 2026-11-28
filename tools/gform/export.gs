@@ -30,7 +30,10 @@ function readItem(item) {
   const req = it => ({ required: it.isRequired() });
   const choices = it => it.getChoices().map(function (c) { return c.getValue(); });
   // 分岐（回答に応じたページの移動）は移せないので，あったことだけを残す
-  const branch = it => it.getChoices().some(function (c) { try { return !!c.getGotoPage() || c.getPageNavigationType() !== FormApp.PageNavigationType.CONTINUE; } catch (e) { return false; } });
+  // （分岐を設定していない選択肢は移動の種類が空で返るので，空と「次へ進む」は分岐に数えない）
+  const branch = it => it.getChoices().some(function (c) {
+    try { const nav = c.getPageNavigationType(); return !!c.getGotoPage() || (nav != null && nav !== FormApp.PageNavigationType.CONTINUE); } catch (e) { return false; }
+  });
   switch (t) {
     case T.MULTIPLE_CHOICE: { const it = item.asMultipleChoiceItem(); return Object.assign(base, req(it), { choices: choices(it), other: it.hasOtherOption(), branch: branch(it) }); }
     case T.CHECKBOX: { const it = item.asCheckboxItem(); return Object.assign(base, req(it), { choices: choices(it), other: it.hasOtherOption() }); }

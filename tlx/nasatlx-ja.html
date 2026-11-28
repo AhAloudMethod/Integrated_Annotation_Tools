@@ -10,6 +10,8 @@
    - CSV の最後に variant（weighted か raw）と raw_tlx（6 尺度の評定の単純平均）を足す．Raw TLX では tally・weight・overall・pairs を空にする
   2026-11-28 に次を書き足した．
    - アノテーションツールが開いたタブなら，結果を保存した 2 秒後にタブを閉じて元の画面に戻す
+   - URL に embed=1 を付けると，アノテーションツールの画面の中（core/survey.js）に埋め込んだ版になる．
+     結果は CSV に保存せず，同じ列と値を親の画面へ postMessage({ type: 'ahnotation-tlx', head, row }) で渡す
 -->
 <html>
 
@@ -90,6 +92,7 @@ var info = { pid: params.get('pid') || '', trial: params.get('trial') || '', con
 var start_iso = new Date().toISOString();
 var pair_log = [];   // [{ a, b, chosen }]（添字は scale の番号）
 var raw_mode = /^(1|true|yes)$/i.test(params.get('raw') || '');   // Raw TLX：評定だけで終える
+var embed_mode = params.get('embed') === '1' && window.parent !== window;   // アノテーションツールの画面の中に埋め込んだ版
 for (var i = 0; i < NUM_SCALES; i++)
 	results_tally[i] = 0;
 
@@ -343,7 +346,15 @@ function saveResults()
 	row.push(raw_mode ? '' : +results_overall.toFixed(4),
 	         raw_mode ? '' : pair_log.map(function (p) { return KEYS[p.a] + '/' + KEYS[p.b] + '>' + KEYS[p.chosen]; }).join(' '),
 	         raw_mode ? 'raw' : 'weighted', +rawTlx().toFixed(4));
-	var text = '﻿' + head.map(csvCell).join(',') + '\n' + row.map(csvCell).join(',') + '\n';
+	if (embed_mode)
+	{
+		// 埋め込んだ版：保存せずに親の画面へ渡す（親が回答の表に入れ，この画面を閉じる）
+		window.parent.postMessage({ type: 'ahnotation-tlx', head: head, row: row }, '*');
+		var sent = document.getElementById('saved');
+		if (sent) sent.textContent = '回答を記録しました。';
+		return;
+	}
+	var text ='﻿' + head.map(csvCell).join(',') + '\n' + row.map(csvCell).join(',') + '\n';
 	var t = info.trial ? '_t' + ('0' + info.trial).slice(-2) : '';
 	var fname = (info.pid || 'noid') + t + '_tlx.csv';
 	var a = document.createElement('a');
@@ -358,7 +369,7 @@ function saveResults()
 function showResults()
 {
 	document.getElementById('div_part4').style.display = '';
-	document.getElementById('div_part4').innerHTML = getResultsHTML() + '<p id="saved"></p><input type="button" value="結果をもう一度保存する" onClick="saveResults()">';
+	document.getElementById('div_part4').innerHTML = getResultsHTML() + '<p id="saved"></p>' + (embed_mode ? '' : '<input type="button" value="結果をもう一度保存する" onClick="saveResults()">');
 	saveResults();
 	closeSoon();
 }

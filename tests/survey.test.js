@@ -1,4 +1,4 @@
-// 画面の中のアンケート（core/survey.js と core/experiment.js）：実験フォルダの定義（form）と同梱の雛形（raw-tlx・nasa-tlx）を画面に重ねて出し、
+// 画面の中のアンケート（core/survey.js と core/experiment.js）：実験フォルダの定義（form．SurveyJS）と同梱の雛形（raw-tlx・nasa-tlx．元の tlx/nasatlx-ja.html の埋め込み）を画面に重ねて出し、
 // 回答を試行の zip の _survey.csv（1 行 1 設問）に入れる。既定（必須・7 段階）、スライダーを動かさなかったときの空の値、欄への文字の入力、
 // URL のアンケートとの混在、答える前に抜けたときの zip の書き出し、定義の誤りの検査を見る
 const { chromium } = require('playwright-core');
@@ -69,7 +69,7 @@ const BADFORM = makeFolder('survey_bad', {
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 }, acceptDownloads: true });
   await ctx.route('https://survey.test/**', r => r.fulfill({ contentType: 'text/html', body: '<p>survey</p>' }));
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
-  p.on('dialog', d => d.accept());
+  const dialogs = []; p.on('dialog', d => { dialogs.push(d.message()); d.accept(); });
   const downloads = [];
   p.on('download', d => downloads.push(d));
   const names = () => downloads.map(d => d.suggestedFilename());
@@ -88,7 +88,17 @@ const BADFORM = makeFolder('survey_bad', {
   };
   const next = () => p.locator('#ahSurvey .sd-navigation__next-btn').click();
   const done = () => p.locator('#ahSurvey .sd-navigation__complete-btn').click();
-  const band = (name, v) => p.locator(`#ahSurvey .sd-question[data-name="${name}"] .sd-rating__item`).nth(v / 5 - 1).click();   // NASA-TLX の帯の枠（5〜100）
+  // NASA-TLX（埋め込んだ元のページ）：尺度の番号と値（5〜100）の枠を押す。一対比較は、順に並べた尺度で先のもの（mental > physical > …）を選ぶ
+  const ORDER = ['mental', 'physical', 'temporal', 'performance', 'effort', 'frustration'];
+  const NAMES = ['知的・知覚的要求', '身体的要求', 'タイムプレッシャー', '作業成績', '努力', 'フラストレーション'];
+  const tlx = () => p.frameLocator('#ahSurvey iframe.ahTlxFrame');
+  const rateAll = async vals => { await tlx().locator('#t_0_5').waitFor(); for (const [k, v] of Object.entries(vals)) await tlx().locator(`#t_${ORDER.indexOf(k)}_${v}`).click(); };
+  const pickPairs = async () => {
+    for (let k = 0; k < 15; k++) {
+      const a = await tlx().locator('#pair1').inputValue(), b = await tlx().locator('#pair2').inputValue();
+      await tlx().locator(NAMES.indexOf(a) < NAMES.indexOf(b) ? '#pair1' : '#pair2').click();
+    }
+  };
   const slider = (name, v) => p.evaluate(([n, val]) => {   // スライダーを動かす（つまみのドラッグの代わりに、範囲の入力に値を入れる）
     const q = [...document.querySelectorAll('#ahSurvey .sd-question')].find(e => e.getAttribute('data-name') === n);
     const inp = q.querySelector('input.sd-slider__input');
@@ -151,17 +161,19 @@ const BADFORM = makeFolder('survey_bad', {
   const after1 = await p.evaluate(() => ({ btn: document.getElementById('expSurvey').textContent, dis: document.getElementById('expSurvey').disabled, next: !document.getElementById('expAfter').hidden }));
   check('答えたら閉じてボタンを「回答済み」にし、残りのアンケートがあるうちは「次へ」を出さない', after1.btn.endsWith('（回答済み）') && after1.dis && !after1.next && !names().length, JSON.stringify(after1));
 
-  // Raw TLX：6 尺度のスライダー（必須）
+  // Raw TLX：元の NASA-TLX のページ（tlx/nasatlx-ja.html）を画面の中に埋め込む
   await p.click('#expSurvey2');
-  await p.waitForSelector('#ahSurvey .ah-tlx-scale');
-  const tlxUi = await p.evaluate(() => ({ q: document.querySelectorAll('#ahSurvey .ah-tlx-scale').length, items: document.querySelectorAll('#ahSurvey .ah-tlx-scale')[0].querySelectorAll('.sd-rating__item').length,
-    hidden: getComputedStyle(document.querySelector('#ahSurvey .ah-tlx-scale .sd-rating__item .sd-rating__item-text')).visibility }));
-  check('Raw TLX は 6 尺度の 1 ページで、評定は 20 個の枠の帯（数字は出さない）、進み具合の線は出さない', tlxUi.q === 6 && tlxUi.items === 20 && tlxUi.hidden === 'hidden' && !(await p.$('#ahSurvey .ah-progress')), JSON.stringify(tlxUi));
-  await done();
-  check('Raw TLX：選ばなければ必須の誤りになる', (await p.locator('#ahSurvey .sd-question--error').count()) === 6);
+  await tlx().locator('#t_0_5').waitFor();
+  const tlxUi = await p.evaluate(() => { const f = document.querySelector('#ahSurvey iframe.ahTlxFrame'), b = document.getElementById('ahSurvey').getBoundingClientRect();
+    return { src: f.getAttribute('src'), full: b.width === innerWidth && b.height === innerHeight, fixed: getComputedStyle(document.getElementById('ahSurvey')).position }; });
+  check('Raw TLX は元の NASA-TLX のページを画面いっぱいの箱に埋め込んで出す（6 尺度 × 20 個の枠）',
+    tlxUi.src === 'tlx/nasatlx-ja.html?embed=1&raw=1' && (tlxUi.cells = await tlx().locator('td[id^="t_"]').count()) === 120 && tlxUi.full && tlxUi.fixed === 'fixed', JSON.stringify(tlxUi));
+  await tlx().locator('#div_part1 input.next').click();
+  await p.waitForTimeout(200);
+  check('Raw TLX：選ばずに次へ進むと元のページの注意が出る', dialogs.includes('すべてのスケールで値を選択してください'), JSON.stringify(dialogs));
   const vals = { mental: 50, physical: 10, temporal: 30, performance: 20, effort: 60, frustration: 40 };
-  for (const [k, v] of Object.entries(vals)) await band(k, v);
-  await done();
+  await rateAll(vals);
+  await tlx().locator('#div_part1 input.next').click();
   await p.waitForFunction(() => document.getElementById('ahSurvey').hidden);
   await p.waitForTimeout(400);
   check('すべてに答えたら zip を 1 つ書き出し、「次へ」を出す', JSON.stringify(names()) === '["P01_t01_a_excel.zip"]' && (await vis('#expNext')), JSON.stringify(names()));
@@ -172,7 +184,9 @@ const BADFORM = makeFolder('survey_bad', {
   check('回答：評定・表の行ごと・複数選択（;）・自由記述、動かしていないスライダーは空の値',
     get('post', 'ease') === '5' && get('post', 'tool.learn') === '2' && get('post', 'tool.again') === '2' && get('post', 'used') === 'ホイール;曲線' && get('post', 'free') === 'とても good' && get('post', 'fun') === ''
     && sv.some(r => r[0] === 'post' && r[1] === 'fun'), JSON.stringify(sv.filter(r => r[0] === 'post')));
-  check('Raw TLX：6 尺度の評定と raw_tlx（平均）、variant は raw', get('raw-tlx', 'mental') === '50' && get('raw-tlx', 'raw_tlx') === '35' && get('raw-tlx', 'variant') === 'raw' && !sv.some(r => r[1] === 'overall'),
+  check('Raw TLX：元のページの列（<尺度>_rating など）で評定と raw_tlx（平均）を残し、variant は raw、一対比較の列は空。CSV はダウンロードしない',
+    get('raw-tlx', 'mental_rating') === '50' && get('raw-tlx', 'raw_tlx') === '35' && get('raw-tlx', 'variant') === 'raw' && get('raw-tlx', 'overall') === '' && !sv.some(r => r[1] === 'pid')
+    && !names().some(n => n.endsWith('_tlx.csv')),
     JSON.stringify(sv.filter(r => r[0] === 'raw-tlx')));
   check('回答の行に答え始めと答え終わりの時刻が入る', sv.slice(1).every(r => /^\d{4}-/.test(r[4]) && /^\d{4}-/.test(r[5]) && r[4] <= r[5]));
   const prog = await p.evaluate(() => JSON.parse(localStorage.getItem('ahann_exp:svtest:P01')).done);
@@ -195,28 +209,15 @@ const BADFORM = makeFolder('survey_bad', {
   await next(); await slider('fun', 70); await done();
   await p.waitForFunction(() => document.getElementById('ahSurvey').hidden);
   await p.click('#expSurvey2');
-  await p.waitForSelector('#ahSurvey .ah-tlx-scale');
-  for (const [k, v] of Object.entries(vals)) await band(k, v);
-  await done();
+  await rateAll(vals);
+  await tlx().locator('#div_part1 input.next').click();
   await p.waitForFunction(() => document.getElementById('ahSurvey').hidden);
+  // NASA-TLX（一対比較つき）：tally は mental 5・physical 4・temporal 3・performance 2・effort 1・frustration 0 になる
   await p.click('#expSurvey3');
-  await p.waitForSelector('#ahSurvey .ah-tlx-scale');
-  const prog3 = await p.$eval('#ahSurvey .ah-progress__text', e => e.textContent);
-  check('NASA-TLX は評定と一対比較の 2 ページで、進み具合を「1 / 2」と出す', prog3 === '1 / 2', prog3);
-  for (const [k, v] of Object.entries(vals)) await band(k, v);
-  await next();
-  const pairs = await p.$$eval('#ahSurvey .sd-question', qs => qs.map(q => q.getAttribute('data-name')));
-  check('一対比較は 15 組（6 尺度の組み合わせすべて）', pairs.length === 15 && new Set(pairs).size === 15 && pairs.every(n => /^pair_[a-z]+_[a-z]+$/.test(n)), JSON.stringify(pairs));
-  // どの組でも、順に並べた尺度で先のもの（mental > physical > …）を選ぶ → tally は mental 5・physical 4・temporal 3・performance 2・effort 1・frustration 0
-  const order = ['mental', 'physical', 'temporal', 'performance', 'effort', 'frustration'];
-  for (const q of await p.locator('#ahSurvey .sd-question').all()) {
-    const keys = (await q.getAttribute('data-name')).slice(5).split('_');
-    const win = order.find(k => keys.includes(k));
-    const texts = await q.locator('.sd-item__control-label').allInnerTexts();
-    const nm = { mental: '知的・知覚的要求', physical: '身体的要求', temporal: 'タイムプレッシャー', performance: '作業成績', effort: '努力', frustration: 'フラストレーション' }[win];
-    await q.locator('.sd-selectbase__label').nth(texts.indexOf(nm)).click();
-  }
-  await done();
+  await rateAll(vals);
+  await tlx().locator('#div_part1 input.next').click();
+  await tlx().locator('#div_part2 input.next').click();
+  await pickPairs();
   await p.waitForFunction(() => document.getElementById('ahSurvey').hidden);
   check('URL のアンケートが残るうちは zip を書き出さない', JSON.stringify(names()) === '["P01_t01_a_excel.zip"]', JSON.stringify(names()));
   const [pop] = await Promise.all([ctx.waitForEvent('page'), p.click('#expSurvey4')]);
@@ -228,9 +229,9 @@ const BADFORM = makeFolder('survey_bad', {
   const sv2 = csvRows((await zip('P01_t02_b_excel.zip'))['P01_t02_b_excel_survey.csv'] || '');
   const get2 = (id, q) => (sv2.find(r => r[0] === id && r[1] === q) || [])[2];
   // overall = (50*5 + 10*4 + 30*3 + 20*2 + 60*1 + 40*0) / 15 = 480 / 15 = 32
-  check('NASA-TLX：id（tlx_final）を survey 列に使い、一対比較・tally・weight・overall・raw_tlx を残す',
+  check('NASA-TLX：id（tlx_final）を survey 列に使い、一対比較（pairs）・tally・weight・overall・raw_tlx を残す',
     get2('tlx_final', 'variant') === 'weighted' && get2('tlx_final', 'mental_tally') === '5' && get2('tlx_final', 'frustration_tally') === '0' && get2('tlx_final', 'mental_weight') === '0.3333'
-    && get2('tlx_final', 'overall') === '32' && get2('tlx_final', 'raw_tlx') === '35' && get2('tlx_final', 'pair_mental_physical') === 'mental', JSON.stringify(sv2.filter(r => r[0] === 'tlx_final').map(r => r.slice(1, 3))));
+    && get2('tlx_final', 'overall') === '32' && get2('tlx_final', 'raw_tlx') === '35' && (get2('tlx_final', 'pairs') || '').split(' ').length === 15, JSON.stringify(sv2.filter(r => r[0] === 'tlx_final').map(r => r.slice(1, 3))));
   check('最後の試行の zip には試行のアンケートと finalSurvey の回答が入る（スライダーを動かせば値が入る）', get2('post', 'fun') === '70' && get2('post', 'ease') === '1' && get2('raw-tlx', 'raw_tlx') === '35');
 
   // ---- P02：答える前に Ctrl+Shift+E で抜けると、回答の無い zip を書き出す

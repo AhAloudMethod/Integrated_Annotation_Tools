@@ -200,14 +200,3 @@
 .ah-survey .sd-question--error .sd-item__decorator,
 .ah-survey .sd-question--error .sd-rating__item { border-color: #D9A090; }
 .ah-survey .sd-question--error .sd-item__decorator { box-shadow: none; }
-
-/* 画面を覆う箱：実験の覆い（.expCover，z-index 1000）より上に出す．アンケートは配色の設定（ダーク）によらず白い用紙で出す */
-.ahSurveyBox { position: fixed; inset: 0; z-index: 1100; overflow: auto; color-scheme: light; }
-.ahSurveyBox[hidden] { display: none; }
-
-/* NASA-TLX の評定（core/survey.js の雛形）：20 個の枠の帯．数字は出さず，枠を低くし，中央（10 個目の右）に目盛りを付ける */
-.ah-survey .ah-tlx-scale .sd-rating { max-width: 600px; }
-.ah-survey .ah-tlx-scale .sd-rating__item { height: 30px; }
-.ah-survey .ah-tlx-scale .sd-rating__item .sd-rating__item-text { visibility: hidden; }
-.ah-survey .ah-tlx-scale .sd-rating__item:nth-of-type(10) { border-right: 2px solid #7D8792; }
-.ah-survey .ah-tlx-scale .sd-question__description { font-size: 13px; line-height: 1.7; color: var(--ah-muted); margin: 2px 0 0; }

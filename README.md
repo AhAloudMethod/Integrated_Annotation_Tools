@@ -87,7 +87,7 @@ core/                 共通部分（読み込み順に依存するので，inde
   alpha.js            Krippendorff の α（4 つの尺度，塊ごとの要約とブートストラップ．tools/alpha/alpha.js が使う）
   zip.js              zip を作る（実験モードで 1 試行の書き出しを 1 つにまとめる）
   speaker.js          発声者の区切り（発声者の結果から評価区間を読み，評価区間の欄で当てて区間ごとに再生する．setup.json の書き出しの画面の取り込みにも使う）
-  survey.js           画面の中のアンケート（SurveyJS を読み込んで画面に重ねて出し，回答を 1 行 1 設問にする．NASA-TLX の雛形）
+  survey.js           画面の中のアンケート（定義は SurveyJS で，NASA-TLX は tlx/ の埋め込みで画面に重ねて出し，回答を 1 行 1 設問にする）
   experiment.js       実験モード（実験フォルダの読み込み，試行の進行，録画の試行の区間合わせ，開始・完了，終えた試行のやり直し，参加者から隠す要素，要約，zip の書き出し，setup.json の書き出し）
   init.js             起動処理 AH.init() と公開 API
 modes/                入力方式（読み込み順が「入力方式」の選択肢の並び順になる）
@@ -661,7 +661,7 @@ exp2/
 
 ### 画面の中のアンケート
 
-`survey`・`finalSurvey` の要素に `form` か `builtin` を書くと，アンケートを別のタブではなく Ahnotation の画面に重ねて出す（SurveyJS．`core/survey.js`，見た目は `survey/ah-survey.css`）．答え終えると元の画面に戻るので，参加者がタブを行き来しない．回答は試行の zip に入るので，ダウンロード先の設定も回収ツールの振り分けも要らない．
+`survey`・`finalSurvey` の要素に `form` か `builtin` を書くと，アンケートを別のタブではなく Ahnotation の画面に重ねて出す（`core/survey.js`．`form` は SurveyJS で出し，見た目は `survey/ah-survey.css`）．答え終えると元の画面に戻るので，参加者がタブを行き来しない．回答は試行の zip に入るので，ダウンロード先の設定も回収ツールの振り分けも要らない．
 
 ```json
 "survey": [{ "form": "surveys/post.json", "label": "事後アンケートに答える" }, { "builtin": "raw-tlx" }],
@@ -669,13 +669,13 @@ exp2/
 ```
 
 - `form`：実験フォルダからの相対パスの JSON．中身は SurveyJS の定義（`pages` か `elements`）である．書いていない項目には既定を当てる：設問は必須（`isRequired`），段階の評定（`rating`）は 1〜7 の 7 段階，言語は日本語．段階の評定には両端のラベル（`minRateDescription`・`maxRateDescription`）を書く（無ければ警告）．
-- `builtin`：同梱の雛形．`nasa-tlx`（評定と一対比較 15 組．重みと総合点を出す）と `raw-tlx`（評定だけ）．評定は元の NASA-TLX と同じ 20 個の枠（5〜100）で，尺度の名前と定義は `tlx/nasatlx-ja.html` と同じである．
+- `builtin`：同梱の雛形．`nasa-tlx`（評定と一対比較 15 組．重みと総合点を出す）と `raw-tlx`（評定だけ）．見慣れた画面を変えないよう，`tlx/nasatlx-ja.html` を画面いっぱいの箱に埋め込んで出す（`embed=1`）．埋め込んだときは CSV を保存せず，同じ列と値を Ahnotation に渡す．
 - `id`：回答の表の `survey` 列の値．無ければ定義のファイル名（拡張子なし）か雛形の名前．同じ試行に同じ雛形を 2 回出すなら付け分ける．`label`：ボタンの文言（無ければ「アンケート に答える」，雛形は「NASA-TLX に答える」など）．
 - 書き出しの時機：画面の中のアンケートがある試行は，「完了」の時点ではブラウザ（IndexedDB）に zip を残すだけにし，すべてのアンケートに答えてから zip を書き出す（回答を同じ zip に入れるため）．自動保存も答えるまで残すので，読み込み直したら同じ試行のアンケートからやり直せる．答える前に Ctrl+Shift+E で抜けると，回答の無い zip を書き出す．
-- 回答：zip の `<…>_survey.csv` に 1 行 1 設問で入る．列は `survey`，`question`（設問の name．表の形の設問は `name.行`），`value`，`title`（設問の文），`start_iso`・`end_iso`（答え始めと答え終わり）．複数選んだ値は `;` でつなぐ．答えていない設問も空の値で行を残す．NASA-TLX は評定と一対比較（`pair_<尺度>_<尺度>` に選んだ尺度）の後に，`variant`，`raw_tlx`，一対比較があれば `<尺度>_tally`・`<尺度>_weight`・`overall` の行を足す．回収の後の `2_全員終わったら_表にまとめる.bat` で，全員分が `データ/全員分/survey.csv` にまとまる（参加者・試行・条件の列つき）．
+- 回答：zip の `<…>_survey.csv` に 1 行 1 設問で入る．列は `survey`，`question`（設問の name．表の形の設問は `name.行`），`value`，`title`（設問の文），`start_iso`・`end_iso`（答え始めと答え終わり）．複数選んだ値は `;` でつなぐ．答えていない設問も空の値で行を残す．NASA-TLX は，URL で開く版の CSV と同じ列名を `question` にする（`<尺度>_rating`，`<尺度>_tally`，`<尺度>_weight`，`overall`，`pairs`，`variant`，`raw_tlx`．Raw TLX では一対比較の値は空）．回収の後の `2_全員終わったら_表にまとめる.bat` で，全員分が `データ/全員分/survey.csv` にまとまる（参加者・試行・条件の列つき）．
 - 検査：実験フォルダを開いたときと `npm run exp-check` で，定義のファイルが無い，JSON として読めない，設問の name の重複，`type`・`name` の無い設問を誤りにする．無い `builtin` も誤りである．
-- SurveyJS（`vendor/surveyjs/`）は画面の中のアンケートを初めて出すときに読み込む．URL のアンケートだけの実験と通常の画面では読み込まない．
-- 選んだかどうかが見た目で分かるよう，0 も答えになる量はスライダーより段階の評定で取る．スライダー（`slider`）は動かす前もつまみが端に出るので，必須でないときに使う．動かしていなければ値は空になる．
+- SurveyJS（`vendor/surveyjs/`）は `form` のアンケートを初めて出すときに読み込む．URL と NASA-TLX だけの実験と通常の画面では読み込まない．
+- 0 も答えになる量はスライダーより段階の評定で取る．スライダー（`slider`）は動かす前もつまみが端に出て答えたように見えるので，必須でないときに使う．動かしていなければ値は空になる．
 
 ### Google フォームから移す
 

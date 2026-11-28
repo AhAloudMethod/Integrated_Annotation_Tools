@@ -396,3 +396,9 @@ img.xlAg{width:auto;max-width:100%;margin:0 auto 8px;padding:6px;box-sizing:bord
 /* 直前の区間で選んだ段階：うっすら出す（今の区間で選んだもの .on が上に重なる） */
 .pnRow.pa button.prev:not(.on){background:color-mix(in srgb,var(--axv) 10%,transparent);border-style:dashed;border-color:color-mix(in srgb,var(--axv) 45%,transparent)}
 .pnRow.na button.prev:not(.on){background:color-mix(in srgb,var(--axa) 10%,transparent);border-style:dashed;border-color:color-mix(in srgb,var(--axa) 45%,transparent)}
+/* 画面の中のアンケート（core/survey.js）の箱：実験の覆い（.expCover，z-index 1000）より上に出す．SurveyJS のアンケートの見た目は survey/ah-survey.css．
+   NASA-TLX は元のページ（tlx/nasatlx-ja.html）を白い箱いっぱいの iframe で出す */
+.ahSurveyBox{position:fixed;inset:0;z-index:1100;overflow:auto;color-scheme:light}
+.ahSurveyBox[hidden]{display:none}
+.ahTlxBox{background:#fff;overflow:hidden}
+.ahTlxFrame{display:block;width:100%;height:100%;border:0;background:#fff}
