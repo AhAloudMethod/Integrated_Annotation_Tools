@@ -103,12 +103,20 @@
   function answerRows(model, data) {
     const rows = [], used = new Set();
     for (const q of model.getAllQuestions(false, false, true)) {
-      if (NO_INPUT.includes(q.getType())) continue;
+      if (NO_INPUT.includes(q.getType()) || q.parentQuestion) continue;   // 表のセルの設問は表の行として出す
       const v = data[q.name], title = (q.title || q.name).replace(/\s+/g, ' ');
       used.add(q.name);
       if (q.getType() === 'matrix') {
         for (const r of q.rows) { const rv = isObj(v) ? v[r.value] : undefined; rows.push([`${q.name}.${r.value}`, cell(rv), `${title}：${r.text || r.value}`]); }
-      } else if (isObj(v) && ['multipletext', 'matrixdropdown'].includes(q.getType())) {
+      } else if (q.getType() === 'matrixdropdown') {
+        // 行ごと。列が 1 つ（Google フォームのチェックボックスのグリッドを移したものなど）ならその値、2 つ以上なら name.row.column
+        const cols = q.columns.map(c => c.name);
+        for (const r of q.rows) {
+          const rv = isObj(v) && isObj(v[r.value]) ? v[r.value] : {};
+          if (cols.length === 1) rows.push([`${q.name}.${r.value}`, cell(rv[cols[0]]), `${title}：${r.text || r.value}`]);
+          else for (const c of cols) rows.push([`${q.name}.${r.value}.${c}`, cell(rv[c]), `${title}：${r.text || r.value}：${c}`]);
+        }
+      } else if (isObj(v) && q.getType() === 'multipletext') {
         for (const [k, x] of Object.entries(v)) rows.push([`${q.name}.${k}`, cell(x), `${title}：${k}`]);
       } else rows.push([q.name, cell(v), title]);
     }

@@ -1,0 +1,116 @@
+{
+ "format": "ahnotation-gform-export",
+ "version": 1,
+ "title": "実験後アンケート",
+ "description": "感じたとおりに答えてください",
+ "shuffle": false,
+ "quiz": false,
+ "items": [
+  {
+   "type": "SECTION_HEADER",
+   "title": "評価について",
+   "help": "1 行目\n2 行目"
+  },
+  {
+   "type": "SCALE",
+   "title": "評価のしやすさ",
+   "help": "",
+   "required": true,
+   "lower": 1,
+   "upper": 7,
+   "leftLabel": "全くしやすくない",
+   "rightLabel": "非常にしやすい"
+  },
+  {
+   "type": "GRID",
+   "title": "ツールについて",
+   "required": true,
+   "rows": [
+    "覚えやすい",
+    "また使いたい"
+   ],
+   "columns": [
+    "いいえ",
+    "どちらでもない",
+    "はい"
+   ]
+  },
+  {
+   "type": "MULTIPLE_CHOICE",
+   "title": "経験",
+   "required": true,
+   "choices": [
+    "ない",
+    "ある"
+   ],
+   "other": true,
+   "branch": true
+  },
+  {
+   "type": "PAGE_BREAK",
+   "title": "あなたについて",
+   "help": "最後のページです"
+  },
+  {
+   "type": "CHECKBOX",
+   "title": "使った機能",
+   "required": false,
+   "choices": [
+    "区切り",
+    "ホイール"
+   ],
+   "other": false
+  },
+  {
+   "type": "LIST",
+   "title": "学年",
+   "required": true,
+   "choices": [
+    "B4",
+    "M1",
+    "M2"
+   ]
+  },
+  {
+   "type": "SCALE",
+   "title": "ラベルの無い段階",
+   "required": true,
+   "lower": 0,
+   "upper": 10,
+   "leftLabel": "",
+   "rightLabel": ""
+  },
+  {
+   "type": "CHECKBOX_GRID",
+   "title": "使った場面",
+   "required": false,
+   "rows": [
+    "練習",
+    "本番"
+   ],
+   "columns": [
+    "区切り",
+    "ホイール"
+   ]
+  },
+  {
+   "type": "PARAGRAPH_TEXT",
+   "title": "感想",
+   "required": false
+  },
+  {
+   "type": "TEXT",
+   "title": "名前",
+   "required": true
+  },
+  {
+   "type": "DATE",
+   "title": "日付",
+   "required": false
+  },
+  {
+   "type": "IMAGE",
+   "title": "図 1"
+  }
+ ]
+}

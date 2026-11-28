@@ -5,6 +5,7 @@ const { chromium } = require('playwright-core');
 const fs = require('fs');
 const path = require('path');
 const { URL, VID, BROWSER, out } = require('./_env');
+const { convert } = require('../tools/gform/convert');
 const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? '  ' + detail : ''}`);
 
 function makeFolder(name, files, videos) {
@@ -245,6 +246,22 @@ const BADFORM = makeFolder('survey_bad', {
   await p.waitForTimeout(300);
   const z3 = await zip('P02_t01_b_excel.zip');
   check('答える前に抜けると、評価の zip（回答なし）を書き出す', !!z3 && !Object.keys(z3).some(n => n.endsWith('_survey.csv')) && !!z3['P02_t01_b_excel_session.json'], JSON.stringify(names()));
+
+  // ---- Google フォームから変換した定義（tools/gform/convert.js）を画面の中で出して答える
+  const gf = convert(JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'gform-export.json'), 'utf8'))).form;
+  const optional = JSON.parse(JSON.stringify(gf)); for (const pg of optional.pages) for (const e of pg.elements) if (e.type !== 'html') { e.isRequired = false; delete e.isAllRowRequired; }
+  await p.evaluate(f => { window.__gf = AH._.survey.run({ form: f, id: 'gform' }); }, optional);
+  await p.waitForSelector('#ahSurvey .sd-question');
+  const gfUi = await p.evaluate(() => ({ html: !!document.querySelector('#ahSurvey .sd-html h3'), matrix: !!document.querySelector('#ahSurvey .sd-matrix'), other: [...document.querySelectorAll('#ahSurvey .sd-item__control-label')].some(e => e.textContent.includes('その他')) }));
+  check('変換した定義：見出し（html）・表・「その他」を画面に出す', gfUi.html && gfUi.matrix && gfUi.other, JSON.stringify(gfUi));
+  await p.locator('#ahSurvey').getByText('ある', { exact: true }).click();
+  await next();
+  await p.locator('#ahSurvey .sd-table__row').filter({ hasText: '本番' }).locator('.sd-item__decorator').nth(1).click();
+  await done();
+  const gfRows = await p.evaluate(() => window.__gf.then(r => r.rows));
+  const gget = q => (gfRows.find(r => r[1] === q) || [])[2];
+  check('変換した定義：回答を行にする（チェックボックスのグリッドは行ごとの値、答えていない設問は空の値）',
+    gget('q03') === 'ある' && gget('q07.本番') === 'ホイール' && gget('q07.練習') === '' && gget('q01') === '' && !gfRows.some(r => r[1].startsWith('section') || r[1] === 'answer') && gfRows.length === 12, JSON.stringify(gfRows.map(r => r.slice(1, 3))));
 
   check('ページのエラーが無い', !errs.length, errs.join(' / '));
   await browser.close();
