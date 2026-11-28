@@ -140,14 +140,40 @@
   }
 
   // ---------- 変化の区間にする・一定に戻す（パネルのボタン） ----------
-  // 変化にすると、最初はセルの値のまま一定の線にする（値が入っていなければ初期値の 5 を入れる）。形の記録は置かない（const）
+  // 一定に戻すときは、区間の曲線と形の記録を S.data.curveKept に取っておく（{ axis, t0, t1, cell, vals, shapes }。vals は区間の始めのフレームからの値）。
+  // 間違えて戻しても、戻した後にセルの値を変えずにまた変化にすれば、取っておいた曲線に戻す
+  const sameBin = (r, ax, s) => r.axis === ax && Math.abs(r.t0 - binStart(s)) < TOL && Math.abs(r.t1 - _.binEnd(s)) < TOL;
+  function keep(ax, s, cell) {
+    const [f0, f1] = frames(s); if (f1 <= f0) return;
+    const b0 = binStart(s), b1 = _.binEnd(s), vals = [];
+    for (let f = f0; f < f1; f++) vals.push(_.valueAt(ax, f / FPS));
+    const shapes = (S.data.shapes || []).filter(r => r.axis === ax && r.t0 >= b0 - TOL && r.t1 <= b1 + TOL).map(r => ({ ...r }));
+    S.data.curveKept = (S.data.curveKept || []).filter(r => !sameBin(r, ax, s));
+    S.data.curveKept.push({ axis: ax, t0: +b0.toFixed(4), t1: +b1.toFixed(4), cell, vals, shapes });
+  }
+  // 取っておいた曲線を戻す。区間の長さが変わっていたり、戻した後にセルの値を変えていたら戻さない（false）。取っておいた分はどちらでも捨てる
+  function restore(ax, s) {
+    const kept = S.data.curveKept || [], r = kept.find(k => sameBin(k, ax, s));
+    if (!r) return false;
+    S.data.curveKept = kept.filter(k => k !== r);
+    const [f0, f1] = frames(s);
+    if (r.vals.length !== f1 - f0 || r.cell !== S.data.cells[ax][s]) return false;
+    S.data.points[ax] = _.rewriteFrames(S.data.points[ax], new Map(r.vals.map((v, k) => [f0 + k, v])));
+    trim(ax, binStart(s), _.binEnd(s));
+    if (r.shapes.length) (S.data.shapes || (S.data.shapes = [])).push(...r.shapes);
+    return true;
+  }
+  // 変化にすると、最初はセルの値のまま一定の線にする（値が入っていなければ初期値の 5 を入れる）。形の記録は置かない（const）。
+  // 一定に戻したときの曲線を取ってあれば、その曲線に戻す
   function mark(s, axes) {
     if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), done = [];
     for (const ax of axes) {
       const v = S.data.cells[ax][s]; if (v === CURVE) continue;
-      const iv = typeof v === 'number' ? v : _.M.init[ax];
-      put(S.data, ax, s, iv, iv, 'none', 'mark', 'cell');
+      if (!restore(ax, s)) {
+        const iv = typeof v === 'number' ? v : _.M.init[ax];
+        put(S.data, ax, s, iv, iv, 'none', 'mark', 'cell');
+      }
       S.data.cells[ax][s] = CURVE; done.push(ax);
     }
     if (!done.length) return false;
@@ -155,7 +181,8 @@
     addLog('curve_mark', { axis: done.join(''), value: 'on', detail: 'bin ' + s });
     _.refresh(); return true;
   }
-  // 一定に戻す：区間の平均を、普通のセルの刻み（9 段階なら整数、連続値なら小数第 1 位）に丸めた値にする。入れていない区間は空欄、発声なしは 0
+  // 一定に戻す：区間の平均を、普通のセルの刻み（9 段階なら整数、連続値なら小数第 1 位）に丸めた値にする。入れていない区間は空欄、発声なしは 0。
+  // 曲線は取っておく（keep）
   function unmark(s, axes) {
     if (!on() || _.reviewing() || s < 0 || s >= nSec() || _.novoiceLocked(s)) return false;   // 発声なしの事前設定の区間は変えない
     const before = snapshot(), done = [];
@@ -163,6 +190,7 @@
       if (!isCurve(ax, s)) continue;
       const c = info(ax, s, true), round = _.isInt() ? Math.round : x => Math.round(x * 10) / 10;
       S.data.cells[ax][s] = !c || !c.entered ? null : c.shape === 'zero' ? 0 : clamp(round(c.mean), 1, 9);
+      keep(ax, s, S.data.cells[ax][s]);
       trim(ax, binStart(s), _.binEnd(s)); done.push(ax);
     }
     if (!done.length) return false;

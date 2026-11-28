@@ -64,6 +64,17 @@ const check = (name, ok, detail = '') => console.log(`${ok ? 'ok  ' : 'FAIL'} ${
     await drag(p, g('v', 1.01, 2), g('v', 1.99, 2), 6);
     await at(p, 1.5); await p.click('.curveBox .mark'); await p.waitForTimeout(100);
     check('「なぞって評価する」をもう一度押すと区間の平均（2）を丸めた値の普通のセルに戻る', (await cells(p, 'v'))[1] === '2' && await p.evaluate(() => AH.S.data.cells.v[1] === 2), JSON.stringify((await cells(p, 'v')).slice(0, 3)));
+    // 間違えて戻しても、また押せば描いた曲線に戻る
+    await mark(p, 1.5); await drag(p, g('v', 1.01, 2), g('v', 1.99, 8), 10);
+    const drawn = await p.evaluate(() => [1.1, 1.5, 1.9].map(t => AH.valueAt('v', t)));
+    const shown = (await cells(p, 'v'))[1];
+    await mark(p, 1.5); await mark(p, 1.5);
+    const back = await p.evaluate(() => [1.1, 1.5, 1.9].map(t => AH.valueAt('v', t)));
+    check('戻した後にまた「なぞって評価する」を押すと、描いた曲線とセルの表示に戻る', JSON.stringify(back) === JSON.stringify(drawn) && (await cells(p, 'v'))[1] === shown && drawn[0] !== drawn[2], JSON.stringify({ drawn, back, shown }));
+    await mark(p, 1.5);
+    await p.click('input[data-ax=v][data-s="1"]'); await p.keyboard.press('Control+a'); await p.keyboard.type('7'); await p.evaluate(() => document.activeElement.blur());
+    await mark(p, 1.5);
+    check('戻した後にセルの値を変えてから押すと、取っておいた曲線ではなくその値の一定の線にする', await p.evaluate(() => [1.1, 1.9].every(t => AH.valueAt('v', t) === 7)), JSON.stringify((await cells(p, 'v')).slice(0, 3)));
     await p.close();
   }
 
